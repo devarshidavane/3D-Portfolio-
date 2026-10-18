@@ -497,6 +497,98 @@
             overflow-y: auto;
         }
 
+        /* Landmark 3D Reference Preview Modal (16:9 responsive Sketchfab embed) */
+        #landmark-modal-backdrop {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.72);
+            backdrop-filter: blur(8px);
+            z-index: 50;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        #landmark-modal-backdrop.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        #landmark-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.92);
+            background: rgba(15, 23, 42, 0.98);
+            backdrop-filter: blur(28px);
+            border: 2px solid rgba(56, 189, 248, 0.5);
+            border-radius: 20px;
+            padding: 22px 24px;
+            width: 92%;
+            max-width: 880px;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.85), 0 0 60px rgba(56, 189, 248, 0.3);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 55;
+            max-height: 92vh;
+            overflow-y: auto;
+        }
+
+        #landmark-modal.active {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .landmark-iframe-container {
+            position: relative;
+            width: 100%;
+            padding-top: 56.25%; /* Responsive 16:9 Aspect Ratio */
+            border-radius: 12px;
+            overflow: hidden;
+            background: #020617;
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+            margin: 14px 0 12px 0;
+        }
+
+        .landmark-iframe-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
+
+        .landmark-modal-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: #94a3b8;
+            font-family: 'JetBrains Mono', monospace;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .landmark-disclaimer {
+            font-size: 11px;
+            color: #f59e0b;
+            font-weight: 500;
+            margin-top: 3px;
+        }
+
+        .sketchfab-link {
+            color: #38bdf8;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .sketchfab-link:hover {
+            text-decoration: underline;
+        }
+
         /* Loading Screen */
         #loading-screen {
             position: absolute;
@@ -578,6 +670,25 @@
         <div class="code-preview" id="modal-code-preview" style="display:none;"></div>
     </div>
 
+    <!-- Landmark 3D Reference Model Preview Modal -->
+    <div id="landmark-modal-backdrop"></div>
+    <div id="landmark-modal">
+        <div class="modal-header">
+            <div>
+                <div class="modal-title">🏛️ Gateway of India — 3D Model Preview</div>
+                <div class="landmark-disclaimer">External Sketchfab photogrammetry reference. (In-game world retains native procedural architecture).</div>
+            </div>
+            <button class="modal-close-btn" id="landmark-close-btn">&times;</button>
+        </div>
+        <div class="landmark-iframe-container" id="landmark-iframe-container">
+            <!-- iframe is injected dynamically on open to prevent unnecessary network, GPU, and memory overhead -->
+        </div>
+        <div class="landmark-modal-footer">
+            <span>🖱️ Controls: Drag to Orbit | Scroll to Zoom | Right-Click to Pan</span>
+            <a class="sketchfab-link" href="https://sketchfab.com/3d-models/gateway-of-india-38a652e9f3bf49039026ef65ef61ac92" target="_blank" rel="noopener noreferrer">View on Sketchfab ↗</a>
+        </div>
+    </div>
+
     <!-- UI Overlay Layer -->
     <div id="ui-layer">
         <header class="top-bar">
@@ -598,6 +709,7 @@
                 <button class="ctrl-btn" id="btn-toggle-time">⏰ Cycle Time (T)</button>
                 <button class="ctrl-btn" id="btn-toggle-weather">🌧️ Weather</button>
                 <button class="ctrl-btn" id="btn-tp-gateway">📍 Gateway</button>
+                <button class="ctrl-btn" id="btn-landmark-preview">🏛️ 3D Model</button>
                 <button class="ctrl-btn" id="btn-tp-home">🏠 Home</button>
                 <button class="ctrl-btn" id="btn-tp-school">🏫 School</button>
                 <button class="ctrl-btn" id="btn-tp-college">🎓 DMCE</button>

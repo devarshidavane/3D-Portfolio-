@@ -21,6 +21,7 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.15;
+window.__renderer = renderer;
 
 // Camera view mode: 'chase', 'cinematic', 'orbit'
 let cameraMode = 'chase';
@@ -1406,7 +1407,10 @@ window.addEventListener('keydown', (e) => {
     if (k === 'e') handleInteraction();
     if (k === 't') cycleTimeOfDay();
     if (k === 'c') toggleCameraMode();
-    if (k === 'escape') closeModal();
+    if (k === 'escape') {
+        closeModal();
+        closeLandmarkModal();
+    }
 });
 
 window.addEventListener('keyup', (e) => {
@@ -1437,6 +1441,46 @@ const modalCloseBtn = document.getElementById('modal-close-btn');
 
 modalCloseBtn.addEventListener('click', closeModal);
 function closeModal() { interactiveModalEl.classList.remove('active'); }
+
+// Landmark 3D Reference Model Preview (Sketchfab photogrammetry embed)
+const SKETCHFAB_GATEWAY_URL = 'https://sketchfab.com/models/38a652e9f3bf49039026ef65ef61ac92/embed';
+const landmarkModalEl = document.getElementById('landmark-modal');
+const landmarkBackdropEl = document.getElementById('landmark-modal-backdrop');
+const landmarkIframeContainer = document.getElementById('landmark-iframe-container');
+const landmarkCloseBtn = document.getElementById('landmark-close-btn');
+const btnLandmarkPreview = document.getElementById('btn-landmark-preview');
+
+function openLandmarkModal() {
+    if (!landmarkModalEl) return;
+    // Inject iframe on-demand to prevent unnecessary network, GPU, and memory consumption on mobile/idle
+    if (!landmarkIframeContainer.querySelector('iframe')) {
+        const iframe = document.createElement('iframe');
+        iframe.title = 'Gateway of India 3D Model Preview';
+        iframe.frameBorder = '0';
+        iframe.width = '100%';
+        iframe.height = '100%';
+        iframe.allow = 'autoplay; fullscreen; xr-spatial-tracking';
+        iframe.setAttribute('allowfullscreen', 'true');
+        iframe.setAttribute('mozallowfullscreen', 'true');
+        iframe.setAttribute('webkitallowfullscreen', 'true');
+        iframe.src = SKETCHFAB_GATEWAY_URL;
+        landmarkIframeContainer.appendChild(iframe);
+    }
+    landmarkModalEl.classList.add('active');
+    if (landmarkBackdropEl) landmarkBackdropEl.classList.add('active');
+}
+
+function closeLandmarkModal() {
+    if (!landmarkModalEl) return;
+    landmarkModalEl.classList.remove('active');
+    if (landmarkBackdropEl) landmarkBackdropEl.classList.remove('active');
+    // Clear iframe from DOM immediately so WebGL context, audio, and network sockets are released
+    landmarkIframeContainer.innerHTML = '';
+}
+
+if (landmarkCloseBtn) landmarkCloseBtn.addEventListener('click', closeLandmarkModal);
+if (landmarkBackdropEl) landmarkBackdropEl.addEventListener('click', closeLandmarkModal);
+if (btnLandmarkPreview) btnLandmarkPreview.addEventListener('click', openLandmarkModal);
 
 // Fast Travel Teleport System
 function teleportTo(targetX, targetZ, label) {
@@ -1595,6 +1639,8 @@ console.log("Welcome to my Cyber Universe!");
         `;
         modalCodePreviewEl.style.display = 'none';
         interactiveModalEl.classList.add('active');
+    } else if (currentInteraction === 'gatewayPreview') {
+        openLandmarkModal();
     }
 }
 
@@ -2012,6 +2058,13 @@ function updateSpeechBubble() {
 function checkProximity() {
     currentInteraction = null;
     const p = characterGroup.position;
+
+    // 0. Check Gateway of India Arch (At X: 0, Z: -32)
+    if (p.distanceTo(new THREE.Vector3(0, 0, -32)) < 22) {
+        currentInteraction = 'gatewayPreview';
+        showPrompt('E', 'Preview Gateway 3D Model 🏛️');
+        return;
+    }
 
     // 1. Check Vada Pav Cart
     if (p.distanceTo(new THREE.Vector3(poiVadaPav.x, 0, poiVadaPav.z)) < poiVadaPav.radius) {
