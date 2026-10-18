@@ -1,0 +1,7 @@
+node_modules/
+three.js/
+threejs-skills/
+img2threejs/
+*.log
+.DS_Store
+Thumbs.db

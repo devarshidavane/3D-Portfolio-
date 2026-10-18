@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Devarshi Davane — 3D Open World Portfolio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background: #070a13; font-family: 'Outfit', sans-serif; color: #fff; }
+
+        #webgl-canvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            display: block;
+            z-index: 1;
+        }
+
+        /* Screen Fade Overlay */
+        #fade-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease-in-out;
+            z-index: 50;
+        }
+
+        /* UI Layer */
+        #ui-layer {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 16px 24px;
+        }
+
+        /* Top Header */
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            pointer-events: auto;
+            flex-wrap: wrap;
+        }
+
+        .brand-badge {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(15, 23, 42, 0.88);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            padding: 8px 18px;
+            border-radius: 999px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+        }
+
+        .brand-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #e11d48, #f59e0b);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 16px;
+            color: #0b0f19;
+            box-shadow: 0 0 16px rgba(225, 29, 72, 0.65);
+        }
+
+        .brand-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .brand-title {
+            font-size: 15px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            background: linear-gradient(90deg, #ffffff, #93c5fd);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand-subtitle {
+            font-size: 11px;
+            color: #94a3b8;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Time, Weather & Fast Travel Controls */
+        .world-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(15, 23, 42, 0.88);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            padding: 6px 14px;
+            border-radius: 999px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+            flex-wrap: wrap;
+        }
+
+        .time-pill {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: #38bdf8;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-right: 4px;
+            padding: 4px 8px;
+            background: rgba(56, 189, 248, 0.12);
+            border-radius: 999px;
+            border: 1px solid rgba(56, 189, 248, 0.2);
+        }
+
+        .ctrl-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            color: #cbd5e1;
+            font-family: 'Outfit', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 5px 12px;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .ctrl-btn:hover {
+            color: #fff;
+            background: rgba(56, 189, 248, 0.25);
+            border-color: #38bdf8;
+            transform: translateY(-1px);
+        }
+
+        .ctrl-btn.active {
+            background: linear-gradient(135deg, #2563eb, #38bdf8);
+            color: #fff;
+            border-color: #38bdf8;
+            box-shadow: 0 0 14px rgba(56, 189, 248, 0.45);
+        }
+
+        /* Dialogue Speech Bubble */
+        #speech-bubble {
+            position: absolute;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            border: 2px solid rgba(56, 189, 248, 0.55);
+            border-radius: 20px;
+            padding: 16px 22px;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65), 0 0 30px rgba(56, 189, 248, 0.3);
+            display: none;
+            opacity: 0;
+            transform: translate(-50%, -100%) scale(0.9);
+            transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: auto;
+            max-width: 360px;
+            z-index: 30;
+        }
+
+        #speech-bubble.visible {
+            display: block;
+            opacity: 1;
+            transform: translate(-50%, -100%) scale(1);
+        }
+
+        #speech-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -11px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 11px 11px 0;
+            border-style: solid;
+            border-color: rgba(15, 23, 42, 0.95) transparent transparent transparent;
+        }
+
+        .speech-greeting {
+            font-size: 17px;
+            font-weight: 800;
+            color: #38bdf8;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .speech-sub {
+            font-size: 13px;
+            color: #e2e8f0;
+            line-height: 1.45;
+        }
+
+        /* Bottom HUD Layout */
+        .bottom-hud {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            width: 100%;
+            gap: 16px;
+        }
+
+        /* Controls Card (Bottom Left) */
+        .controls-card {
+            background: rgba(15, 23, 42, 0.88);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 18px;
+            padding: 14px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            box-shadow: 0 10px 35px rgba(0, 0, 0, 0.5);
+            pointer-events: auto;
+        }
+
+        .controls-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .key-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .key-badge {
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-bottom: 3px solid rgba(255, 255, 255, 0.4);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 800;
+            padding: 4px 8px;
+            border-radius: 6px;
+            color: #f8fafc;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+        }
+
+        .key-label {
+            font-size: 12px;
+            color: #94a3b8;
+            font-weight: 600;
+            margin-left: 4px;
+        }
+
+        /* Speedometer & Vehicle HUD */
+        #speedo-card {
+            display: none;
+            background: rgba(15, 23, 42, 0.94);
+            border: 1px solid rgba(56, 189, 248, 0.4);
+            border-radius: 14px;
+            padding: 8px 16px;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 0 24px rgba(56, 189, 248, 0.3);
+        }
+
+        .speedo-mode {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 800;
+            color: #38bdf8;
+            letter-spacing: 1px;
+        }
+
+        .speedo-val {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 24px;
+            font-weight: 900;
+            color: #f59e0b;
+        }
+
+        .speedo-unit {
+            font-size: 10px;
+            color: #94a3b8;
+            font-weight: 700;
+        }
+
+        /* Mini-Map Radar (Bottom Right) */
+        .minimap-container {
+            background: rgba(15, 23, 42, 0.92);
+            backdrop-filter: blur(16px);
+            border: 2px solid rgba(56, 189, 248, 0.4);
+            border-radius: 20px;
+            padding: 12px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.65), 0 0 24px rgba(56, 189, 248, 0.22);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: auto;
+            min-width: 210px;
+        }
+
+        .minimap-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 2px;
+        }
+
+        .minimap-title {
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            color: #38bdf8;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .gps-coords {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: #94a3b8;
+        }
+
+        .minimap-canvas-wrapper {
+            position: relative;
+            width: 190px;
+            height: 190px;
+            margin: 0 auto;
+        }
+
+        #minimap-canvas {
+            width: 190px;
+            height: 190px;
+            border-radius: 16px;
+            background: #020617;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            display: block;
+        }
+
+        .waypoint-tracker {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: #38bdf8;
+            background: rgba(56, 189, 248, 0.12);
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            padding: 4px 8px;
+            border-radius: 8px;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .minimap-legend {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px;
+            font-size: 9.5px;
+            color: #cbd5e1;
+            font-weight: 600;
+            padding: 0 2px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        /* Interaction Toast Prompt */
+        #interaction-prompt {
+            position: absolute;
+            bottom: 124px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.95), rgba(56, 189, 248, 0.95));
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            color: #fff;
+            padding: 10px 24px;
+            border-radius: 999px;
+            font-weight: 800;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 10px 30px rgba(37, 99, 235, 0.55), 0 0 24px rgba(56, 189, 248, 0.45);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 35;
+        }
+
+        #interaction-prompt.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* Interactive Modal Card */
+        #interactive-modal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.92);
+            background: rgba(15, 23, 42, 0.97);
+            backdrop-filter: blur(28px);
+            border: 2px solid rgba(56, 189, 248, 0.4);
+            border-radius: 24px;
+            padding: 28px;
+            width: 90%;
+            max-width: 580px;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.8), 0 0 50px rgba(56, 189, 248, 0.25);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 45;
+        }
+
+        #interactive-modal.active {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 800;
+            color: #38bdf8;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .modal-close-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: #fff;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .modal-close-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        .modal-body {
+            font-size: 14px;
+            color: #cbd5e1;
+            line-height: 1.6;
+        }
+
+        .code-preview {
+            background: #020617;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 12px;
+            padding: 14px;
+            margin-top: 14px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: #38bdf8;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        /* Loading Screen */
+        #loading-screen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #070a13;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            transition: opacity 0.6s ease;
+        }
+
+        .loader-spinner {
+            width: 56px;
+            height: 56px;
+            border: 3px solid rgba(56, 189, 248, 0.2);
+            border-top-color: #38bdf8;
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+            margin-bottom: 22px;
+            box-shadow: 0 0 24px rgba(56, 189, 248, 0.35);
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loader-text {
+            font-size: 15px;
+            font-weight: 700;
+            color: #94a3b8;
+            letter-spacing: 1.5px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+    </style>
+
+    <!-- Three.js + Addons Import Map -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+<body>
+    <div id="loading-screen">
+        <div class="loader-spinner"></div>
+        <div class="loader-text">INITIALIZING OPEN WORLD UNIVERSE...</div>
+    </div>
+
+    <div id="fade-overlay"></div>
+
+    <canvas id="webgl-canvas"></canvas>
+
+    <!-- Dialogue Speech Bubble -->
+    <div id="speech-bubble">
+        <div class="speech-greeting">Hey! I'm Devarshi Davane 👋</div>
+        <div class="speech-sub">Computer Engineer & Cybersecurity Specialist.<br>Welcome to my 3D Open World portfolio! Wander freely, ride the sports car or bike, board the city train, or explore Home, School & College!</div>
+    </div>
+
+    <!-- Interaction Prompt -->
+    <div id="interaction-prompt">
+        <span class="key-badge" id="interaction-key">E</span>
+        <span id="interaction-label">Interact</span>
+    </div>
+
+    <!-- Interactive Modal -->
+    <div id="interactive-modal">
+        <div class="modal-header">
+            <div class="modal-title" id="modal-title-text">Workspace Setup</div>
+            <button class="modal-close-btn" id="modal-close-btn">&times;</button>
+        </div>
+        <div class="modal-body" id="modal-body-text">
+            Simulated developer workstation and coding environment.
+        </div>
+        <div class="code-preview" id="modal-code-preview" style="display:none;"></div>
+    </div>
+
+    <!-- UI Overlay Layer -->
+    <div id="ui-layer">
+        <header class="top-bar">
+            <div class="brand-badge">
+                <div class="brand-avatar">D</div>
+                <div class="brand-info">
+                    <span class="brand-title">Devarshi Davane</span>
+                    <span class="brand-subtitle">Interactive 3D Open World Portfolio</span>
+                </div>
+            </div>
+
+            <!-- Time, Weather & Fast Travel Controls -->
+            <div class="world-controls">
+                <div class="time-pill">
+                    <span id="time-icon">🌇</span>
+                    <span id="time-label">Sunset</span>
+                </div>
+                <button class="ctrl-btn" id="btn-toggle-time">⏰ Cycle Time (T)</button>
+                <button class="ctrl-btn" id="btn-toggle-weather">🌧️ Weather</button>
+                <button class="ctrl-btn" id="btn-tp-gateway">📍 Gateway</button>
+                <button class="ctrl-btn" id="btn-tp-home">🏠 Home</button>
+                <button class="ctrl-btn" id="btn-tp-school">🏫 School</button>
+                <button class="ctrl-btn" id="btn-tp-college">🎓 DMCE</button>
+                <button class="ctrl-btn" id="btn-toggle-audio">🔊 Audio: ON</button>
+            </div>
+        </header>
+
+        <div class="bottom-hud">
+            <!-- Game Controls Info -->
+            <div class="controls-card">
+                <div class="controls-row">
+                    <div class="key-group">
+                        <span class="key-badge">W</span>
+                        <span class="key-badge">A</span>
+                        <span class="key-badge">S</span>
+                        <span class="key-badge">D</span>
+                        <span class="key-label">Move / Steer</span>
+                    </div>
+                    <div class="key-group">
+                        <span class="key-badge">SPACE</span>
+                        <span class="key-label">Jump / Boost</span>
+                    </div>
+                    <div class="key-group">
+                        <span class="key-badge">F</span>
+                        <span class="key-label">Ride Bike / Car</span>
+                    </div>
+                </div>
+                <div class="controls-row">
+                    <div class="key-group">
+                        <span class="key-badge">E</span>
+                        <span class="key-label">Interact / Train</span>
+                    </div>
+                    <div class="key-group">
+                        <span class="key-badge">T</span>
+                        <span class="key-label">Time of Day</span>
+                    </div>
+                    <div class="key-group">
+                        <span class="key-badge">C</span>
+                        <span class="key-label">Cam View</span>
+                    </div>
+                </div>
+                <!-- Vehicle Speedometer (Visible when riding) -->
+                <div id="speedo-card">
+                    <span class="speedo-mode" id="speedo-mode">🏍️ CYBER BIKE</span>
+                    <span class="speedo-val" id="speedo-val">0</span>
+                    <span class="speedo-unit">KM/H</span>
+                </div>
+            </div>
+
+            <!-- Accurate GPS Radar Mini-Map -->
+            <div class="minimap-container">
+                <div class="minimap-header">
+                    <span class="minimap-title">🧭 LIVE GPS RADAR</span>
+                    <span class="gps-coords" id="gps-coords">X: 0 | Z: -6</span>
+                </div>
+                <div class="minimap-canvas-wrapper">
+                    <canvas id="minimap-canvas" width="190" height="190"></canvas>
+                </div>
+                <div class="waypoint-tracker" id="waypoint-tracker">
+                    🎯 Nearest: Gateway of India (0m)
+                </div>
+                <div class="minimap-legend">
+                    <div class="legend-item"><span class="legend-dot" style="background:#ef4444;"></span> Devarshi (GPS)</div>
+                    <div class="legend-item"><span class="legend-dot" style="background:#f59e0b;"></span> Gateway Arch</div>
+                    <div class="legend-item"><span class="legend-dot" style="background:#3b82f6;"></span> Home (HQ)</div>
+                    <div class="legend-item"><span class="legend-dot" style="background:#a855f7;"></span> High School</div>
+                    <div class="legend-item"><span class="legend-dot" style="background:#10b981;"></span> DMCE College</div>
+                    <div class="legend-item"><span class="legend-dot" style="background:#f97316;"></span> City Train</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="./main.js"></script>
+</body>
+</html>
