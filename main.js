@@ -2067,22 +2067,54 @@ window.__cityBuildings = cityBuildings;
 // ==========================================
 let poiHome = { x: -48, z: 62, radius: 10 };
 function buildHomeDistrict() {
-    registerBoxCollider(poiHome.x - 11.5, poiHome.x + 11.5, poiHome.z - 10.5, poiHome.z + 10.5, 'HomeHQ');
+    // Precise wall colliders with central entrance opening (X: -50.8 to -45.2 open for direct entry)
+    registerBoxCollider(poiHome.x - 11.5, poiHome.x - 2.8, poiHome.z - 10.5, poiHome.z - 9.5, 'HomeFrontWallL');
+    registerBoxCollider(poiHome.x + 2.8, poiHome.x + 11.5, poiHome.z - 10.5, poiHome.z - 9.5, 'HomeFrontWallR');
+    registerBoxCollider(poiHome.x - 11.5, poiHome.x - 10.5, poiHome.z - 10.5, poiHome.z + 10.5, 'HomeWestWall');
+    registerBoxCollider(poiHome.x + 10.5, poiHome.x + 11.5, poiHome.z - 10.5, poiHome.z + 10.5, 'HomeEastWall');
+    registerBoxCollider(poiHome.x - 11.5, poiHome.x + 11.5, poiHome.z + 9.5, poiHome.z + 10.5, 'HomeNorthWall');
+    registerBoxCollider(poiHome.x + 0.5, poiHome.x + 7.5, poiHome.z - 8.5, poiHome.z - 5.5, 'HomeDesk');
+    registerBoxCollider(poiHome.x - 9.5, poiHome.x - 3.5, poiHome.z - 9.0, poiHome.z - 1.0, 'HomeBed');
+
     const home = new THREE.Group();
 
-    // Modern glass-front villa
+    // Modern polished wooden floor
     const floor = new THREE.Mesh(new THREE.BoxGeometry(22, 0.6, 20), new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.5 }));
     floor.position.set(0, -0.1, 0);
     floor.receiveShadow = true;
     home.add(floor);
 
-    const backWall = new THREE.Mesh(new THREE.BoxGeometry(22, 12, 0.8), new THREE.MeshStandardMaterial({ map: modernFacadeTex, roughness: 0.7 }));
-    backWall.position.set(0, 6, -10);
-    home.add(backWall);
+    // Merged Modern Walls (Front Left, Front Right, Lintel, West Wall, East Wall, North Wall)
+    const wallGeoms = [];
+    const fWallL = new THREE.BoxGeometry(8.2, 12, 0.8);
+    fWallL.translate(-6.9, 6, -10);
+    wallGeoms.push(fWallL);
 
-    const sideWall = new THREE.Mesh(new THREE.BoxGeometry(0.8, 12, 20), new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.7 }));
-    sideWall.position.set(-11, 6, 0);
-    home.add(sideWall);
+    const fWallR = new THREE.BoxGeometry(8.2, 12, 0.8);
+    fWallR.translate(6.9, 6, -10);
+    wallGeoms.push(fWallR);
+
+    const lintel = new THREE.BoxGeometry(5.6, 3.5, 0.8);
+    lintel.translate(0, 10.25, -10);
+    wallGeoms.push(lintel);
+
+    const sideWallW = new THREE.BoxGeometry(0.8, 12, 20);
+    sideWallW.translate(-11, 6, 0);
+    wallGeoms.push(sideWallW);
+
+    const sideWallE = new THREE.BoxGeometry(0.8, 12, 20);
+    sideWallE.translate(11, 6, 0);
+    wallGeoms.push(sideWallE);
+
+    const backWallN = new THREE.BoxGeometry(22, 12, 0.8);
+    backWallN.translate(0, 6, 10);
+    wallGeoms.push(backWallN);
+
+    const mergedWalls = BufferGeometryUtils.mergeGeometries(wallGeoms);
+    const wallsMesh = new THREE.Mesh(mergedWalls, new THREE.MeshStandardMaterial({ map: modernFacadeTex, roughness: 0.7 }));
+    wallsMesh.castShadow = true;
+    wallsMesh.receiveShadow = true;
+    home.add(wallsMesh);
 
     // Neon Home Sign
     const signCanvas = document.createElement('canvas');
@@ -2093,7 +2125,7 @@ function buildHomeDistrict() {
     ctx.textAlign = 'center';
     ctx.fillText("🏠 DEVARSHI'S HQ", 128, 42);
     const sign = new THREE.Mesh(new THREE.PlaneGeometry(8, 2), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(signCanvas) }));
-    sign.position.set(0, 11, -9.5);
+    sign.position.set(0, 10.5, -9.5);
     home.add(sign);
 
     // Bed Setup
@@ -2290,19 +2322,310 @@ function buildCollegeDistrict() {
     college.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(cbTrunkGeoms), new THREE.MeshStandardMaterial({ color: 0x5c4033 })));
     college.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(cbLeavesGeoms), new THREE.MeshStandardMaterial({ color: 0xf472b6, roughness: 0.8 })));
 
-    // Graduation Cap Monument
+    // Graduation Cap Monument (Moved to front ceremonial courtyard centerpiece at Z = -11 / world Z = 51)
     const capMat = new THREE.MeshStandardMaterial({ color: 0x1e293b });
-    const capBoard = new THREE.BoxGeometry(2.4, 0.15, 2.4);
+    const capBoard = new THREE.BoxGeometry(2.8, 0.18, 2.8);
     capBoard.rotateY(Math.PI / 4);
-    capBoard.translate(0, 2.2, 4);
-    const capSkull = new THREE.CylinderGeometry(0.8, 0.8, 0.8, 16);
-    capSkull.translate(0, 1.7, 4);
-    college.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries([capBoard, capSkull]), capMat));
+    capBoard.translate(0, 2.8, -11);
+    const capSkull = new THREE.CylinderGeometry(0.9, 0.9, 0.9, 16);
+    capSkull.translate(0, 2.3, -11);
+    const capPedestal = new THREE.CylinderGeometry(1.6, 1.8, 1.4, 16);
+    capPedestal.translate(0, 0.7, -11);
+    college.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries([capBoard, capSkull, capPedestal]), capMat));
+    registerCylinderCollider(poiCollege.x, poiCollege.z - 11, 1.8, 'GradCapMonument');
 
     college.position.set(poiCollege.x, 0, poiCollege.z);
     scene.add(college);
 }
 buildCollegeDistrict();
+
+// ==========================================
+// PHASE 6: LANDMARK INTEGRATION & MUNICIPAL SIGNAGE
+// Plazas, Campus Forecourts, Boundary Gates,
+// Heritage Bollards & 4-Way BMC Wayfinding Signs
+// (Batched into <= 5 Unified Draw Calls)
+// ==========================================
+function buildLandmarkIntegrationPlazasAndSignage() {
+    const batchedPlazaPaving = [];
+    const batchedPlazaStone = [];
+    const batchedPlazaMetal = [];
+    const batchedPlazaFoliage = [];
+    const batchedWayfindingBlades = [];
+
+    // ----------------------------------------------------
+    // 1. GATEWAY CEREMONIAL PLAZA & WATERFRONT INTEGRATION
+    // (Z = 6 to 14, X = -16 to +16)
+    // ----------------------------------------------------
+    // Paved stone transition slab connecting Promenade (Z=10) with Marine Ave crosswalk (Z=16)
+    const gwPlazaSlab = new THREE.BoxGeometry(32, 0.22, 8);
+    gwPlazaSlab.translate(0, -0.09, 10);
+    batchedPlazaPaving.push(gwPlazaSlab);
+
+    // Stone Planter Boxes flanking the pedestrian promenade entrance
+    [-8.0, 8.0].forEach(px => {
+        const planter = new THREE.BoxGeometry(2.4, 0.9, 2.4);
+        planter.translate(px, 0.45, 8.5);
+        batchedPlazaStone.push(planter);
+
+        const shrub = new THREE.SphereGeometry(1.4, 8, 8);
+        shrub.translate(px, 1.45, 8.5);
+        batchedPlazaFoliage.push(shrub);
+
+        registerBoxCollider(px - 1.3, px + 1.3, 7.2, 9.8, 'GatewayPlanter');
+    });
+
+    // MCGM Heritage Cast-Iron Bollards along the Marine Ave pedestrian curb (Z = 10.2)
+    // Flanking the walkway, leaving central 13m opening (X in [-6.5, 6.5]) wide open
+    [-14, -10, -6.5, 6.5, 10, 14].forEach(bx => {
+        const bollardPost = new THREE.CylinderGeometry(0.14, 0.18, 0.95, 8);
+        bollardPost.translate(bx, 0.475, 10.2);
+        batchedPlazaMetal.push(bollardPost);
+
+        const bollardCap = new THREE.SphereGeometry(0.19, 8, 8);
+        bollardCap.translate(bx, 0.98, 10.2);
+        batchedPlazaMetal.push(bollardCap);
+
+        registerCylinderCollider(bx, 10.2, 0.25, 'HeritageBollard');
+    });
+
+    // ----------------------------------------------------
+    // 2. HOME HQ PAVED WALKWAY & GARDEN FORECOURT
+    // (X = -48, connecting West Blvd sidewalk to Porch entrance)
+    // ----------------------------------------------------
+    // Paved flagstone walkway slab (X in [-51, -45], Z in [45, 52])
+    const homeWalkway = new THREE.BoxGeometry(6.4, 0.22, 7.5);
+    homeWalkway.translate(-48, -0.09, 48.25);
+    batchedPlazaPaving.push(homeWalkway);
+
+    // Modern stone garden borders with hedges
+    [-51.4, -44.6].forEach(gx => {
+        const border = new THREE.BoxGeometry(0.5, 0.4, 6.5);
+        border.translate(gx, 0.2, 48.5);
+        batchedPlazaStone.push(border);
+
+        const hedge = new THREE.BoxGeometry(0.6, 0.7, 6.5);
+        hedge.translate(gx, 0.65, 48.5);
+        batchedPlazaFoliage.push(hedge);
+
+        const gatePost = new THREE.BoxGeometry(0.8, 1.4, 0.8);
+        gatePost.translate(gx, 0.7, 45.2);
+        batchedPlazaStone.push(gatePost);
+    });
+
+    // ----------------------------------------------------
+    // 3. ST. XAVIER'S HIGH SCHOOL CAMPUS ENTRANCE & GATES
+    // (Z = 88 to 97, X = -20 to +20)
+    // ----------------------------------------------------
+    // Paved courtyard forecourt slab
+    const schoolPlazaSlab = new THREE.BoxGeometry(40, 0.22, 9);
+    schoolPlazaSlab.translate(0, -0.09, 92.5);
+    batchedPlazaPaving.push(schoolPlazaSlab);
+
+    // Twin Brick Grand Gate Pillars flanking North Avenue (X = -6.5 and +6.5, Z = 89.5)
+    [-6.5, 6.5].forEach(gx => {
+        const pillar = new THREE.BoxGeometry(1.6, 7.8, 1.6);
+        pillar.translate(gx, 3.9, 89.5);
+        batchedPlazaStone.push(pillar);
+
+        const cap = new THREE.BoxGeometry(2.0, 0.6, 2.0);
+        cap.translate(gx, 8.0, 89.5);
+        batchedPlazaStone.push(cap);
+
+        const sphere = new THREE.SphereGeometry(0.6, 8, 8);
+        sphere.translate(gx, 8.7, 89.5);
+        batchedPlazaStone.push(sphere);
+    });
+
+    // Wrought Iron Grand Campus Arch spanning across the entrance
+    const gateBeam = new THREE.BoxGeometry(13.2, 0.4, 0.4);
+    gateBeam.translate(0, 7.5, 89.5);
+    batchedPlazaMetal.push(gateBeam);
+
+    const gateArchCrest = new THREE.TorusGeometry(5.8, 0.15, 6, 16, Math.PI);
+    gateArchCrest.translate(0, 7.5, 89.5);
+    batchedPlazaMetal.push(gateArchCrest);
+
+    // School Boundary Walls & Wrought Iron Railings (X from -20 to -6.5 and +6.5 to +20)
+    [-13.5, 13.5].forEach(bx => {
+        const wallBase = new THREE.BoxGeometry(12.4, 1.4, 0.5);
+        wallBase.translate(bx, 0.7, 89.5);
+        batchedPlazaStone.push(wallBase);
+
+        const wallRail = new THREE.BoxGeometry(12.4, 1.2, 0.1);
+        wallRail.translate(bx, 1.9, 89.5);
+        batchedPlazaMetal.push(wallRail);
+    });
+    registerBoxCollider(-20.5, -6.5, 89.0, 90.2, 'SchoolBoundaryL');
+    registerBoxCollider(6.5, 20.5, 89.0, 90.2, 'SchoolBoundaryR');
+
+    // School Bus Parking Stall painted outline (X = -16, Z = 105)
+    const busStallMark = new THREE.BoxGeometry(4.8, 0.05, 10.5);
+    busStallMark.translate(-16, 0.02, 105);
+    batchedPlazaPaving.push(busStallMark);
+
+    // ----------------------------------------------------
+    // 4. DMCE COLLEGE CAMPUS DROP-OFF & TURNAROUND PLAZA
+    // (X = 48, Z = 46 to 56)
+    // ----------------------------------------------------
+    // Drop-off forecourt plaza slab connecting East Blvd to college entrance
+    const collegePlazaSlab = new THREE.BoxGeometry(26, 0.22, 10);
+    collegePlazaSlab.translate(48, -0.09, 51);
+    batchedPlazaPaving.push(collegePlazaSlab);
+
+    // Modern Campus Boundary Entrance Pillars
+    [40.5, 55.5].forEach(px => {
+        const cPillar = new THREE.BoxGeometry(1.4, 5.5, 1.4);
+        cPillar.translate(px, 2.75, 47.5);
+        batchedPlazaStone.push(cPillar);
+
+        const cCap = new THREE.BoxGeometry(1.8, 0.4, 1.8);
+        cCap.translate(px, 5.6, 47.5);
+        batchedPlazaStone.push(cCap);
+    });
+
+    // Low perimeter planter curbs
+    [36.5, 59.5].forEach(cx => {
+        const cBorder = new THREE.BoxGeometry(1.2, 0.4, 8);
+        cBorder.translate(cx, 0.2, 51);
+        batchedPlazaStone.push(cBorder);
+
+        const cHedge = new THREE.BoxGeometry(0.9, 0.8, 7.6);
+        cHedge.translate(cx, 0.7, 51);
+        batchedPlazaFoliage.push(cHedge);
+    });
+
+    // ----------------------------------------------------
+    // 5. BMC / MCGM 4-WAY DIRECTIONAL WAYFINDING SIGNPOSTS
+    // ----------------------------------------------------
+    // Create authentic MCGM green wayfinding texture atlas (512x512)
+    const signCanvas = document.createElement('canvas');
+    signCanvas.width = 512; signCanvas.height = 512;
+    const sCtx = signCanvas.getContext('2d');
+    sCtx.fillStyle = '#0f172a';
+    sCtx.fillRect(0, 0, 512, 512);
+
+    const wayfindingLabels = [
+        "↑ ST. XAVIER'S HIGH SCHOOL",
+        "↓ GATEWAY OF INDIA / SEA",
+        "← DEVARSHI'S CYBER HQ",
+        "DMCE ENGG COLLEGE →",
+        "↑ NORTH AVENUE / CAMPUS",
+        "↓ MARINE DRIVE PROMENADE",
+        "← CHAWL RESIDENCES / MARKET",
+        "CENTRAL TRAIN STATION →"
+    ];
+
+    for (let i = 0; i < 8; i++) {
+        const y = i * 64;
+        sCtx.fillStyle = '#15803d'; // Authentic MCGM Wayfinding Green
+        sCtx.fillRect(8, y + 6, 496, 52);
+        sCtx.strokeStyle = '#ffffff';
+        sCtx.lineWidth = 2.5;
+        sCtx.strokeRect(10, y + 8, 492, 48);
+
+        sCtx.fillStyle = '#ffffff';
+        sCtx.font = 'bold 20px sans-serif';
+        sCtx.textAlign = 'center';
+        sCtx.textBaseline = 'middle';
+        sCtx.fillText(wayfindingLabels[i], 256, y + 33);
+    }
+    const wayfindingTex = new THREE.CanvasTexture(signCanvas);
+
+    function createSignBladeGeom(textIdx, width = 2.3, height = 0.42) {
+        const geom = new THREE.PlaneGeometry(width, height);
+        const uvAttr = geom.attributes.uv;
+        const vTop = 1.0 - (textIdx * 0.125);
+        const vBottom = 1.0 - ((textIdx + 1) * 0.125);
+        uvAttr.setXY(0, 0.02, vTop);
+        uvAttr.setXY(1, 0.98, vTop);
+        uvAttr.setXY(2, 0.02, vBottom);
+        uvAttr.setXY(3, 0.98, vBottom);
+        return geom;
+    }
+
+    // 4 Key Junction Wayfinding Locations
+    const signpostLocations = [
+        // Junction 1: Marine Ave & North Ave
+        { x: 3.5, z: 13.5, arms: [
+            { idx: 0, rotY: 0, dy: 3.8 },               // North: St. Xavier's
+            { idx: 1, rotY: Math.PI, dy: 3.4 },         // South: Gateway of India
+            { idx: 2, rotY: Math.PI / 2, dy: 3.0 },     // West: Devarshi's HQ
+            { idx: 3, rotY: -Math.PI / 2, dy: 2.6 }     // East: DMCE College
+        ]},
+        // Junction 2: Market St & North Ave
+        { x: 3.5, z: 39.5, arms: [
+            { idx: 4, rotY: 0, dy: 3.8 },               // North: North Ave / Campus
+            { idx: 5, rotY: Math.PI, dy: 3.4 },         // South: Marine Drive
+            { idx: 6, rotY: Math.PI / 2, dy: 3.0 },     // West: Chawls / Market
+            { idx: 7, rotY: -Math.PI / 2, dy: 2.6 }     // East: Central Train Station
+        ]},
+        // Junction 3: West Blvd & Market St
+        { x: -44.5, z: 39.5, arms: [
+            { idx: 2, rotY: 0, dy: 3.6 },               // North: Devarshi's Cyber HQ
+            { idx: 5, rotY: Math.PI, dy: 3.2 },         // South: Marine Drive
+            { idx: 7, rotY: -Math.PI / 2, dy: 2.8 }     // East: Central Train Station
+        ]},
+        // Junction 4: East Blvd & Market St
+        { x: 44.5, z: 39.5, arms: [
+            { idx: 3, rotY: 0, dy: 3.6 },               // North: DMCE College
+            { idx: 5, rotY: Math.PI, dy: 3.2 },         // South: Marine Drive
+            { idx: 6, rotY: Math.PI / 2, dy: 2.8 }      // West: Market Street
+        ]}
+    ];
+
+    signpostLocations.forEach(sp => {
+        // Cast-iron signpost pole
+        const pole = new THREE.CylinderGeometry(0.09, 0.12, 4.2, 8);
+        pole.translate(sp.x, 2.1, sp.z);
+        batchedPlazaMetal.push(pole);
+
+        const finial = new THREE.SphereGeometry(0.14, 8, 8);
+        finial.translate(sp.x, 4.3, sp.z);
+        batchedPlazaMetal.push(finial);
+
+        registerCylinderCollider(sp.x, sp.z, 0.35, 'WayfindingSignpost');
+
+        sp.arms.forEach(arm => {
+            const bladeGeom = createSignBladeGeom(arm.idx);
+            bladeGeom.rotateY(arm.rotY);
+            bladeGeom.translate(sp.x, arm.dy, sp.z);
+            batchedWayfindingBlades.push(bladeGeom);
+        });
+    });
+
+    // ----------------------------------------------------
+    // MERGE & ADD UNIFIED BATCHED MESHES (5 Draw Calls)
+    // ----------------------------------------------------
+    if (batchedPlazaPaving.length > 0) {
+        const m = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(batchedPlazaPaving), walkMat);
+        m.receiveShadow = true;
+        scene.add(m);
+    }
+
+    if (batchedPlazaStone.length > 0) {
+        const m = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(batchedPlazaStone), concreteTrimMat);
+        m.castShadow = true; m.receiveShadow = true;
+        scene.add(m);
+    }
+
+    if (batchedPlazaMetal.length > 0) {
+        const m = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(batchedPlazaMetal), metalRailingMat);
+        m.castShadow = true;
+        scene.add(m);
+    }
+
+    if (batchedPlazaFoliage.length > 0) {
+        const m = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(batchedPlazaFoliage), new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.8 }));
+        m.castShadow = true;
+        scene.add(m);
+    }
+
+    if (batchedWayfindingBlades.length > 0) {
+        const m = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(batchedWayfindingBlades), new THREE.MeshBasicMaterial({ map: wayfindingTex, side: THREE.DoubleSide }));
+        scene.add(m);
+    }
+}
+buildLandmarkIntegrationPlazasAndSignage();
 
 // ==========================================
 // VEHICLE 1: CYBER MOTORBIKE
@@ -4036,10 +4359,13 @@ window.__stationSchedule = stationSchedule;
 window.__mountTrain = mountTrain;
 window.__dismountVehicle = dismountVehicle;
 window.__checkProximity = checkProximity;
+window.__handleInteraction = handleInteraction;
+window.__renderer = renderer;
 window.__characterGroup = characterGroup;
 window.__camera = camera;
 window.__npcs = npcs;
 window.__setWeatherMode = (m) => { weatherMode = m; };
+window.__setCameraMode = (m) => { cameraMode = m; orbitControls.enabled = (m === 'orbit'); };
 
 // Responsive Resize
 window.addEventListener('resize', () => {
