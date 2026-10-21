@@ -458,6 +458,55 @@ function cycleWeather() {
 }
 document.getElementById('btn-toggle-weather').addEventListener('click', cycleWeather);
 
+// ==========================================
+// WORLD COLLISION PROXY ENGINE (Phase 2)
+// ==========================================
+const worldColliders = [];
+
+function registerBoxCollider(minX, maxX, minZ, maxZ, label = 'obstacle') {
+    worldColliders.push({ type: 'box', minX, maxX, minZ, maxZ, label });
+}
+
+function registerCylinderCollider(x, z, radius, label = 'pole') {
+    worldColliders.push({ type: 'cylinder', x, z, radius, label });
+}
+
+function resolveCollision(pos, radius = 0.5) {
+    // 1. World Boundaries Clamp (Strict soft limits)
+    pos.x = THREE.MathUtils.clamp(pos.x, -75, 75);
+    pos.z = THREE.MathUtils.clamp(pos.z, -21.5, 104);
+
+    // 2. Spatial Obstacle Colliders
+    for (let i = 0; i < worldColliders.length; i++) {
+        const col = worldColliders[i];
+        if (col.type === 'box') {
+            if (pos.x >= col.minX - radius && pos.x <= col.maxX + radius &&
+                pos.z >= col.minZ - radius && pos.z <= col.maxZ + radius) {
+                const left = pos.x - (col.minX - radius);
+                const right = (col.maxX + radius) - pos.x;
+                const bottom = pos.z - (col.minZ - radius);
+                const top = (col.maxZ + radius) - pos.z;
+                const minOverlap = Math.min(left, right, bottom, top);
+
+                if (minOverlap === left) pos.x = col.minX - radius;
+                else if (minOverlap === right) pos.x = col.maxX + radius;
+                else if (minOverlap === bottom) pos.z = col.minZ - radius;
+                else pos.z = col.maxZ + radius;
+            }
+        } else if (col.type === 'cylinder') {
+            const dx = pos.x - col.x;
+            const dz = pos.z - col.z;
+            const dist = Math.hypot(dx, dz);
+            const minDist = col.radius + radius;
+            if (dist < minDist && dist > 0.0001) {
+                const overlap = minDist - dist;
+                pos.x += (dx / dist) * overlap;
+                pos.z += (dz / dist) * overlap;
+            }
+        }
+    }
+}
+
 // Streetlamp Helper
 function addStreetLamp(x, z) {
     const lamp = new THREE.Group();
@@ -479,6 +528,7 @@ function addStreetLamp(x, z) {
     lamp.position.set(x, 0, z);
     scene.add(lamp);
     streetLamps.push({ group: lamp, light: pl });
+    registerCylinderCollider(x, z, 0.45, 'streetlamp');
 }
 
 // Low-poly City Trees
@@ -510,6 +560,7 @@ function addTree(x, z, type = 'palm') {
     }
     tree.position.set(x, 0, z);
     scene.add(tree);
+    registerCylinderCollider(x, z, 0.65, 'tree');
 }
 
 // ==========================================
@@ -555,6 +606,7 @@ for (let rx = -44; rx <= 44; rx += 2.5) {
     post.castShadow = true;
     scene.add(post);
 }
+registerBoxCollider(-45, 45, -23.0, -21.0, 'SeaBalustrade');
 
 // Promenade Street Lamps
 [-40, -20, 0, 20, 40].forEach(lx => {
@@ -577,6 +629,7 @@ scene.add(cat);
 
 // Gateway of India Basalt Monument (Detailed Indo-Saracenic Architecture at Z = -32)
 function buildGatewayArch() {
+    registerBoxCollider(-16, 16, -38, -26, 'GatewayArch');
     const monument = new THREE.Group();
     const basaltMat = new THREE.MeshStandardMaterial({ color: 0xd4a373, roughness: 0.85, metalness: 0.08 });
     const darkStoneMat = new THREE.MeshStandardMaterial({ color: 0xb58452, roughness: 0.9 });
@@ -646,6 +699,7 @@ buildGatewayArch();
 // Vada Pav Food Cart
 let poiVadaPav = { x: -14, z: -4, radius: 4.5 };
 function buildVadaPavCart() {
+    registerBoxCollider(poiVadaPav.x - 2.5, poiVadaPav.x + 2.5, poiVadaPav.z - 1.6, poiVadaPav.z + 1.6, 'VadaPavCart');
     const cart = new THREE.Group();
     const body = new THREE.Mesh(new THREE.BoxGeometry(4.4, 1.8, 2.5), new THREE.MeshStandardMaterial({ color: 0x0284c7 }));
     body.position.y = 1.6; body.castShadow = true;
@@ -783,6 +837,7 @@ scene.add(roadEast);
 // ==========================================
 let poiHome = { x: -48, z: 62, radius: 10 };
 function buildHomeDistrict() {
+    registerBoxCollider(poiHome.x - 11.5, poiHome.x + 11.5, poiHome.z - 10.5, poiHome.z + 10.5, 'HomeHQ');
     const home = new THREE.Group();
 
     // Modern glass-front villa
@@ -880,6 +935,8 @@ function createWallPoster(parent, text, bg, textCol, x, y, z) {
 // ==========================================
 let poiSchool = { x: 0, z: 102, radius: 14 };
 function buildSchoolDistrict() {
+    registerBoxCollider(poiSchool.x - 18, poiSchool.x + 18, poiSchool.z - 13, poiSchool.z + 1, 'SchoolBuilding');
+    registerBoxCollider(poiSchool.x - 19, poiSchool.x - 13, poiSchool.z + 1.5, poiSchool.z + 10.5, 'SchoolBus');
     const school = new THREE.Group();
 
     // Red Brick School Main Building
@@ -959,6 +1016,7 @@ buildSchoolDistrict();
 // ==========================================
 let poiCollege = { x: 48, z: 62, radius: 12 };
 function buildCollegeDistrict() {
+    registerBoxCollider(poiCollege.x - 17, poiCollege.x + 17, poiCollege.z - 12, poiCollege.z - 1, 'CollegeBuilding');
     const college = new THREE.Group();
 
     // Grand College Building Facade
@@ -1193,6 +1251,7 @@ let trainState = {
 };
 
 function buildRailwaySystem() {
+    registerBoxCollider(-31.5, -26.0, 6, 94, 'TrainPlatforms');
     // Railway Track Bed (Z = 12 to 88, width 6)
     const trackBed = new THREE.Mesh(
         new THREE.BoxGeometry(6, 0.3, 76),
@@ -1395,14 +1454,16 @@ let shockwaveActive = false;
 let shockwaveScale = 1;
 
 // Controls & Movement State
-const keys = { w: false, a: false, s: false, d: false, space: false };
+const keys = { w: false, a: false, s: false, d: false, space: false, shift: false };
 window.addEventListener('keydown', (e) => {
     const k = e.key.toLowerCase();
     if (k === 'w' || k === 'arrowup') keys.w = true;
     if (k === 's' || k === 'arrowdown') keys.s = true;
     if (k === 'a' || k === 'arrowleft') keys.a = true;
     if (k === 'd' || k === 'arrowright') keys.d = true;
-    if (k === ' ') { keys.space = true; e.preventDefault(); }
+    if (k === ' ' || e.key === 'Spacebar') { keys.space = true; e.preventDefault(); }
+    if (e.key === 'Shift') keys.shift = true;
+    if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) e.preventDefault();
     if (k === 'f') toggleVehicleMount();
     if (k === 'e') handleInteraction();
     if (k === 't') cycleTimeOfDay();
@@ -1419,7 +1480,8 @@ window.addEventListener('keyup', (e) => {
     if (k === 's' || k === 'arrowdown') keys.s = false;
     if (k === 'a' || k === 'arrowleft') keys.a = false;
     if (k === 'd' || k === 'arrowright') keys.d = false;
-    if (k === ' ') keys.space = false;
+    if (k === ' ' || e.key === 'Spacebar') keys.space = false;
+    if (e.key === 'Shift') keys.shift = false;
 });
 
 function toggleCameraMode() {
@@ -1774,7 +1836,7 @@ function updateMiniMap(playerX, playerZ, playerRot) {
 
     mapCtx.save();
     mapCtx.translate(px, py);
-    mapCtx.rotate(-playerRot + Math.PI);
+    mapCtx.rotate(-playerRot);
 
     // Pulsing GPS signal ring
     const pulse = (Date.now() % 1000) / 1000;
@@ -1951,21 +2013,27 @@ function animate() {
             else if (keys.s) v.speed = THREE.MathUtils.lerp(v.speed, -10, 0.05);
             else v.speed = THREE.MathUtils.lerp(v.speed, 0, 0.06);
 
-            // Steering
-            if (keys.a) v.rotation += turnSpeed * delta * (v.speed >= 0 ? 1 : -1);
-            if (keys.d) v.rotation -= turnSpeed * delta * (v.speed >= 0 ? 1 : -1);
+            // Steering: 'D' steers Right (clockwise / positive X offset), 'A' steers Left (counter-clockwise)
+            if (keys.d) v.rotation += turnSpeed * delta * (v.speed >= 0 ? 1 : -1);
+            if (keys.a) v.rotation -= turnSpeed * delta * (v.speed >= 0 ? 1 : -1);
 
             v.mesh.position.x += Math.sin(v.rotation) * v.speed * delta;
             v.mesh.position.z += Math.cos(v.rotation) * v.speed * delta;
             v.mesh.rotation.y = v.rotation;
 
             // Tilt & Drift roll
-            if (!isCar) v.mesh.rotation.z = keys.a ? 0.22 : (keys.d ? -0.22 : 0);
+            if (!isCar) {
+                const targetRoll = keys.d ? -0.25 : (keys.a ? 0.25 : 0);
+                v.mesh.rotation.z = THREE.MathUtils.lerp(v.mesh.rotation.z, targetRoll, 0.2);
+            }
 
             // Spin car wheels
             if (isCar) {
                 carVehicle.wheels.forEach(w => w.rotation.x += v.speed * delta * 2.0);
             }
+
+            // Resolve vehicle collisions against world obstacles
+            resolveCollision(v.mesh.position, isCar ? 1.6 : 0.85);
 
             // Speedometer update
             speedoVal.textContent = Math.round(Math.abs(v.speed * 3.6));
@@ -1983,24 +2051,44 @@ function animate() {
             updateMiniMap(v.mesh.position.x, v.mesh.position.z, v.rotation);
             checkVehicleProximity(v);
         } else {
-            // Free On-Foot Character Movement
-            const moveSpeed = 10.0;
-            let mx = 0; let mz = 0;
-            if (keys.w) mz += 1; // North / Forward into City
-            if (keys.s) mz -= 1; // South / Retreat to Gateway
-            if (keys.a) mx -= 1; // West / Towards Home HQ
-            if (keys.d) mx += 1; // East / Towards DMCE College
+            // Free On-Foot Character Movement (Camera-Relative)
+            const isSprinting = keys.shift;
+            const moveSpeed = isSprinting ? 16.0 : 9.0;
 
-            const moving = (mx !== 0 || mz !== 0);
+            // Extract horizontal camera vectors
+            const camForward = new THREE.Vector3();
+            camera.getWorldDirection(camForward);
+            camForward.y = 0;
+            if (camForward.lengthSq() < 0.001) camForward.set(0, 0, 1);
+            else camForward.normalize();
+
+            const camRight = new THREE.Vector3();
+            camRight.crossVectors(new THREE.Vector3(0, 1, 0), camForward).normalize();
+
+            // Synthesize camera-relative input vector
+            const inputVec = new THREE.Vector3();
+            if (keys.w) inputVec.add(camForward);
+            if (keys.s) inputVec.sub(camForward);
+            if (keys.d) inputVec.add(camRight);
+            if (keys.a) inputVec.sub(camRight);
+
+            const moving = inputVec.lengthSq() > 0.001;
             if (moving) {
-                const moveVec = new THREE.Vector3(mx, 0, mz).normalize();
-                characterGroup.position.x += moveVec.x * moveSpeed * delta;
-                characterGroup.position.z += moveVec.z * moveSpeed * delta;
+                inputVec.normalize();
 
-                const targetRot = Math.atan2(moveVec.x, moveVec.z);
-                characterGroup.rotation.y = THREE.MathUtils.lerp(characterGroup.rotation.y, targetRot, 0.25);
+                // Kinematic displacement
+                characterGroup.position.x += inputVec.x * moveSpeed * delta;
+                characterGroup.position.z += inputVec.z * moveSpeed * delta;
 
-                walkCycle += delta * 12;
+                // Character facing: Math.atan2(x, z) + Math.PI aligns the visual front
+                // with the forward velocity vector (fixing the 180-degree moonwalk defect)
+                const targetRot = Math.atan2(inputVec.x, inputVec.z) + Math.PI;
+                let diff = (targetRot - characterGroup.rotation.y) % (Math.PI * 2);
+                if (diff < -Math.PI) diff += Math.PI * 2;
+                if (diff > Math.PI) diff -= Math.PI * 2;
+                characterGroup.rotation.y += diff * 0.25;
+
+                walkCycle += delta * (isSprinting ? 18 : 12);
                 characterGroup.position.y = Math.abs(Math.sin(walkCycle)) * 0.18;
             } else {
                 characterGroup.position.y = THREE.MathUtils.lerp(characterGroup.position.y, 0, 0.2);
@@ -2019,9 +2107,8 @@ function animate() {
                 jetParticles.forEach(p => p.mesh.visible = false);
             }
 
-            // Boundaries Soft Clamp
-            characterGroup.position.x = THREE.MathUtils.clamp(characterGroup.position.x, -76, 76);
-            characterGroup.position.z = THREE.MathUtils.clamp(characterGroup.position.z, -20, 105);
+            // Resolve character collision against all world colliders & boundaries
+            resolveCollision(characterGroup.position, 0.6);
 
             // Elevated 3rd-person Panoramic Follow Camera (Open World RPG Style)
             if (cameraMode === 'chase' || cameraMode === 'cinematic') {
