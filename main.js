@@ -1903,100 +1903,544 @@ buildCyberCar();
 let activeVehicle = null; // null | bikeVehicle | carVehicle | 'train'
 
 // ==========================================
-// VEHICLE 3: MUMBAI CITY EXPRESS LOCAL TRAIN
-// (Railway Track running along X = -24, Z = 14 to 86)
+// VEHICLE 3: MUMBAI SUBURBAN LOCAL TRAIN & BROAD GAUGE RAILWAY
+// Continuous Indian Standard Broad Gauge (1,676mm) Spline Loop
+// Dual Tracks: Up Line (X = -22, Northbound), Down Line (X = -26, Southbound)
 // ==========================================
-const trainStationZ = [16, 50, 84]; // Gateway Station, Home Station, School/College Terminal
+const trainStationZ = [16, 50, 84]; // Gateway Station, Home West Station, Academia North Terminal
+let trainSpline = null;
+let stationSchedule = []; // Array of { name, s, z, platX }
+
 let trainState = {
-    mesh: null,
-    x: -24,
+    spline: null,
+    splineLength: 180,
+    coach1: null,
+    coach2: null,
+    coach3: null,
+    mesh: null, // Lead coach reference for compatibility
+    x: -22,
     z: 16,
     speed: 0,
-    maxSpeed: 18,
-    targetStationIdx: 1,
-    direction: 1, // 1: Northbound, -1: Southbound
+    maxSpeed: 16.0, // 58 km/h cruising speed
+    progress: 0.05,
+    targetStationIdx: 0,
     dwellTimer: 0,
-    isDwelling: false
+    isDwelling: true, // Start dwelling at Gateway Station
+    hornPlayed: false
 };
 
+function createTrainDestinationTexture(mrText, enText) {
+    const c = document.createElement('canvas');
+    c.width = 256; c.height = 64;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#050811';
+    ctx.fillRect(0, 0, 256, 64);
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(3, 3, 250, 58);
+
+    ctx.fillStyle = '#f59e0b';
+    ctx.font = 'bold 20px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(mrText, 128, 26);
+
+    ctx.fillStyle = '#fef08a';
+    ctx.font = 'bold 18px monospace';
+    ctx.fillText(enText, 128, 52);
+
+    return new THREE.CanvasTexture(c);
+}
+
 function buildRailwaySystem() {
-    registerBoxCollider(-31.5, -26.0, 6, 94, 'TrainPlatforms');
-    // Railway Track Bed (Z = 12 to 88, width 6)
-    const trackBed = new THREE.Mesh(
-        new THREE.BoxGeometry(6, 0.3, 76),
-        new THREE.MeshStandardMaterial({ map: railTrackTex, roughness: 0.9 })
+    // 1. Define Continuous Broad Gauge Closed Spline Loop
+    // Dual parallel tracks: Up Line (X = -22) and Down Line (X = -26)
+    // Smooth continuous curved turnaround loops at North Terminal (Z ~ 96) and South Gateway (Z ~ 0.5)
+    const railwayLoopPoints = [
+        new THREE.Vector3(-22, 0.25, 8),
+        new THREE.Vector3(-22, 0.25, 16), // Gateway Up
+        new THREE.Vector3(-22, 0.25, 30),
+        new THREE.Vector3(-22, 0.25, 42), // Market St Crossing
+        new THREE.Vector3(-22, 0.25, 50), // Home West Up
+        new THREE.Vector3(-22, 0.25, 70),
+        new THREE.Vector3(-22, 0.25, 84), // Academia North Up
+        new THREE.Vector3(-22, 0.25, 88),
+        new THREE.Vector3(-22.3, 0.25, 92),
+        new THREE.Vector3(-23.1, 0.25, 95),
+        new THREE.Vector3(-24.0, 0.25, 96), // North Turn Apex
+        new THREE.Vector3(-24.9, 0.25, 95),
+        new THREE.Vector3(-25.7, 0.25, 92),
+        new THREE.Vector3(-26.0, 0.25, 88),
+        new THREE.Vector3(-26.0, 0.25, 84), // Academia North Down
+        new THREE.Vector3(-26.0, 0.25, 70),
+        new THREE.Vector3(-26.0, 0.25, 50), // Home West Down
+        new THREE.Vector3(-26.0, 0.25, 42), // Market St Crossing
+        new THREE.Vector3(-26.0, 0.25, 30),
+        new THREE.Vector3(-26.0, 0.25, 16), // Gateway Down
+        new THREE.Vector3(-26.0, 0.25, 8),
+        new THREE.Vector3(-25.7, 0.25, 4.5),
+        new THREE.Vector3(-24.9, 0.25, 1.5),
+        new THREE.Vector3(-24.0, 0.25, 0.5), // South Turn Apex
+        new THREE.Vector3(-23.1, 0.25, 1.5),
+        new THREE.Vector3(-22.3, 0.25, 4.5)
+    ];
+
+    trainSpline = new THREE.CatmullRomCurve3(railwayLoopPoints, true, 'centripetal');
+    trainState.spline = trainSpline;
+    const splineLen = trainSpline.getLength();
+    trainState.splineLength = splineLen;
+
+    // Calibrate scheduled station stops along the continuous spline loop
+    const stopsDef = [
+        { name: "Gateway (Up)", target: new THREE.Vector3(-22, 0.25, 16), z: 16, platX: -24 },
+        { name: "Home West (Up)", target: new THREE.Vector3(-22, 0.25, 50), z: 50, platX: -24 },
+        { name: "Academia North (Up)", target: new THREE.Vector3(-22, 0.25, 84), z: 84, platX: -24 },
+        { name: "Academia North (Down)", target: new THREE.Vector3(-26, 0.25, 84), z: 84, platX: -28.6 },
+        { name: "Home West (Down)", target: new THREE.Vector3(-26, 0.25, 50), z: 50, platX: -28.6 },
+        { name: "Gateway (Down)", target: new THREE.Vector3(-26, 0.25, 16), z: 16, platX: -28.6 }
+    ];
+
+    stationSchedule = [];
+    const SAMPLES = 600;
+    stopsDef.forEach(def => {
+        let bestS = 0;
+        let bestDist = Infinity;
+        for (let i = 0; i < SAMPLES; i++) {
+            const s = i / SAMPLES;
+            const pt = trainSpline.getPointAt(s);
+            const d = pt.distanceTo(def.target);
+            if (d < bestDist) {
+                bestDist = d;
+                bestS = s;
+            }
+        }
+        stationSchedule.push({ name: def.name, s: bestS, z: def.z, platX: def.platX });
+    });
+    stationSchedule.sort((a, b) => a.s - b.s);
+    trainState.progress = stationSchedule[0].s;
+
+    // 2. Physical Indian Standard Broad Gauge (1,676mm) Steel Rails
+    const leftRailPts = [];
+    const rightRailPts = [];
+    const RAIL_SAMPLES = 280;
+    const UP = new THREE.Vector3(0, 1, 0);
+
+    for (let i = 0; i < RAIL_SAMPLES; i++) {
+        const t = i / RAIL_SAMPLES;
+        const pt = trainSpline.getPointAt(t);
+        const tan = trainSpline.getTangentAt(t);
+        const norm = new THREE.Vector3().crossVectors(tan, UP).normalize();
+
+        leftRailPts.push(new THREE.Vector3(pt.x + norm.x * 0.838, 0.22, pt.z + norm.z * 0.838));
+        rightRailPts.push(new THREE.Vector3(pt.x - norm.x * 0.838, 0.22, pt.z - norm.z * 0.838));
+    }
+
+    const leftRailCurve = new THREE.CatmullRomCurve3(leftRailPts, true, 'centripetal');
+    const rightRailCurve = new THREE.CatmullRomCurve3(rightRailPts, true, 'centripetal');
+
+    const leftRailGeom = new THREE.TubeGeometry(leftRailCurve, 260, 0.05, 6, true);
+    const rightRailGeom = new THREE.TubeGeometry(rightRailCurve, 260, 0.05, 6, true);
+    const mergedRails = BufferGeometryUtils.mergeGeometries([leftRailGeom, rightRailGeom]);
+
+    const steelRailMat = new THREE.MeshStandardMaterial({
+        color: 0x94a3b8,
+        metalness: 0.95,
+        roughness: 0.18
+    });
+    const railsMesh = new THREE.Mesh(mergedRails, steelRailMat);
+    railsMesh.castShadow = true;
+    scene.add(railsMesh);
+
+    // 3. Batched Concrete Sleepers (Ties) along track
+    const sleeperGeoms = [];
+    const SLEEPER_COUNT = 190;
+    for (let k = 0; k < SLEEPER_COUNT; k++) {
+        const t = k / SLEEPER_COUNT;
+        const pt = trainSpline.getPointAt(t);
+        const tan = trainSpline.getTangentAt(t);
+        const rotY = Math.atan2(tan.x, tan.z) + Math.PI / 2;
+
+        const sleeper = new THREE.BoxGeometry(2.6, 0.14, 0.24);
+        sleeper.rotateY(rotY);
+        sleeper.translate(pt.x, 0.08, pt.z);
+        sleeperGeoms.push(sleeper);
+    }
+    const mergedSleepers = BufferGeometryUtils.mergeGeometries(sleeperGeoms);
+    const sleeperMesh = new THREE.Mesh(mergedSleepers, concreteTrimMat);
+    sleeperMesh.receiveShadow = true;
+    scene.add(sleeperMesh);
+
+    // 4. Crushed Granite Stone Ballast Bed
+    const ballastGeoms = [];
+    const straightBallast = new THREE.BoxGeometry(8.4, 0.22, 84);
+    straightBallast.translate(-24, 0.01, 47);
+    ballastGeoms.push(straightBallast);
+
+    const northBallast = new THREE.BoxGeometry(8.4, 0.22, 10);
+    northBallast.translate(-24, 0.01, 91);
+    ballastGeoms.push(northBallast);
+
+    const southBallast = new THREE.BoxGeometry(8.4, 0.22, 9);
+    southBallast.translate(-24, 0.01, 4.5);
+    ballastGeoms.push(southBallast);
+
+    const mergedBallast = BufferGeometryUtils.mergeGeometries(ballastGeoms);
+    const ballastMesh = new THREE.Mesh(mergedBallast, darkGraniteMat);
+    ballastMesh.receiveShadow = true;
+    scene.add(ballastMesh);
+
+    // 5. Overhead 25 kV AC Catenary Masts (Portal Gantries) & Contact Wire
+    const gantryGeoms = [];
+    const gantryZ = [8, 24, 40, 56, 72, 88, 96];
+    gantryZ.forEach(gz => {
+        // Left Column (X = -27.8)
+        const colL = new THREE.BoxGeometry(0.25, 6.2, 0.25);
+        colL.translate(-27.8, 3.1, gz);
+        gantryGeoms.push(colL);
+
+        // Right Column (X = -20.2)
+        const colR = new THREE.BoxGeometry(0.25, 6.2, 0.25);
+        colR.translate(-20.2, 3.1, gz);
+        gantryGeoms.push(colR);
+
+        // Horizontal Lattice Beam
+        const beam = new THREE.BoxGeometry(8.0, 0.35, 0.35);
+        beam.translate(-24.0, 6.0, gz);
+        gantryGeoms.push(beam);
+
+        // Cantilever suspension drop arms at X = -22 and X = -26
+        [-26, -22].forEach(cx => {
+            const arm = new THREE.BoxGeometry(0.08, 0.8, 0.08);
+            arm.translate(cx, 5.5, gz);
+            gantryGeoms.push(arm);
+            const insul = new THREE.CylinderGeometry(0.08, 0.08, 0.3, 6);
+            insul.translate(cx, 5.25, gz);
+            gantryGeoms.push(insul);
+        });
+    });
+    const mergedGantries = BufferGeometryUtils.mergeGeometries(gantryGeoms);
+    const gantryMesh = new THREE.Mesh(mergedGantries, metalRailingMat);
+    gantryMesh.castShadow = true;
+    scene.add(gantryMesh);
+
+    // Continuous 25 kV AC Copper Contact Wire at Y = 5.2m
+    const wirePts = [];
+    for (let i = 0; i < 180; i++) {
+        const pt = trainSpline.getPointAt(i / 180);
+        wirePts.push(new THREE.Vector3(pt.x, 5.2, pt.z));
+    }
+    const wireCurve = new THREE.CatmullRomCurve3(wirePts, true, 'centripetal');
+    const wireGeom = new THREE.TubeGeometry(wireCurve, 180, 0.016, 4, true);
+    const wireMesh = new THREE.Mesh(wireGeom, new THREE.MeshStandardMaterial({
+        color: 0xb45309,
+        metalness: 0.85,
+        roughness: 0.3
+    }));
+    scene.add(wireMesh);
+
+    // 6. Market Street Level Crossing (Z = 42)
+    const crossingPanel = new THREE.Mesh(
+        new THREE.BoxGeometry(8.4, 0.22, 10.0),
+        new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.8 })
     );
-    trackBed.position.set(-24, -0.15, 50);
-    trackBed.receiveShadow = true;
-    scene.add(trackBed);
+    crossingPanel.position.set(-24.0, 0.12, 42.0);
+    scene.add(crossingPanel);
 
-    // Train Station Platforms (Gateway, Home, School/College)
-    trainStationZ.forEach((sz, idx) => {
-        const plat = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.7, 16), new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.7 }));
-        plat.position.set(-28.5, 0.25, sz);
-        scene.add(plat);
+    [-28.4, -19.6].forEach(px => {
+        const post = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3.2, 0.3), metalRailingMat);
+        post.position.set(px, 1.6, 42.0);
+        scene.add(post);
 
-        // Canopy
-        const canopy = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.2, 16), new THREE.MeshStandardMaterial({ color: 0x0284c7 }));
-        canopy.position.set(-28.5, 4.2, sz);
-        scene.add(canopy);
+        const boom = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 5.0), new THREE.MeshStandardMaterial({ color: 0xef4444 }));
+        boom.position.set(px, 1.2, 42.0);
+        scene.add(boom);
 
-        // Sign
-        const sCan = document.createElement('canvas');
-        sCan.width = 256; sCan.height = 64;
-        const ctx = sCan.getContext('2d');
-        ctx.fillStyle = '#0f172a'; ctx.fillRect(0, 0, 256, 64);
-        ctx.fillStyle = '#38bdf8'; ctx.font = 'bold 20px monospace';
-        ctx.textAlign = 'center';
-        const names = ['STATION: GATEWAY', 'STATION: HOME HQ', 'STATION: ACADEMIA'];
-        ctx.fillText(names[idx], 128, 40);
-        const sign = new THREE.Mesh(new THREE.PlaneGeometry(5, 1.25), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(sCan) }));
-        sign.position.set(-25.8, 3.2, sz);
-        sign.rotation.y = Math.PI / 2;
-        scene.add(sign);
+        const light = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 8), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+        light.position.set(px, 3.1, 42.0);
+        scene.add(light);
     });
 
-    // Futuristic Electric Train Group (3 Cars)
-    const trainGroup = new THREE.Group();
-    const trainMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.2, metalness: 0.7 });
-    const blueStripeMat = new THREE.MeshStandardMaterial({ color: 0x0284c7 });
-    const winMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+    // 7. Passenger Stations (Gateway, Home West, Academia North)
+    registerBoxCollider(-31.0, -26.5, 5, 27, 'PlatformGateway');
+    registerBoxCollider(-31.0, -26.5, 39, 61, 'PlatformHome');
+    registerBoxCollider(-31.0, -26.5, 73, 95, 'PlatformAcademia');
+    registerBoxCollider(-24.8, -23.2, 5, 27, 'IslandPlatformGateway');
+    registerBoxCollider(-24.8, -23.2, 39, 61, 'IslandPlatformHome');
+    registerBoxCollider(-24.8, -23.2, 73, 95, 'IslandPlatformAcademia');
 
-    [-6.5, 0, 6.5].forEach((cz, i) => {
-        const car = new THREE.Group();
-        const body = new THREE.Mesh(new THREE.BoxGeometry(3.2, 2.8, 6.0), trainMat);
-        body.position.y = 1.8;
-        body.castShadow = true;
-        car.add(body);
+    const platGeoms = [];
+    const canopyGeoms = [];
 
-        const stripe = new THREE.Mesh(new THREE.BoxGeometry(3.24, 0.6, 6.04), blueStripeMat);
-        stripe.position.y = 1.3;
-        car.add(stripe);
+    const stationNames = [
+        { mr: "गेटवे ऑफ इंडिया", en: "GATEWAY TERMINAL" },
+        { mr: "होम वेस्ट (देव मुख्यालय)", en: "HOME WEST (DEV HQ)" },
+        { mr: "अकॅडेमिया नॉर्थ (महाविद्यालय)", en: "ACADEMIA NORTH (COLLEGE)" }
+    ];
 
-        // Windows
-        [-1.63, 1.63].forEach(wx => {
-            for (let wz = -2; wz <= 2; wz += 1.3) {
-                const win = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.9), winMat);
-                win.position.set(wx, 2.1, wz);
-                win.rotation.y = wx > 0 ? Math.PI / 2 : -Math.PI / 2;
-                car.add(win);
-            }
+    trainStationZ.forEach((sz, idx) => {
+        // Western Main Platform Slab (X = -28.7, width 4.2, length 22, height 0.65)
+        const platW = new THREE.BoxGeometry(4.2, 0.65, 22);
+        platW.translate(-28.7, 0.325, sz);
+        platGeoms.push(platW);
+
+        // Central Island Platform (X = -24.0, width 1.6, length 22, height 0.65)
+        const platIsland = new THREE.BoxGeometry(1.6, 0.65, 22);
+        platIsland.translate(-24.0, 0.325, sz);
+        platGeoms.push(platIsland);
+
+        // Western Platform Canopy Roof
+        const canopy = new THREE.BoxGeometry(4.6, 0.22, 22);
+        canopy.translate(-28.7, 4.3, sz);
+        canopyGeoms.push(canopy);
+
+        // Canopy Support Pillars
+        [-8, 0, 8].forEach(pz => {
+            const pillar = new THREE.BoxGeometry(0.2, 3.8, 0.2);
+            pillar.translate(-30.0, 2.3, sz + pz);
+            canopyGeoms.push(pillar);
         });
 
-        car.position.z = cz;
-        trainGroup.add(car);
+        // High-Resolution Bilingual Station Signboard (Marathi + English)
+        const signTex = createBilingualSignboardTexture(stationNames[idx].mr, stationNames[idx].en);
+        const signMesh = new THREE.Mesh(
+            new THREE.PlaneGeometry(5.2, 1.3),
+            new THREE.MeshBasicMaterial({ map: signTex, side: THREE.DoubleSide })
+        );
+        signMesh.position.set(-26.55, 3.2, sz);
+        signMesh.rotation.y = Math.PI / 2;
+        scene.add(signMesh);
     });
 
-    // Train Headlight
-    const trainHeadlight = new THREE.SpotLight(0xfffae6, 4.0, 35, Math.PI / 4, 0.4);
-    trainHeadlight.position.set(0, 1.8, 10);
-    trainHeadlight.target.position.set(0, 0, 25);
-    trainGroup.add(trainHeadlight);
-    trainGroup.add(trainHeadlight.target);
+    const mergedPlats = BufferGeometryUtils.mergeGeometries(platGeoms);
+    const platformMesh = new THREE.Mesh(mergedPlats, concreteTrimMat);
+    platformMesh.receiveShadow = true;
+    scene.add(platformMesh);
 
-    trainGroup.position.set(trainState.x, 0, trainState.z);
-    scene.add(trainGroup);
-    trainState.mesh = trainGroup;
+    const mergedCanopies = BufferGeometryUtils.mergeGeometries(canopyGeoms);
+    const canopyMesh = new THREE.Mesh(mergedCanopies, new THREE.MeshStandardMaterial({
+        color: 0x0284c7,
+        roughness: 0.5,
+        metalness: 0.3
+    }));
+    canopyMesh.castShadow = true;
+    scene.add(canopyMesh);
+
+    // 8. Articulated 3-Car Mumbai Suburban EMU Rake
+    const emuWhiteMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.25, metalness: 0.2 });
+    const emuPurpleMat = new THREE.MeshStandardMaterial({ color: 0x581c87, roughness: 0.35, metalness: 0.25 });
+    const emuYellowMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.35, metalness: 0.2 });
+    const emuDarkMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.6, metalness: 0.5 });
+    const emuGlassMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.1, metalness: 0.9, transparent: true, opacity: 0.75 });
+    const emuGrabPoleMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.15, metalness: 0.95 });
+    const emuWheelMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.3, metalness: 0.85 });
+
+    function createEMUCoach(type = 'lead') {
+        const coach = new THREE.Group();
+
+        // 1. Merged White Body Geometries (Floor, Roof, Rear Panel)
+        const whiteGeoms = [];
+        const floorGeom = new THREE.BoxGeometry(3.08, 0.3, 6.0);
+        floorGeom.translate(0, 0.8, 0);
+        whiteGeoms.push(floorGeom);
+
+        const roofGeom = new THREE.BoxGeometry(3.1, 0.25, 6.0);
+        roofGeom.translate(0, 3.35, 0);
+        whiteGeoms.push(roofGeom);
+
+        if (type === 'trail') {
+            const rearGeom = new THREE.BoxGeometry(3.08, 2.2, 0.4);
+            rearGeom.translate(0, 1.9, -3.1);
+            whiteGeoms.push(rearGeom);
+        }
+
+        const mergedWhite = BufferGeometryUtils.mergeGeometries(whiteGeoms);
+        const whiteMesh = new THREE.Mesh(mergedWhite, emuWhiteMat);
+        whiteMesh.castShadow = true;
+        coach.add(whiteMesh);
+
+        // 2. Merged Purple Stripes (Waist & Roofline)
+        const purpleGeoms = [];
+        const waistGeom = new THREE.BoxGeometry(3.14, 0.5, 6.02);
+        waistGeom.translate(0, 1.45, 0);
+        purpleGeoms.push(waistGeom);
+
+        const topGeom = new THREE.BoxGeometry(3.14, 0.25, 6.02);
+        topGeom.translate(0, 3.15, 0);
+        purpleGeoms.push(topGeom);
+
+        const mergedPurple = BufferGeometryUtils.mergeGeometries(purpleGeoms);
+        const purpleMesh = new THREE.Mesh(mergedPurple, emuPurpleMat);
+        coach.add(purpleMesh);
+
+        // 3. Merged Dark Interior & Bogies
+        const darkGeoms = [];
+        const seat1Geom = new THREE.BoxGeometry(0.6, 0.35, 5.4);
+        seat1Geom.translate(-1.1, 0.95, 0);
+        darkGeoms.push(seat1Geom);
+
+        const seat2Geom = new THREE.BoxGeometry(0.6, 0.35, 5.4);
+        seat2Geom.translate(1.1, 0.95, 0);
+        darkGeoms.push(seat2Geom);
+
+        [-1.8, 1.8].forEach(bz => {
+            const bogieGeom = new THREE.BoxGeometry(2.2, 0.16, 2.1);
+            bogieGeom.translate(0, 0.42, bz);
+            darkGeoms.push(bogieGeom);
+        });
+
+        if (type === 'lead') {
+            const cowGeom = new THREE.BoxGeometry(2.6, 0.2, 0.3);
+            cowGeom.translate(0, 0.3, 3.25);
+            darkGeoms.push(cowGeom);
+        } else if (type === 'motor') {
+            const tracGeom = new THREE.BoxGeometry(2.2, 0.4, 2.8);
+            tracGeom.translate(0, 3.65, 0);
+            darkGeoms.push(tracGeom);
+        }
+
+        const mergedDark = BufferGeometryUtils.mergeGeometries(darkGeoms);
+        const darkMesh = new THREE.Mesh(mergedDark, emuDarkMat);
+        coach.add(darkMesh);
+
+        // 4. Merged Flanged Steel Wheels (8 wheels per car)
+        const wheelGeoms = [];
+        [-1.8, 1.8].forEach(bz => {
+            [-0.84, 0.84].forEach(wx => {
+                [-0.65, 0.65].forEach(wz => {
+                    const wGeom = new THREE.CylinderGeometry(0.38, 0.38, 0.14, 12);
+                    wGeom.rotateZ(Math.PI / 2);
+                    wGeom.translate(wx, 0.25, bz + wz);
+                    wheelGeoms.push(wGeom);
+                });
+            });
+        });
+        const mergedWheels = BufferGeometryUtils.mergeGeometries(wheelGeoms);
+        const wheelMesh = new THREE.Mesh(mergedWheels, emuWheelMat);
+        coach.add(wheelMesh);
+
+        // 5. Merged Stainless-Steel Grab Poles (4 doorway poles)
+        const poleGeoms = [];
+        [-1.56, 1.56].forEach(wx => {
+            [-1.3, 1.3].forEach(dz => {
+                const pGeom = new THREE.CylinderGeometry(0.025, 0.025, 2.1, 6);
+                pGeom.translate(wx > 0 ? wx - 0.06 : wx + 0.06, 2.0, dz);
+                poleGeoms.push(pGeom);
+            });
+        });
+        const mergedPoles = BufferGeometryUtils.mergeGeometries(poleGeoms);
+        const poleMesh = new THREE.Mesh(mergedPoles, emuGrabPoleMat);
+        coach.add(poleMesh);
+
+        // 6. Windows & Front Glass
+        const glassGeoms = [];
+        [-1.56, 1.56].forEach(wx => {
+            const winGeom = new THREE.PlaneGeometry(1.2, 0.85);
+            winGeom.rotateY(wx > 0 ? Math.PI / 2 : -Math.PI / 2);
+            winGeom.translate(wx, 2.2, 0);
+            glassGeoms.push(winGeom);
+        });
+
+        if (type === 'lead') {
+            const windshieldGeom = new THREE.PlaneGeometry(2.4, 0.9);
+            windshieldGeom.translate(0, 2.45, 3.32);
+            glassGeoms.push(windshieldGeom);
+        }
+        const mergedGlass = BufferGeometryUtils.mergeGeometries(glassGeoms);
+        const glassMesh = new THREE.Mesh(mergedGlass, emuGlassMat);
+        coach.add(glassMesh);
+
+        // 7. Specialized Lead / Motor / Trail Features
+        if (type === 'lead') {
+            const yellowFront = new THREE.Mesh(new THREE.BoxGeometry(3.08, 2.2, 0.4), emuYellowMat);
+            yellowFront.position.set(0, 1.9, 3.1);
+            coach.add(yellowFront);
+
+            const destTex = createTrainDestinationTexture("छ.शि.म.ट. जलद", "CSMT FAST");
+            const destMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.4), new THREE.MeshBasicMaterial({ map: destTex }));
+            destMesh.position.set(0, 3.05, 3.32);
+            coach.add(destMesh);
+
+            [-0.85, 0.85].forEach(hx => {
+                const hl = new THREE.Mesh(new THREE.CircleGeometry(0.18, 12), new THREE.MeshBasicMaterial({ color: 0xfffbeb }));
+                hl.position.set(hx, 1.35, 3.32);
+                coach.add(hl);
+            });
+
+            const trainHeadlight = new THREE.SpotLight(0xfffae6, 4.0, 48, Math.PI / 4.5, 0.35);
+            trainHeadlight.position.set(0, 1.8, 3.3);
+            trainHeadlight.target.position.set(0, 0, 35);
+            coach.add(trainHeadlight);
+            coach.add(trainHeadlight.target);
+        } else if (type === 'motor') {
+            const pantoBase = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.12, 1.4), metalRailingMat);
+            pantoBase.position.set(0, 3.9, 0.2);
+            coach.add(pantoBase);
+
+            const arm1 = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.1, 6), new THREE.MeshStandardMaterial({ color: 0xea580c }));
+            arm1.rotation.x = Math.PI / 4;
+            arm1.position.set(-0.4, 4.4, -0.1);
+            coach.add(arm1);
+
+            const arm2 = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.1, 6), new THREE.MeshStandardMaterial({ color: 0xea580c }));
+            arm2.rotation.x = -Math.PI / 4;
+            arm2.position.set(-0.4, 4.9, 0.3);
+            coach.add(arm2);
+
+            const shoe = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.08, 0.18), new THREE.MeshStandardMaterial({ color: 0xb45309, metalness: 0.9 }));
+            shoe.position.set(0, 5.2, 0.3);
+            coach.add(shoe);
+        } else if (type === 'trail') {
+            [-0.85, 0.85].forEach(rx => {
+                const tl = new THREE.Mesh(new THREE.CircleGeometry(0.18, 12), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+                tl.position.set(rx, 1.35, -3.32);
+                tl.rotation.y = Math.PI;
+                coach.add(tl);
+            });
+        }
+
+        return coach;
+    }
+
+    const coach1 = createEMUCoach('lead');
+    const coach2 = createEMUCoach('motor');
+    const coach3 = createEMUCoach('trail');
+
+    scene.add(coach1);
+    scene.add(coach2);
+    scene.add(coach3);
+
+    trainState.coach1 = coach1;
+    trainState.coach2 = coach2;
+    trainState.coach3 = coach3;
+    trainState.mesh = coach1;
+
+    // Initial Coach Alignment on Spline
+    const initialS = stationSchedule[0].s;
+    const deltaS = 6.8 / splineLen;
+
+    const p1 = trainSpline.getPointAt(initialS);
+    const t1 = trainSpline.getTangentAt(initialS);
+    coach1.position.copy(p1);
+    coach1.rotation.y = Math.atan2(t1.x, t1.z);
+
+    const s2 = (initialS - deltaS + 1.0) % 1.0;
+    const p2 = trainSpline.getPointAt(s2);
+    const t2 = trainSpline.getTangentAt(s2);
+    coach2.position.copy(p2);
+    coach2.rotation.y = Math.atan2(t2.x, t2.z);
+
+    const s3 = (initialS - deltaS * 2 + 1.0) % 1.0;
+    const p3 = trainSpline.getPointAt(s3);
+    const t3 = trainSpline.getTangentAt(s3);
+    coach3.position.copy(p3);
+    coach3.rotation.y = Math.atan2(t3.x, t3.z);
+
+    trainState.x = p1.x;
+    trainState.z = p1.z;
+    trainState.progress = initialS;
+
+    window.__trainState = trainState;
+    window.__trainSpline = trainSpline;
+    window.__stationSchedule = stationSchedule;
 }
 buildRailwaySystem();
 
@@ -2258,10 +2702,15 @@ function toggleVehicleMount() {
         }
 
         // Proximity check for Train
-        const dTrain = characterGroup.position.distanceTo(trainState.mesh.position);
-        if (dTrain < 6.0) {
-            mountTrain();
-            return;
+        if (trainState.coach1) {
+            const p = characterGroup.position;
+            const d1 = p.distanceTo(trainState.coach1.position);
+            const d2 = p.distanceTo(trainState.coach2.position);
+            const d3 = p.distanceTo(trainState.coach3.position);
+            if (d1 < 5.5 || d2 < 5.5 || d3 < 5.5) {
+                mountTrain();
+                return;
+            }
         }
     }
 }
@@ -2286,18 +2735,22 @@ function mountVehicle(v) {
 
 function mountTrain() {
     activeVehicle = 'train';
-    characterGroup.visible = false;
+    trainState.coach1.add(characterGroup);
+    characterGroup.visible = true;
+    characterGroup.position.set(-1.42, 0.65, 0);
+    characterGroup.rotation.set(0, -Math.PI / 2, 0);
     speedoCard.style.display = 'flex';
-    speedoMode.textContent = '🚊 MUMBAI CITY EXPRESS';
+    speedoMode.textContent = '🚊 MUMBAI LOCAL EXPRESS';
     playSound('trainHorn');
 }
 
 function dismountVehicle() {
     if (activeVehicle === 'train') {
         activeVehicle = null;
-        characterGroup.visible = true;
         scene.add(characterGroup);
-        characterGroup.position.set(trainState.x - 4.5, 0, trainState.z);
+        const nearestZ = trainStationZ.reduce((prev, curr) => Math.abs(curr - trainState.coach1.position.z) < Math.abs(prev - trainState.coach1.position.z) ? curr : prev);
+        characterGroup.position.set(-28.6, 0.65, nearestZ);
+        characterGroup.rotation.set(0, Math.PI / 2, 0);
     } else if (activeVehicle) {
         const v = activeVehicle;
         activeVehicle = null;
@@ -2306,7 +2759,7 @@ function dismountVehicle() {
         characterGroup.rotation.set(0, v.rotation, 0);
     }
     speedoCard.style.display = 'none';
-    playSound('engine');
+    playSound('chime');
 }
 
 // Proximity Interaction Triggers
@@ -2482,11 +2935,43 @@ function updateMiniMap(playerX, playerZ, playerRot) {
     mapCtx.fillStyle = '#059669';
     mapCtx.fillRect(toMapX(poiCollege.x - 16), toMapY(poiCollege.z - 10), 32 * scale, 16 * scale);
 
-    // 6. Train Marker (Moving orange pill)
-    const trainMapX = toMapX(trainState.x);
-    const trainMapY = toMapY(trainState.z);
-    mapCtx.fillStyle = '#fb923c';
-    mapCtx.fillRect(trainMapX - 3, trainMapY - 8, 6, 16);
+    // 6. Railway Track Spline Loop, Station Platforms & Articulated EMU Train Markers
+    if (trainSpline) {
+        mapCtx.strokeStyle = 'rgba(148, 163, 184, 0.65)';
+        mapCtx.lineWidth = 2.5;
+        mapCtx.beginPath();
+        for (let i = 0; i <= 64; i++) {
+            const pt = trainSpline.getPointAt(i / 64);
+            const mx = toMapX(pt.x);
+            const my = toMapY(pt.z);
+            if (i === 0) mapCtx.moveTo(mx, my);
+            else mapCtx.lineTo(mx, my);
+        }
+        mapCtx.closePath();
+        mapCtx.stroke();
+    }
+
+    // Station Platforms on Minimap
+    trainStationZ.forEach(sz => {
+        mapCtx.fillStyle = '#38bdf8';
+        mapCtx.fillRect(toMapX(-30.8), toMapY(sz - 11), 4.2 * scale, 22 * scale);
+    });
+
+    // 3 Articulated EMU Coaches on Minimap
+    [trainState.coach1, trainState.coach2, trainState.coach3].forEach((c, idx) => {
+        if (!c) return;
+        const cxMap = toMapX(c.position.x);
+        const cyMap = toMapY(c.position.z);
+        mapCtx.save();
+        mapCtx.translate(cxMap, cyMap);
+        mapCtx.rotate(-c.rotation.y);
+        mapCtx.fillStyle = idx === 0 ? '#facc15' : '#8b5cf6';
+        mapCtx.fillRect(-2.5, -4.5, 5, 9);
+        mapCtx.strokeStyle = '#ffffff';
+        mapCtx.lineWidth = 0.8;
+        mapCtx.strokeRect(-2.5, -4.5, 5, 9);
+        mapCtx.restore();
+    });
 
     // 7. Parked Vehicles (Car & Bike markers)
     mapCtx.fillStyle = '#06b6d4';
@@ -2595,31 +3080,68 @@ function animate() {
         if (npc.group.position.x < npc.minX) npc.dir = 1;
     });
 
-    // 4. Mumbai City Express Train Simulation
-    const targetZ = trainStationZ[trainState.targetStationIdx];
-    if (trainState.isDwelling) {
-        trainState.dwellTimer += delta;
-        if (trainState.dwellTimer > 4.0) {
-            trainState.isDwelling = false;
-            trainState.dwellTimer = 0;
-            playSound('trainHorn');
-            // Advance to next station
-            if (trainState.targetStationIdx === trainStationZ.length - 1) trainState.direction = -1;
-            else if (trainState.targetStationIdx === 0) trainState.direction = 1;
-            trainState.targetStationIdx += trainState.direction;
-        }
-    } else {
-        const dist = targetZ - trainState.z;
-        if (Math.abs(dist) < 0.5) {
-            trainState.z = targetZ;
-            trainState.isDwelling = true;
-            playSound('chime');
+    // 4. Mumbai Suburban Local Train Simulation (Articulated EMU Rake on Broad Gauge Spline Loop)
+    if (trainSpline && stationSchedule.length > 0 && trainState.coach1) {
+        const targetStop = stationSchedule[trainState.targetStationIdx];
+        let distS = targetStop.s - trainState.progress;
+        if (distS < 0) distS += 1.0;
+        const distM = distS * trainState.splineLength;
+
+        if (trainState.isDwelling) {
+            trainState.dwellTimer += delta;
+            trainState.speed = 0;
+            if (trainState.dwellTimer > 3.8 && !trainState.hornPlayed) {
+                playSound('trainHorn');
+                trainState.hornPlayed = true;
+            }
+            if (trainState.dwellTimer >= 5.0) {
+                trainState.isDwelling = false;
+                trainState.dwellTimer = 0;
+                trainState.hornPlayed = false;
+                trainState.targetStationIdx = (trainState.targetStationIdx + 1) % stationSchedule.length;
+            }
         } else {
-            const step = Math.sign(dist) * trainState.maxSpeed * delta;
-            trainState.z += step;
+            if (distM < 16.0) {
+                const targetSpeed = Math.max(1.5, (distM / 16.0) * trainState.maxSpeed);
+                trainState.speed = THREE.MathUtils.lerp(trainState.speed, targetSpeed, 0.08);
+                if (distM < 0.4 || distM > trainState.splineLength - 1.0) {
+                    trainState.progress = targetStop.s;
+                    trainState.speed = 0;
+                    trainState.isDwelling = true;
+                    trainState.dwellTimer = 0;
+                    trainState.hornPlayed = false;
+                    playSound('chime');
+                }
+            } else {
+                trainState.speed = THREE.MathUtils.lerp(trainState.speed, trainState.maxSpeed, 0.05);
+            }
+            trainState.progress = (trainState.progress + (trainState.speed * delta) / trainState.splineLength) % 1.0;
         }
+
+        // Articulated Carriage Kinematics along Spline Loop
+        const deltaS = 6.8 / trainState.splineLength;
+        const s1 = trainState.progress;
+        const s2 = (trainState.progress - deltaS + 1.0) % 1.0;
+        const s3 = (trainState.progress - deltaS * 2 + 1.0) % 1.0;
+
+        const p1 = trainSpline.getPointAt(s1);
+        const t1 = trainSpline.getTangentAt(s1);
+        trainState.coach1.position.copy(p1);
+        trainState.coach1.rotation.y = Math.atan2(t1.x, t1.z);
+
+        const p2 = trainSpline.getPointAt(s2);
+        const t2 = trainSpline.getTangentAt(s2);
+        trainState.coach2.position.copy(p2);
+        trainState.coach2.rotation.y = Math.atan2(t2.x, t2.z);
+
+        const p3 = trainSpline.getPointAt(s3);
+        const t3 = trainSpline.getTangentAt(s3);
+        trainState.coach3.position.copy(p3);
+        trainState.coach3.rotation.y = Math.atan2(t3.x, t3.z);
+
+        trainState.x = p1.x;
+        trainState.z = p1.z;
     }
-    trainState.mesh.position.z = trainState.z;
 
     // 5. Superhero Iron Man Landing Sequence
     if (isFlyingIn) {
@@ -2671,17 +3193,18 @@ function animate() {
         // ACTIVE ACTOR CONTROLS & CAMERA
         // ==========================================
         if (activeVehicle === 'train') {
-            // Train Passenger Mode
-            speedoVal.textContent = Math.round(trainState.isDwelling ? 0 : 54);
+            // Train Passenger Mode: calculate real speed in km/h
+            speedoVal.textContent = Math.round(trainState.isDwelling ? 0 : (trainState.speed * 3.6));
 
             if (cameraMode === 'chase' || cameraMode === 'cinematic') {
-                camera.position.x = THREE.MathUtils.lerp(camera.position.x, trainState.x - 14, 0.08);
-                camera.position.z = THREE.MathUtils.lerp(camera.position.z, trainState.z - 8, 0.08);
+                const c1 = trainState.coach1;
+                camera.position.x = THREE.MathUtils.lerp(camera.position.x, c1.position.x - 12, 0.08);
+                camera.position.z = THREE.MathUtils.lerp(camera.position.z, c1.position.z - 8, 0.08);
                 camera.position.y = THREE.MathUtils.lerp(camera.position.y, 6.5, 0.08);
-                camera.lookAt(trainState.x, 2.5, trainState.z + 4);
+                camera.lookAt(c1.position.x, 2.5, c1.position.z + 4);
             }
 
-            updateMiniMap(trainState.x, trainState.z, 0);
+            updateMiniMap(trainState.coach1.position.x, trainState.coach1.position.z, trainState.coach1.rotation.y);
             checkTrainProximity();
         } else if (activeVehicle) {
             // Bike or Sports Car Physics
@@ -2874,11 +3397,16 @@ function checkProximity() {
         return;
     }
 
-    // 7. Check City Express Train
-    if (p.distanceTo(trainState.mesh.position) < 6.0) {
-        currentInteraction = 'trainRide';
-        showPrompt('E', 'Board City Express Train 🚊');
-        return;
+    // 7. Check Mumbai Local EMU Train
+    if (trainState.coach1) {
+        const d1 = p.distanceTo(trainState.coach1.position);
+        const d2 = p.distanceTo(trainState.coach2.position);
+        const d3 = p.distanceTo(trainState.coach3.position);
+        if (d1 < 5.5 || d2 < 5.5 || d3 < 5.5) {
+            currentInteraction = 'trainRide';
+            showPrompt('E', 'Board Mumbai Local Train 🚊');
+            return;
+        }
     }
 
     hidePrompt();
@@ -2905,6 +3433,16 @@ function hidePrompt() {
 // Initial Boot
 updateTimeOfDay('sunset');
 animate();
+
+// Verification & Automated Test Hooks
+window.__trainState = trainState;
+window.__trainSpline = trainSpline;
+window.__stationSchedule = stationSchedule;
+window.__mountTrain = mountTrain;
+window.__dismountVehicle = dismountVehicle;
+window.__checkProximity = checkProximity;
+window.__characterGroup = characterGroup;
+window.__camera = camera;
 
 // Responsive Resize
 window.addEventListener('resize', () => {
