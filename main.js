@@ -606,25 +606,37 @@ const rainMat = new THREE.PointsMaterial({ color: 0x93c5fd, size: 0.38, transpar
 const rainParticles = new THREE.Points(rainGeom, rainMat);
 scene.add(rainParticles);
 
-function cycleWeather() {
-    const modes = ['clear', 'rain', 'storm'];
-    weatherMode = modes[(modes.indexOf(weatherMode) + 1) % modes.length];
+function setWeatherMode(mode) {
+    weatherMode = mode;
     const btn = document.getElementById('btn-toggle-weather');
 
     if (weatherMode === 'clear') {
-        btn.textContent = '☀️ Clear';
-        btn.classList.remove('active');
+        if (btn) {
+            btn.textContent = '☀️ Clear';
+            btn.classList.remove('active');
+        }
         rainMat.opacity = 0;
     } else if (weatherMode === 'rain') {
-        btn.textContent = '🌧️ Rain: ON';
-        btn.classList.add('active');
+        if (btn) {
+            btn.textContent = '🌧️ Rain: ON';
+            btn.classList.add('active');
+        }
         rainMat.opacity = 0.65;
     } else if (weatherMode === 'storm') {
-        btn.textContent = '⚡ Thunderstorm';
-        btn.classList.add('active');
+        if (btn) {
+            btn.textContent = '⚡ Thunderstorm';
+            btn.classList.add('active');
+        }
         rainMat.opacity = 0.9;
         playSound('thunder');
     }
+}
+window.__setWeatherMode = setWeatherMode;
+
+function cycleWeather() {
+    const modes = ['clear', 'rain', 'storm'];
+    const next = modes[(modes.indexOf(weatherMode) + 1) % modes.length];
+    setWeatherMode(next);
 }
 document.getElementById('btn-toggle-weather').addEventListener('click', cycleWeather);
 
@@ -677,59 +689,56 @@ function resolveCollision(pos, radius = 0.5) {
     }
 }
 
+// Batched Vegetation & Streetlamp Geometries
+const batchedLampPoles = [];
+const batchedLampBulbs = [];
+const batchedPalmTrunks = [];
+const batchedPalmLeaves = [];
+const batchedCityTrunks = [];
+const batchedCityFoliage = [];
+
 // Streetlamp Helper
 function addStreetLamp(x, z) {
-    const lamp = new THREE.Group();
-    const ironMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, metalness: 0.85 });
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.26, 6.2, 8), ironMat);
-    pole.position.y = 3.1;
-    pole.castShadow = true;
-    lamp.add(pole);
+    const pole = new THREE.CylinderGeometry(0.18, 0.26, 6.2, 8);
+    pole.translate(x, 3.1, z);
+    batchedLampPoles.push(pole);
 
-    const bulb = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.2, 0.8), new THREE.MeshBasicMaterial({ color: 0xffea9f }));
-    bulb.position.y = 6.4;
-    lamp.add(bulb);
+    const bulb = new THREE.BoxGeometry(0.8, 1.2, 0.8);
+    bulb.translate(x, 6.4, z);
+    batchedLampBulbs.push(bulb);
 
     const pl = new THREE.PointLight(0xffa834, 2.2, 22, 1.5);
-    pl.position.y = 6.4;
+    pl.position.set(x, 6.4, z);
     pl.castShadow = false;
-    lamp.add(pl);
+    scene.add(pl);
 
-    lamp.position.set(x, 0, z);
-    scene.add(lamp);
-    streetLamps.push({ group: lamp, light: pl });
+    streetLamps.push({ light: pl });
     registerCylinderCollider(x, z, 0.45, 'streetlamp');
 }
 
 // Low-poly City Trees
 function addTree(x, z, type = 'palm') {
-    const tree = new THREE.Group();
     if (type === 'palm') {
-        const trunkMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.9 });
-        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.45, 6, 8), trunkMat);
-        trunk.position.y = 3;
-        trunk.castShadow = true;
-        tree.add(trunk);
+        const trunk = new THREE.CylinderGeometry(0.3, 0.45, 6, 8);
+        trunk.translate(x, 3, z);
+        batchedPalmTrunks.push(trunk);
 
-        const leafMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.7 });
         for (let a = 0; a < Math.PI * 2; a += Math.PI / 3) {
-            const leaf = new THREE.Mesh(new THREE.ConeGeometry(1.2, 3.8, 4), leafMat);
-            leaf.rotation.z = Math.PI / 3;
-            leaf.rotation.y = a;
-            leaf.position.y = 6.2;
-            tree.add(leaf);
+            const leaf = new THREE.ConeGeometry(1.2, 3.8, 4);
+            leaf.rotateZ(Math.PI / 3);
+            leaf.rotateY(a);
+            leaf.translate(x, 6.2, z);
+            batchedPalmLeaves.push(leaf);
         }
     } else {
-        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.55, 4.5, 8), new THREE.MeshStandardMaterial({ color: 0x451a03 }));
-        trunk.position.y = 2.25;
-        tree.add(trunk);
-        const leaves = new THREE.Mesh(new THREE.DodecahedronGeometry(2.8), new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.8 }));
-        leaves.position.y = 5.5;
-        leaves.castShadow = true;
-        tree.add(leaves);
+        const trunk = new THREE.CylinderGeometry(0.4, 0.55, 4.5, 8);
+        trunk.translate(x, 2.25, z);
+        batchedCityTrunks.push(trunk);
+
+        const leaves = new THREE.DodecahedronGeometry(2.8);
+        leaves.translate(x, 5.5, z);
+        batchedCityFoliage.push(leaves);
     }
-    tree.position.set(x, 0, z);
-    scene.add(tree);
     registerCylinderCollider(x, z, 0.65, 'tree');
 }
 
@@ -770,11 +779,17 @@ topBar.position.set(0, 1.2, -22);
 topBar.castShadow = true;
 scene.add(topBar);
 
+const postGeoms = [];
 for (let rx = -44; rx <= 44; rx += 2.5) {
-    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 1.2, 8), railMat);
-    post.position.set(rx, 0.6, -22);
-    post.castShadow = true;
-    scene.add(post);
+    const post = new THREE.CylinderGeometry(0.16, 0.2, 1.2, 8);
+    post.translate(rx, 0.6, -22);
+    postGeoms.push(post);
+}
+if (postGeoms.length > 0) {
+    const mergedPosts = BufferGeometryUtils.mergeGeometries(postGeoms);
+    const postsMesh = new THREE.Mesh(mergedPosts, railMat);
+    postsMesh.castShadow = true;
+    scene.add(postsMesh);
 }
 registerBoxCollider(-45, 45, -23.0, -21.0, 'SeaBalustrade');
 
@@ -803,48 +818,65 @@ function buildGatewayArch() {
     const monument = new THREE.Group();
     const basaltMat = new THREE.MeshStandardMaterial({ color: 0xd4a373, roughness: 0.85, metalness: 0.08 });
     const darkStoneMat = new THREE.MeshStandardMaterial({ color: 0xb58452, roughness: 0.9 });
+    const archMat = new THREE.MeshStandardMaterial({ color: 0x1c140d });
+
+    const basaltGeoms = [];
+    const darkStoneGeoms = [];
+    const archGeoms = [];
 
     // Central Mass
-    const base = new THREE.Mesh(new THREE.BoxGeometry(32, 20, 12), basaltMat);
-    base.position.set(0, 10, -32);
-    base.castShadow = true; base.receiveShadow = true;
-    monument.add(base);
+    const base = new THREE.BoxGeometry(32, 20, 12);
+    base.translate(0, 10, -32);
+    basaltGeoms.push(base);
 
     // Archway Openings (Central + Sides)
-    const centralArch = new THREE.Mesh(new THREE.BoxGeometry(11, 14, 12.4), new THREE.MeshStandardMaterial({ color: 0x1c140d }));
-    centralArch.position.set(0, 7, -32);
-    monument.add(centralArch);
+    const centralArch = new THREE.BoxGeometry(11, 14, 12.4);
+    centralArch.translate(0, 7, -32);
+    archGeoms.push(centralArch);
 
     [-11, 11].forEach(ax => {
-        const sideArch = new THREE.Mesh(new THREE.BoxGeometry(4.5, 9.5, 12.2), new THREE.MeshStandardMaterial({ color: 0x271c14 }));
-        sideArch.position.set(ax, 4.75, -32);
-        monument.add(sideArch);
+        const sideArch = new THREE.BoxGeometry(4.5, 9.5, 12.2);
+        sideArch.translate(ax, 4.75, -32);
+        archGeoms.push(sideArch);
     });
 
     // Attic & Parapet Cornice
-    const cornice = new THREE.Mesh(new THREE.BoxGeometry(34, 2.5, 13), darkStoneMat);
-    cornice.position.set(0, 21.2, -32);
-    cornice.castShadow = true;
-    monument.add(cornice);
+    const cornice = new THREE.BoxGeometry(34, 2.5, 13);
+    cornice.translate(0, 21.2, -32);
+    darkStoneGeoms.push(cornice);
 
-    const upperAttic = new THREE.Mesh(new THREE.BoxGeometry(24, 4, 9), basaltMat);
-    upperAttic.position.set(0, 24, -32);
-    monument.add(upperAttic);
+    const upperAttic = new THREE.BoxGeometry(24, 4, 9);
+    upperAttic.translate(0, 24, -32);
+    basaltGeoms.push(upperAttic);
 
     // 4 Corner Turrets with Mini Domes
     [[-15, -5], [15, -5], [-15, 5], [15, 5]].forEach(([tx, tz]) => {
-        const turret = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.7, 14, 16), darkStoneMat);
-        turret.position.set(tx, 25, -32 + tz);
-        monument.add(turret);
+        const turret = new THREE.CylinderGeometry(1.5, 1.7, 14, 16);
+        turret.translate(tx, 25, -32 + tz);
+        darkStoneGeoms.push(turret);
 
-        const dome = new THREE.Mesh(new THREE.SphereGeometry(1.8, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2), basaltMat);
-        dome.position.set(tx, 32, -32 + tz);
-        monument.add(dome);
+        const dome = new THREE.SphereGeometry(1.8, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+        dome.translate(tx, 32, -32 + tz);
+        basaltGeoms.push(dome);
 
-        const spire = new THREE.Mesh(new THREE.ConeGeometry(0.4, 3, 8), darkStoneMat);
-        spire.position.set(tx, 34.5, -32 + tz);
-        monument.add(spire);
+        const spire = new THREE.ConeGeometry(0.4, 3, 8);
+        spire.translate(tx, 34.5, -32 + tz);
+        darkStoneGeoms.push(spire);
     });
+
+    if (basaltGeoms.length > 0) {
+        const m = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(basaltGeoms), basaltMat);
+        m.castShadow = true; m.receiveShadow = true;
+        monument.add(m);
+    }
+    if (darkStoneGeoms.length > 0) {
+        const m = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(darkStoneGeoms), darkStoneMat);
+        m.castShadow = true;
+        monument.add(m);
+    }
+    if (archGeoms.length > 0) {
+        monument.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(archGeoms), archMat));
+    }
 
     // Indian National Flag
     const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 9, 8), new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.8 }));
@@ -877,14 +909,16 @@ function buildVadaPavCart() {
 
     // Wheels
     const wheelMat = new THREE.MeshStandardMaterial({ color: 0x451a03 });
+    const wheelGeoms = [];
     [-1.7, 1.7].forEach(wx => {
         [-1.2, 1.2].forEach(wz => {
-            const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.2, 16), wheelMat);
-            wheel.rotation.z = Math.PI / 2;
-            wheel.position.set(wx, 0.7, wz);
-            cart.add(wheel);
+            const wheel = new THREE.CylinderGeometry(0.7, 0.7, 0.2, 16);
+            wheel.rotateZ(Math.PI / 2);
+            wheel.translate(wx, 0.7, wz);
+            wheelGeoms.push(wheel);
         });
     });
+    cart.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(wheelGeoms), wheelMat));
 
     // Showcase with Vada Pavs
     const showcase = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.2, 1.8), new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.45 }));
@@ -892,14 +926,16 @@ function buildVadaPavCart() {
     cart.add(showcase);
 
     const pavMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, roughness: 0.8 });
+    const bunGeoms = [];
     for (let px = -1.6; px <= 0; px += 0.5) {
         for (let pz = -0.5; pz <= 0.5; pz += 0.5) {
-            const bun = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), pavMat);
-            bun.scale.set(1.2, 0.7, 1.2);
-            bun.position.set(px, 2.7, pz);
-            cart.add(bun);
+            const bun = new THREE.SphereGeometry(0.18, 8, 8);
+            bun.scale(1.2, 0.7, 1.2);
+            bun.translate(px, 2.7, pz);
+            bunGeoms.push(bun);
         }
     }
+    cart.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(bunGeoms), pavMat));
 
     // Striped Canopy
     const canopy = new THREE.Mesh(new THREE.ConeGeometry(3.6, 1.5, 4), new THREE.MeshStandardMaterial({ color: 0xef4444 }));
@@ -932,22 +968,510 @@ function buildVadaPavCart() {
 }
 buildVadaPavCart();
 
-// Animated Pedestrians along Promenade
-const npcs = [];
-for (let i = 0; i < 4; i++) {
-    const p = new THREE.Group();
-    const colors = [0x38bdf8, 0xf43f5e, 0x10b981, 0xa855f7];
-    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.38, 1.2, 10), new THREE.MeshStandardMaterial({ color: colors[i] }));
-    body.position.y = 1.1;
-    p.add(body);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.42, 10, 10), new THREE.MeshStandardMaterial({ color: 0xf5cba7 }));
-    head.position.y = 1.95;
-    p.add(head);
-
-    p.position.set(-25 + (i * 18), 0, -4 + (i % 2 === 0 ? 3 : -3));
-    scene.add(p);
-    npcs.push({ group: p, speed: 1.2 + Math.random() * 0.8, dir: i % 2 === 0 ? 1 : -1, minX: -36, maxX: 36 });
+// ==========================================
+// PHASE 5: CROWD & WORLD LIFE (Diverse Pedestrians & Authentic Street Props)
+// ==========================================
+function applyVertexColor(geom, hexColor) {
+    const count = geom.attributes.position.count;
+    const colors = new Float32Array(count * 3);
+    const c = new THREE.Color(hexColor);
+    for (let i = 0; i < count; i++) {
+        colors[i * 3] = c.r;
+        colors[i * 3 + 1] = c.g;
+        colors[i * 3 + 2] = c.b;
+    }
+    geom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    return geom;
 }
+
+// 5 Fitzpatrick Indian Skin Tones
+const skinColors = [
+    0xf5cba7, // Fair warm brown
+    0xe0ac69, // Medium golden brown
+    0xc68642, // Rich warm brown
+    0x8d5524, // Deep bronze brown
+    0x5c3317  // Rich dark brown
+];
+
+const shirtColors = [
+    0xf8fafc, // Formal White
+    0x38bdf8, // Sky Blue
+    0xf97316, // Saffron / Orange Kurta
+    0x10b981, // Emerald Green Kurta / Saree
+    0x1e3a8a, // Navy Blue
+    0xb91c1c, // Crimson Red
+    0xeab308, // Mustard Yellow
+    0x8b5cf6  // Violet / Purple
+];
+
+const pantsColors = [
+    0x2563eb, // Denim Blue
+    0x334155, // Charcoal Grey
+    0x0f172a, // Formal Black / Dark Navy
+    0xf1f5f9, // White Pajama / Churidars
+    0xd97706  // Khaki
+];
+
+const hairColors = [
+    0x09090b, // Black
+    0x271911  // Dark Brown
+];
+
+const umbrellaColors = [0x0f172a, 0x0284c7, 0xdc2626, 0xeab308, 0x166534];
+
+const sharedNpcMat = new THREE.MeshStandardMaterial({ roughness: 0.8, vertexColors: true });
+const sharedUmbrellaMat = new THREE.MeshStandardMaterial({ roughness: 0.5, vertexColors: true, side: THREE.DoubleSide });
+
+function createArticulatedPedestrian(config) {
+    const group = new THREE.Group();
+
+    const skinColor = skinColors[config.skinIdx % skinColors.length];
+    const shirtColor = shirtColors[config.shirtIdx % shirtColors.length];
+    const pantsColor = pantsColors[config.pantsIdx % pantsColors.length];
+    const hairColor = hairColors[config.hairIdx % hairColors.length];
+    const umbrellaColor = umbrellaColors[config.umbrellaIdx % umbrellaColors.length];
+
+    // 1. Merged Body (Torso + Head + Hair + Backpack/Cap)
+    const bodyGeoms = [];
+    const torso = applyVertexColor(new THREE.BoxGeometry(0.44, 0.62, 0.26), shirtColor);
+    torso.translate(0, 1.25, 0);
+    bodyGeoms.push(torso);
+
+    if (config.type === 'student') {
+        const backpack = applyVertexColor(new THREE.BoxGeometry(0.32, 0.42, 0.16), 0x1e293b);
+        backpack.translate(0, 1.25, -0.2);
+        bodyGeoms.push(backpack);
+    }
+
+    const head = applyVertexColor(new THREE.SphereGeometry(0.20, 10, 10), skinColor);
+    head.translate(0, 1.74, 0);
+    bodyGeoms.push(head);
+
+    const hair = applyVertexColor(new THREE.SphereGeometry(0.21, 10, 10, 0, Math.PI * 2, 0, Math.PI * 0.55), hairColor);
+    hair.rotateX(-0.2);
+    hair.translate(0, 1.76, 0);
+    bodyGeoms.push(hair);
+
+    if (config.type === 'dabbawala') {
+        const cap = applyVertexColor(new THREE.BoxGeometry(0.18, 0.1, 0.28), 0xf8fafc);
+        cap.translate(0, 1.94, 0);
+        bodyGeoms.push(cap);
+    }
+
+    const mergedBody = BufferGeometryUtils.mergeGeometries(bodyGeoms, false);
+    const bodyMesh = new THREE.Mesh(mergedBody, sharedNpcMat);
+    bodyMesh.castShadow = true;
+    group.add(bodyMesh);
+
+    // 2. Articulated Left Arm (Sleeve + Forearm)
+    const armL = new THREE.Group();
+    armL.position.set(-0.28, 1.50, 0);
+    const sleeveL = applyVertexColor(new THREE.CylinderGeometry(0.065, 0.06, 0.35, 8), shirtColor);
+    sleeveL.translate(0, -0.175, 0);
+    const forearmL = applyVertexColor(new THREE.CylinderGeometry(0.055, 0.05, 0.28, 8), skinColor);
+    forearmL.translate(0, -0.45, 0);
+    const mergedArmL = BufferGeometryUtils.mergeGeometries([sleeveL, forearmL], false);
+    const armLMesh = new THREE.Mesh(mergedArmL, sharedNpcMat);
+    armL.add(armLMesh);
+    group.add(armL);
+
+    // 3. Articulated Right Arm & Weather-Reactive Umbrella
+    const armR = new THREE.Group();
+    armR.position.set(0.28, 1.50, 0);
+    const sleeveR = applyVertexColor(new THREE.CylinderGeometry(0.065, 0.06, 0.35, 8), shirtColor);
+    sleeveR.translate(0, -0.175, 0);
+    const forearmR = applyVertexColor(new THREE.CylinderGeometry(0.055, 0.05, 0.28, 8), skinColor);
+    forearmR.translate(0, -0.45, 0);
+    const mergedArmR = BufferGeometryUtils.mergeGeometries([sleeveR, forearmR], false);
+    const armRMesh = new THREE.Mesh(mergedArmR, sharedNpcMat);
+    armR.add(armRMesh);
+
+    const umbrellaGroup = new THREE.Group();
+    umbrellaGroup.position.set(0, -0.55, 0);
+    const shaft = applyVertexColor(new THREE.CylinderGeometry(0.015, 0.015, 0.95, 6), 0x94a3b8);
+    shaft.translate(0, 0.45, 0);
+    const dome = applyVertexColor(new THREE.ConeGeometry(0.68, 0.32, 10, 1, true), umbrellaColor);
+    dome.translate(0, 0.95, 0);
+    const mergedUmbrella = BufferGeometryUtils.mergeGeometries([shaft, dome], false);
+    const umbrellaMesh = new THREE.Mesh(mergedUmbrella, sharedUmbrellaMat);
+    umbrellaGroup.add(umbrellaMesh);
+    umbrellaGroup.visible = false;
+    armR.add(umbrellaGroup);
+    group.add(armR);
+
+    // 4. Articulated Left Leg (Pants + Shoe)
+    const legL = new THREE.Group();
+    legL.position.set(-0.13, 0.90, 0);
+    const pantsL = applyVertexColor(new THREE.BoxGeometry(0.16, 0.76, 0.18), pantsColor);
+    pantsL.translate(0, -0.38, 0);
+    const shoeL = applyVertexColor(new THREE.BoxGeometry(0.14, 0.1, 0.24), 0x0f172a);
+    shoeL.translate(0, -0.78, 0.03);
+    const mergedLegL = BufferGeometryUtils.mergeGeometries([pantsL, shoeL], false);
+    const legLMesh = new THREE.Mesh(mergedLegL, sharedNpcMat);
+    legLMesh.castShadow = true;
+    legL.add(legLMesh);
+    group.add(legL);
+
+    // 5. Articulated Right Leg (Pants + Shoe)
+    const legR = new THREE.Group();
+    legR.position.set(0.13, 0.90, 0);
+    const pantsR = applyVertexColor(new THREE.BoxGeometry(0.16, 0.76, 0.18), pantsColor);
+    pantsR.translate(0, -0.38, 0);
+    const shoeR = applyVertexColor(new THREE.BoxGeometry(0.14, 0.1, 0.24), 0x0f172a);
+    shoeR.translate(0, -0.78, 0.03);
+    const mergedLegR = BufferGeometryUtils.mergeGeometries([pantsR, shoeR], false);
+    const legRMesh = new THREE.Mesh(mergedLegR, sharedNpcMat);
+    legRMesh.castShadow = true;
+    legR.add(legRMesh);
+    group.add(legR);
+
+    return {
+        group,
+        armL,
+        armR,
+        legL,
+        legR,
+        umbrellaGroup,
+        walkCycle: Math.random() * Math.PI * 2
+    };
+}
+
+const npcs = [];
+
+function buildMumbaiCrowd() {
+    // 10 Diverse Pedestrians Distributed across 5 Urban Sectors
+    const crowdConfig = [
+        // --- ZONE 1: ARABIAN SEA WATERFRONT PROMENADE (2 Pedestrians) ---
+        { skin: 2, shirt: 3, pants: 3, hair: 0, type: 'saree', wps: [{x: 10, z: -4}, {x: 28, z: -4}] },
+        { skin: 2, shirt: 0, pants: 3, hair: 0, type: 'dabbawala', wps: [{x: -28, z: 2}, {x: 6, z: 2}] },
+
+        // --- ZONE 2: NORTH AVENUE SIDEWALKS (3 Pedestrians) ---
+        // West Sidewalk (X = -5.0)
+        { skin: 1, shirt: 0, pants: 2, hair: 0, type: 'formal', wps: [{x: -5.0, z: 18}, {x: -5.0, z: 42}] },
+        { skin: 3, shirt: 2, pants: 0, hair: 1, type: 'kurta', wps: [{x: -5.0, z: 50}, {x: -5.0, z: 80}] },
+        // East Sidewalk (X = 5.0)
+        { skin: 2, shirt: 0, pants: 0, hair: 1, type: 'student', wps: [{x: 5.0, z: 30}, {x: 5.0, z: 70}] },
+
+        // --- ZONE 3: MARKET STREET CROSS AVENUE (2 Pedestrians) ---
+        // South Sidewalk (Z = 39.0)
+        { skin: 2, shirt: 2, pants: 4, hair: 0, type: 'kurta', wps: [{x: -26, z: 39.0}, {x: 18, z: 39.0}] },
+        // North Sidewalk (Z = 45.0)
+        { skin: 1, shirt: 5, pants: 0, hair: 0, type: 'casual', wps: [{x: -28, z: 45.0}, {x: 14, z: 45.0}] },
+
+        // --- ZONE 4: RAILWAY STATION PLATFORMS (1 Pedestrian) ---
+        { skin: 1, shirt: 0, pants: 2, hair: 0, type: 'formal', wps: [{x: -28.6, z: 12}, {x: -28.6, z: 22}] },
+
+        // --- ZONE 5: EAST CAMPUS & ACADEMIA (2 Pedestrians) ---
+        { skin: 2, shirt: 0, pants: 0, hair: 0, type: 'student', wps: [{x: 24, z: 52}, {x: 38, z: 52}] },
+        { skin: 3, shirt: 5, pants: 1, hair: 1, type: 'student', wps: [{x: 30, z: 68}, {x: 42, z: 68}] }
+    ];
+
+    crowdConfig.forEach((cfg, idx) => {
+        const p = createArticulatedPedestrian({
+            skinIdx: cfg.skin,
+            shirtIdx: cfg.shirt,
+            pantsIdx: cfg.pants,
+            hairIdx: cfg.hair,
+            type: cfg.type,
+            umbrellaIdx: idx % umbrellaColors.length
+        });
+
+        const startWp = cfg.wps[0];
+        p.group.position.set(startWp.x, 0, startWp.z);
+        scene.add(p.group);
+
+        npcs.push({
+            group: p.group,
+            armL: p.armL,
+            armR: p.armR,
+            legL: p.legL,
+            legR: p.legR,
+            umbrellaGroup: p.umbrellaGroup,
+            walkCycle: p.walkCycle,
+            waypoints: cfg.wps,
+            wpIdx: 1,
+            speed: 1.1 + Math.random() * 0.7
+        });
+    });
+}
+buildMumbaiCrowd();
+window.__npcs = npcs;
+
+// ==========================================
+// MUMBAI STREET-LEVEL PROPS & URBAN LIFE
+// (Chai Stalls, Parked Chetak Scooters, BEST Bus Stop, Thela Carts, MSEB Boxes)
+// ==========================================
+function buildMumbaiStreetProps() {
+    const woodGeoms = [];
+    const metalGeoms = [];
+    const msebGeoms = [];
+    const mcgmGeoms = [];
+    const scooterGeoms = [];
+    const wheelGeoms = [];
+    const awningGeoms = [];
+    const samovarGeoms = [];
+    const glassCaddyGeoms = [];
+    const hlGeoms = [];
+    const crateGeoms = [];
+
+    const msebMat = new THREE.MeshStandardMaterial({ color: 0x14532d, roughness: 0.6, metalness: 0.3 });
+    const mcgmMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.5, metalness: 0.2 });
+    const brassMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.25, metalness: 0.85 });
+    const scooterMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.3, metalness: 0.5 });
+    const scooterWheelMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.7 });
+    const awningMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.8 });
+    const glassMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.1, transparent: true, opacity: 0.8 });
+
+    // 1. Mumbai Cutting Chai Stalls (2 Stalls)
+    const chaiLocations = [
+        { x: 6.2, z: 39.5, rotY: -Math.PI / 2 }, // Corner Market St & North Ave
+        { x: 14.5, z: -3.5, rotY: 0 }            // Waterfront Promenade near Vada Pav
+    ];
+
+    chaiLocations.forEach(loc => {
+        // Wooden Counter Table
+        const table = new THREE.BoxGeometry(1.8, 0.9, 0.9);
+        table.translate(loc.x, 0.45, loc.z);
+        woodGeoms.push(table);
+
+        // Hanging Fabric Awning Support Poles
+        [-0.8, 0.8].forEach(px => {
+            const pole = new THREE.CylinderGeometry(0.03, 0.03, 2.3, 6);
+            pole.translate(loc.x + px, 1.15, loc.z + 0.4);
+            metalGeoms.push(pole);
+        });
+
+        // Striped Cloth Canopy Overhead
+        const awning = new THREE.BoxGeometry(2.1, 0.08, 1.2);
+        awning.rotateX(0.15);
+        awning.translate(loc.x, 2.3, loc.z + 0.1);
+        awningGeoms.push(awning);
+
+        // Brass Samovar / Tea Boiler
+        const samovar = new THREE.CylinderGeometry(0.18, 0.22, 0.65, 10);
+        samovar.translate(loc.x - 0.4, 1.22, loc.z);
+        samovarGeoms.push(samovar);
+
+        // Tea Glass Caddy Rack (Cutting Chai Glasses)
+        const caddy = new THREE.BoxGeometry(0.45, 0.22, 0.3);
+        caddy.translate(loc.x + 0.35, 1.02, loc.z);
+        glassCaddyGeoms.push(caddy);
+
+        // Chai Chalkboard Sign
+        const signTex = createBilingualSignboardTexture("मुंबई कटिंग चाय", "CUTTING CHAI ₹10", "#1e1b4b", "#facc15");
+        const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.45), new THREE.MeshBasicMaterial({ map: signTex, side: THREE.DoubleSide }));
+        sign.position.set(loc.x, 1.9, loc.z + 0.42);
+        scene.add(sign);
+
+        registerBoxCollider(loc.x - 1.1, loc.x + 1.1, loc.z - 0.6, loc.z + 0.6, 'ChaiStall');
+    });
+
+    // 2. Parked Bajaj Chetak Retro Scooters (4 Scooters along curbs)
+    const scooterLocs = [
+        { x: -6.8, z: 26.0, rotY: Math.PI / 2 },  // North Ave West curb
+        { x: 18.0, z: 38.5, rotY: 0 },             // Market St curb
+        { x: -43.0, z: 52.0, rotY: -Math.PI / 2 },// West Blvd near Chawls
+        { x: -12.0, z: 2.0, rotY: 0.4 }           // Promenade curb
+    ];
+
+    scooterLocs.forEach(loc => {
+        // Curved Pressed Steel Legshield & Footboard
+        const frame = new THREE.BoxGeometry(0.38, 0.55, 1.4);
+        frame.rotateY(loc.rotY);
+        frame.translate(loc.x, 0.45, loc.z);
+        scooterGeoms.push(frame);
+
+        const legshield = new THREE.BoxGeometry(0.55, 0.65, 0.12);
+        legshield.rotateY(loc.rotY);
+        legshield.translate(loc.x + Math.sin(loc.rotY) * 0.4, 0.65, loc.z + Math.cos(loc.rotY) * 0.4);
+        scooterGeoms.push(legshield);
+
+        // Dual Split Seats
+        const seat = new THREE.BoxGeometry(0.32, 0.12, 0.55);
+        seat.rotateY(loc.rotY);
+        seat.translate(loc.x - Math.sin(loc.rotY) * 0.2, 0.78, loc.z - Math.cos(loc.rotY) * 0.2);
+        scooterGeoms.push(seat);
+
+        // 10-inch Scooter Wheels
+        [-0.45, 0.45].forEach(wz => {
+            const w = new THREE.CylinderGeometry(0.22, 0.22, 0.12, 12);
+            w.rotateZ(Math.PI / 2);
+            w.rotateY(loc.rotY);
+            w.translate(loc.x + Math.sin(loc.rotY) * wz, 0.22, loc.z + Math.cos(loc.rotY) * wz);
+            wheelGeoms.push(w);
+        });
+
+        // Round Chrome Headlight
+        const hl = new THREE.SphereGeometry(0.1, 8, 8);
+        hl.translate(loc.x + Math.sin(loc.rotY) * 0.42, 0.95, loc.z + Math.cos(loc.rotY) * 0.42);
+        hlGeoms.push(hl);
+
+        registerBoxCollider(loc.x - 0.4, loc.x + 0.4, loc.z - 0.7, loc.z + 0.7, 'ParkedScooter');
+    });
+
+    // 3. Authentic BEST Bus Stop Shelter (North Avenue East Sidewalk, X = 7.0, Z = 28)
+    const busStopX = 7.0;
+    const busStopZ = 28.0;
+
+    // Red tubular frame pillars
+    [-1.6, 1.6].forEach(px => {
+        const p = new THREE.CylinderGeometry(0.06, 0.06, 3.2, 8);
+        p.translate(busStopX, 1.6, busStopZ + px);
+        metalGeoms.push(p);
+    });
+
+    // Yellow Curved Acrylic Roof Canopy
+    const busCanopy = new THREE.Mesh(
+        new THREE.BoxGeometry(2.2, 0.14, 3.8),
+        new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.4 })
+    );
+    busCanopy.position.set(busStopX - 0.4, 3.1, busStopZ);
+    busCanopy.rotation.z = -0.1;
+    scene.add(busCanopy);
+
+    // Bench Seat inside bus stop
+    const busBench = new THREE.BoxGeometry(0.5, 0.1, 2.8);
+    busBench.translate(busStopX + 0.1, 0.5, busStopZ);
+    woodGeoms.push(busBench);
+
+    // BEST Bus Stop Signboard
+    const bestTex = createBilingualSignboardTexture("बृहन्मुंबई विद्युत पुरवठा आणि परिवहन", "BEST BUS STOP — ROUTE 123", "#b91c1c", "#facc15");
+    const bestSign = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 0.65), new THREE.MeshBasicMaterial({ map: bestTex }));
+    bestSign.position.set(busStopX - 0.45, 2.7, busStopZ);
+    bestSign.rotation.y = -Math.PI / 2;
+    scene.add(bestSign);
+
+    registerBoxCollider(busStopX - 0.8, busStopX + 0.8, busStopZ - 1.8, busStopZ + 1.8, 'BusStop');
+
+    // 4. Mumbai Street Vendor Fruit & Flower Thela (Cart at Market Street, X = -10, Z = 45)
+    const thelaX = -10.0;
+    const thelaZ = 45.0;
+
+    const thelaBed = new THREE.BoxGeometry(1.4, 0.14, 2.2);
+    thelaBed.translate(thelaX, 0.75, thelaZ);
+    woodGeoms.push(thelaBed);
+
+    // Wooden Crates of Bananas & Marigolds (Vertex-colored)
+    const crate1 = applyVertexColor(new THREE.BoxGeometry(0.55, 0.3, 0.8), 0xfacc15); // Bananas
+    crate1.translate(thelaX - 0.3, 0.95, thelaZ - 0.4);
+    crateGeoms.push(crate1);
+
+    const crate2 = applyVertexColor(new THREE.BoxGeometry(0.55, 0.3, 0.8), 0xf97316); // Marigolds
+    crate2.translate(thelaX + 0.3, 0.95, thelaZ + 0.3);
+    crateGeoms.push(crate2);
+
+    // 4 Spoked Cart Wheels
+    [-0.72, 0.72].forEach(wx => {
+        [-0.7, 0.7].forEach(wz => {
+            const w = new THREE.CylinderGeometry(0.38, 0.38, 0.08, 12);
+            w.rotateZ(Math.PI / 2);
+            w.translate(thelaX + wx, 0.38, thelaZ + wz);
+            woodGeoms.push(w);
+        });
+    });
+
+    registerBoxCollider(thelaX - 0.9, thelaX + 0.9, thelaZ - 1.2, thelaZ + 1.2, 'FruitThela');
+
+    // 5. MSEB Electrical Distribution Feeder Boxes (4 Boxes)
+    const msebLocations = [
+        { x: -6.8, z: 46.0 },
+        { x: 6.8, z: 74.0 },
+        { x: -43.0, z: 32.0 },
+        { x: 35.0, z: 44.0 }
+    ];
+
+    msebLocations.forEach(loc => {
+        const box = new THREE.BoxGeometry(0.65, 1.2, 0.9);
+        box.translate(loc.x, 0.6, loc.z);
+        msebGeoms.push(box);
+        registerBoxCollider(loc.x - 0.4, loc.x + 0.4, loc.z - 0.55, loc.z + 0.55, 'MSEBBox');
+    });
+
+    // 6. MCGM Municipal Sidewalk Blue Trash Cans (6 Cans)
+    const binLocations = [
+        { x: -6.2, z: 22.0 },
+        { x: 6.2, z: 50.0 },
+        { x: -6.2, z: 70.0 },
+        { x: 6.2, z: 80.0 },
+        { x: -18.0, z: -2.0 },
+        { x: 18.0, z: -2.0 }
+    ];
+
+    binLocations.forEach(loc => {
+        const bin = new THREE.CylinderGeometry(0.24, 0.22, 0.8, 10);
+        bin.translate(loc.x, 0.4, loc.z);
+        mcgmGeoms.push(bin);
+    });
+
+    // Merge Geometries for Optimal Draw Calls
+    if (woodGeoms.length > 0) {
+        const mergedWood = BufferGeometryUtils.mergeGeometries(woodGeoms);
+        const woodMesh = new THREE.Mesh(mergedWood, woodDoorMat);
+        woodMesh.castShadow = true;
+        scene.add(woodMesh);
+    }
+
+    if (metalGeoms.length > 0) {
+        const mergedMetal = BufferGeometryUtils.mergeGeometries(metalGeoms);
+        const metalMesh = new THREE.Mesh(mergedMetal, metalRailingMat);
+        metalMesh.castShadow = true;
+        scene.add(metalMesh);
+    }
+
+    if (msebGeoms.length > 0) {
+        const mergedMseb = BufferGeometryUtils.mergeGeometries(msebGeoms);
+        const msebMesh = new THREE.Mesh(mergedMseb, msebMat);
+        msebMesh.castShadow = true;
+        scene.add(msebMesh);
+    }
+
+    if (mcgmGeoms.length > 0) {
+        const mergedMcgm = BufferGeometryUtils.mergeGeometries(mcgmGeoms);
+        const mcgmMesh = new THREE.Mesh(mergedMcgm, mcgmMat);
+        mcgmMesh.castShadow = true;
+        scene.add(mcgmMesh);
+    }
+
+    if (scooterGeoms.length > 0) {
+        const mergedScooter = BufferGeometryUtils.mergeGeometries(scooterGeoms);
+        const scooterMesh = new THREE.Mesh(mergedScooter, scooterMat);
+        scooterMesh.castShadow = true;
+        scene.add(scooterMesh);
+    }
+
+    if (wheelGeoms.length > 0) {
+        const mergedWheels = BufferGeometryUtils.mergeGeometries(wheelGeoms);
+        const wheelMesh = new THREE.Mesh(mergedWheels, scooterWheelMat);
+        wheelMesh.castShadow = true;
+        scene.add(wheelMesh);
+    }
+
+    if (awningGeoms.length > 0) {
+        const mergedAwnings = BufferGeometryUtils.mergeGeometries(awningGeoms);
+        scene.add(new THREE.Mesh(mergedAwnings, awningMat));
+    }
+
+    if (samovarGeoms.length > 0) {
+        const mergedSamovars = BufferGeometryUtils.mergeGeometries(samovarGeoms);
+        scene.add(new THREE.Mesh(mergedSamovars, brassMat));
+    }
+
+    if (glassCaddyGeoms.length > 0) {
+        const mergedCaddies = BufferGeometryUtils.mergeGeometries(glassCaddyGeoms);
+        scene.add(new THREE.Mesh(mergedCaddies, glassMat));
+    }
+
+    if (hlGeoms.length > 0) {
+        const mergedHl = BufferGeometryUtils.mergeGeometries(hlGeoms);
+        scene.add(new THREE.Mesh(mergedHl, new THREE.MeshBasicMaterial({ color: 0xfffbeb })));
+    }
+
+    if (crateGeoms.length > 0) {
+        const mergedCrates = BufferGeometryUtils.mergeGeometries(crateGeoms, false);
+        scene.add(new THREE.Mesh(mergedCrates, new THREE.MeshStandardMaterial({ roughness: 0.85, vertexColors: true })));
+    }
+}
+buildMumbaiStreetProps();
 
 // ==========================================
 // ROAD & TRANSIT NETWORK (Phase 3: City Foundation)
@@ -1082,6 +1606,43 @@ if (allZebraGeoms.length > 0) {
     addTree(-10, rz, 'city');
     addTree(10, rz, 'city');
 });
+
+function finalizeBatchedVegetationAndLamps() {
+    const ironMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, metalness: 0.85 });
+    const bulbMat = new THREE.MeshBasicMaterial({ color: 0xffea9f });
+    const palmTrunkMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.9 });
+    const palmLeafMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.7 });
+    const cityTrunkMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.85 });
+    const cityLeafMat = new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.8 });
+
+    if (batchedLampPoles.length > 0) {
+        const m = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(batchedLampPoles), ironMat);
+        m.castShadow = true;
+        scene.add(m);
+    }
+    if (batchedLampBulbs.length > 0) {
+        scene.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(batchedLampBulbs), bulbMat));
+    }
+    if (batchedPalmTrunks.length > 0) {
+        const m = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(batchedPalmTrunks), palmTrunkMat);
+        m.castShadow = true;
+        scene.add(m);
+    }
+    if (batchedPalmLeaves.length > 0) {
+        scene.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(batchedPalmLeaves), palmLeafMat));
+    }
+    if (batchedCityTrunks.length > 0) {
+        const m = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(batchedCityTrunks), cityTrunkMat);
+        m.castShadow = true;
+        scene.add(m);
+    }
+    if (batchedCityFoliage.length > 0) {
+        const m = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(batchedCityFoliage), cityLeafMat);
+        m.castShadow = true;
+        scene.add(m);
+    }
+}
+finalizeBatchedVegetationAndLamps();
 
 // ==========================================
 // PROCEDURAL MUMBAI ARCHITECTURE GENERATOR (Phase 3)
@@ -1557,11 +2118,13 @@ function buildHomeDistrict() {
     mCtx.fillText("> Status: Server Online (60 FPS)", 10, 80);
     const monTex = new THREE.CanvasTexture(monCanvas);
 
+    const monGeoms = [];
     [-1.6, 1.6].forEach(mx => {
-        const mon = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 1.6), new THREE.MeshBasicMaterial({ map: monTex }));
-        mon.position.set(4 + mx, 3.8, -7.5);
-        home.add(mon);
+        const mon = new THREE.PlaneGeometry(2.8, 1.6);
+        mon.translate(4 + mx, 3.8, -7.5);
+        monGeoms.push(mon);
     });
+    home.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(monGeoms), new THREE.MeshBasicMaterial({ map: monTex })));
 
     // Gaming Chair
     const chair = new THREE.Mesh(new THREE.BoxGeometry(1.8, 2.6, 1.8), new THREE.MeshStandardMaterial({ color: 0x06b6d4 }));
@@ -1608,16 +2171,15 @@ function buildSchoolDistrict() {
     registerBoxCollider(poiSchool.x - 19, poiSchool.x - 13, poiSchool.z + 1.5, poiSchool.z + 10.5, 'SchoolBus');
     const school = new THREE.Group();
 
-    // Red Brick School Main Building
-    const schoolBuilding = new THREE.Mesh(new THREE.BoxGeometry(34, 14, 12), new THREE.MeshStandardMaterial({ map: brickTex, roughness: 0.8 }));
-    schoolBuilding.position.set(0, 7, -6);
+    // Red Brick School Main Building + Central Clock Tower
+    const brickMat = new THREE.MeshStandardMaterial({ map: brickTex, roughness: 0.8 });
+    const b1 = new THREE.BoxGeometry(34, 14, 12);
+    b1.translate(0, 7, -6);
+    const b2 = new THREE.BoxGeometry(8, 22, 8);
+    b2.translate(0, 11, -6);
+    const schoolBuilding = new THREE.Mesh(BufferGeometryUtils.mergeGeometries([b1, b2]), brickMat);
     schoolBuilding.castShadow = true; schoolBuilding.receiveShadow = true;
     school.add(schoolBuilding);
-
-    // Central Clock Tower
-    const tower = new THREE.Mesh(new THREE.BoxGeometry(8, 22, 8), new THREE.MeshStandardMaterial({ map: brickTex, roughness: 0.8 }));
-    tower.position.set(0, 11, -6);
-    school.add(tower);
 
     // Clock Face
     const clockCanvas = document.createElement('canvas');
@@ -1655,24 +2217,24 @@ function buildSchoolDistrict() {
 
     // School Playground Football Goal
     const goalMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
-    const crossbar = new THREE.Mesh(new THREE.BoxGeometry(8, 0.2, 0.2), goalMat);
-    crossbar.position.set(16, 2.5, 6);
-    school.add(crossbar);
+    const goalGeoms = [];
+    const crossbar = new THREE.BoxGeometry(8, 0.2, 0.2);
+    crossbar.translate(16, 2.5, 6);
+    goalGeoms.push(crossbar);
     [-4, 4].forEach(gx => {
-        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 2.5, 8), goalMat);
-        post.position.set(16 + gx, 1.25, 6);
-        school.add(post);
+        const post = new THREE.CylinderGeometry(0.1, 0.1, 2.5, 8);
+        post.translate(16 + gx, 1.25, 6);
+        goalGeoms.push(post);
     });
+    school.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(goalGeoms), goalMat));
 
-    // Yellow School Bus parked outside
-    const bus = new THREE.Group();
-    const busBody = new THREE.Mesh(new THREE.BoxGeometry(4.2, 2.8, 9), new THREE.MeshStandardMaterial({ color: 0xf59e0b }));
-    busBody.position.set(-16, 1.8, 6);
-    bus.add(busBody);
-    const busRoof = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.4, 9), new THREE.MeshStandardMaterial({ color: 0xffffff }));
-    busRoof.position.set(-16, 3.3, 6);
-    bus.add(busRoof);
-    school.add(bus);
+    // Yellow School Bus parked outside (Merged with vertex colors)
+    const busBody = applyVertexColor(new THREE.BoxGeometry(4.2, 2.8, 9), 0xf59e0b);
+    busBody.translate(-16, 1.8, 6);
+    const busRoof = applyVertexColor(new THREE.BoxGeometry(4.2, 0.4, 9), 0xffffff);
+    busRoof.translate(-16, 3.3, 6);
+    const busMesh = new THREE.Mesh(BufferGeometryUtils.mergeGeometries([busBody, busRoof], false), new THREE.MeshStandardMaterial({ roughness: 0.6, vertexColors: true }));
+    school.add(busMesh);
 
     school.position.set(poiSchool.x, 0, poiSchool.z);
     scene.add(school);
@@ -1714,28 +2276,28 @@ function buildCollegeDistrict() {
     college.add(board);
 
     // Cherry Blossom Trees
+    const cbTrunkGeoms = [];
+    const cbLeavesGeoms = [];
     [-18, 18].forEach(tx => {
-        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.7, 5, 8), new THREE.MeshStandardMaterial({ color: 0x5c4033 }));
-        trunk.position.set(tx, 2.5, 0);
-        college.add(trunk);
+        const trunk = new THREE.CylinderGeometry(0.5, 0.7, 5, 8);
+        trunk.translate(tx, 2.5, 0);
+        cbTrunkGeoms.push(trunk);
 
-        const leaves = new THREE.Mesh(new THREE.SphereGeometry(3.6, 12, 12), new THREE.MeshStandardMaterial({ color: 0xf472b6, roughness: 0.8 }));
-        leaves.position.set(tx, 6.5, 0);
-        college.add(leaves);
+        const leaves = new THREE.SphereGeometry(3.6, 12, 12);
+        leaves.translate(tx, 6.5, 0);
+        cbLeavesGeoms.push(leaves);
     });
+    college.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(cbTrunkGeoms), new THREE.MeshStandardMaterial({ color: 0x5c4033 })));
+    college.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(cbLeavesGeoms), new THREE.MeshStandardMaterial({ color: 0xf472b6, roughness: 0.8 })));
 
     // Graduation Cap Monument
-    const cap = new THREE.Group();
     const capMat = new THREE.MeshStandardMaterial({ color: 0x1e293b });
-    const capBoard = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.15, 2.4), capMat);
-    capBoard.rotation.y = Math.PI / 4;
-    capBoard.position.y = 2.2;
-    cap.add(capBoard);
-    const capSkull = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 0.8, 16), capMat);
-    capSkull.position.y = 1.7;
-    cap.add(capSkull);
-    cap.position.set(0, 0, 4);
-    college.add(cap);
+    const capBoard = new THREE.BoxGeometry(2.4, 0.15, 2.4);
+    capBoard.rotateY(Math.PI / 4);
+    capBoard.translate(0, 2.2, 4);
+    const capSkull = new THREE.CylinderGeometry(0.8, 0.8, 0.8, 16);
+    capSkull.translate(0, 1.7, 4);
+    college.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries([capBoard, capSkull]), capMat));
 
     college.position.set(poiCollege.x, 0, poiCollege.z);
     scene.add(college);
@@ -3072,12 +3634,45 @@ function animate() {
         }
     }
 
-    // 3. Animated Pedestrian NPCs
+    // 3. Animated Mumbai Pedestrian Crowd (Articulated Humanoids, Waypoints & Weather Reactivity)
+    const isRaining = (weatherMode === 'rain' || weatherMode === 'storm');
     npcs.forEach(npc => {
-        npc.group.position.x += npc.speed * npc.dir * delta;
-        npc.group.position.y = Math.abs(Math.sin(time * 5)) * 0.12;
-        if (npc.group.position.x > npc.maxX) npc.dir = -1;
-        if (npc.group.position.x < npc.minX) npc.dir = 1;
+        const target = npc.waypoints[npc.wpIdx];
+        const toTarget = new THREE.Vector2(target.x - npc.group.position.x, target.z - npc.group.position.z);
+        const dist = toTarget.length();
+
+        if (dist < 0.6) {
+            npc.wpIdx = (npc.wpIdx + 1) % npc.waypoints.length;
+        } else {
+            toTarget.normalize();
+            npc.group.position.x += toTarget.x * npc.speed * delta;
+            npc.group.position.z += toTarget.y * npc.speed * delta;
+
+            const targetRot = Math.atan2(toTarget.x, toTarget.y);
+            let diff = (targetRot - npc.group.rotation.y) % (Math.PI * 2);
+            if (diff < -Math.PI) diff += Math.PI * 2;
+            if (diff > Math.PI) diff -= Math.PI * 2;
+            npc.group.rotation.y += diff * 0.15;
+        }
+
+        // Articulated Walk Kinematics (Leg and Arm Swings)
+        npc.walkCycle += delta * npc.speed * 4.4;
+        const swing = Math.sin(npc.walkCycle);
+        npc.legL.rotation.x = -swing * 0.52;
+        npc.legR.rotation.x = swing * 0.52;
+        npc.group.position.y = Math.abs(Math.sin(npc.walkCycle * 2)) * 0.06;
+
+        // Dynamic Weather-Reactive Umbrellas
+        npc.umbrellaGroup.visible = isRaining;
+        if (isRaining) {
+            npc.armR.rotation.x = -Math.PI / 3;
+            npc.armR.rotation.z = -0.15;
+            npc.armL.rotation.x = swing * 0.35;
+        } else {
+            npc.armL.rotation.x = swing * 0.45;
+            npc.armR.rotation.x = -swing * 0.45;
+            npc.armR.rotation.z = 0;
+        }
     });
 
     // 4. Mumbai Suburban Local Train Simulation (Articulated EMU Rake on Broad Gauge Spline Loop)
@@ -3443,6 +4038,8 @@ window.__dismountVehicle = dismountVehicle;
 window.__checkProximity = checkProximity;
 window.__characterGroup = characterGroup;
 window.__camera = camera;
+window.__npcs = npcs;
+window.__setWeatherMode = (m) => { weatherMode = m; };
 
 // Responsive Resize
 window.addEventListener('resize', () => {
