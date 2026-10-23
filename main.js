@@ -107,6 +107,54 @@ document.getElementById('btn-toggle-audio').addEventListener('click', () => {
     btn.classList.toggle('active', audioEnabled);
 });
 
+// Continuous Flight Audio Synthesizer (Iron Man Dual Repulsor Drone)
+let flightAudioLoop = null;
+let flightAudioGain = null;
+
+function startFlightAudio() {
+    if (!audioEnabled) return;
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    try {
+        if (!flightAudioLoop) {
+            flightAudioLoop = audioCtx.createOscillator();
+            flightAudioGain = audioCtx.createGain();
+            flightAudioLoop.type = 'sawtooth';
+            flightAudioLoop.frequency.setValueAtTime(140, audioCtx.currentTime);
+            flightAudioGain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+            flightAudioLoop.connect(flightAudioGain);
+            flightAudioGain.connect(audioCtx.destination);
+            flightAudioLoop.start();
+        }
+    } catch (e) {}
+}
+
+function updateFlightAudio(speed, isBoosting) {
+    if (!flightAudioLoop || !flightAudioGain) return;
+    try {
+        const now = audioCtx.currentTime;
+        const targetFreq = isBoosting ? (420 + Math.random() * 25) : (140 + Math.abs(speed) * 4.2);
+        const targetVol = audioEnabled ? (isBoosting ? 0.12 : 0.05) : 0;
+        flightAudioLoop.frequency.setTargetAtTime(targetFreq, now, 0.06);
+        flightAudioGain.gain.setTargetAtTime(targetVol, now, 0.06);
+    } catch (e) {}
+}
+
+function stopFlightAudio() {
+    if (flightAudioLoop) {
+        try {
+            flightAudioGain.gain.setTargetAtTime(0.0001, audioCtx.currentTime, 0.08);
+            setTimeout(() => {
+                if (flightAudioLoop) {
+                    flightAudioLoop.stop();
+                    flightAudioLoop.disconnect();
+                    flightAudioLoop = null;
+                    flightAudioGain = null;
+                }
+            }, 120);
+        } catch (e) {}
+    }
+}
+
 // ==========================================
 // PROCEDURAL CANVAS TEXTURES FACTORY
 // ==========================================
@@ -4171,12 +4219,23 @@ gltfLoader.load(
 // Spawn state: Iron Man flies in high above Gateway waterfront
 characterGroup.position.set(0, 32, -4);
 let isFlyingIn = true;
-let flightSpeed = 16;
+let initialDropSpeed = 16;
 let shockwaveActive = false;
 let shockwaveScale = 1;
 
+// ==========================================
+// 6-DOF IRON MAN SUPERHERO FLIGHT ENGINE
+// ==========================================
+let isFlightMode = false;
+let flightSpeed = 0;
+let flightVertSpeed = 0;
+let flightPitch = 0;
+let flightRoll = 0;
+let flightHeading = 0;
+let flightBobTimer = 0;
+
 // Controls & Movement State
-const keys = { w: false, a: false, s: false, d: false, space: false, shift: false };
+const keys = { w: false, a: false, s: false, d: false, space: false, shift: false, c: false, ctrl: false };
 window.addEventListener('keydown', (e) => {
     const k = e.key.toLowerCase();
     if (k === 'w' || k === 'arrowup') keys.w = true;
@@ -4185,11 +4244,17 @@ window.addEventListener('keydown', (e) => {
     if (k === 'd' || k === 'arrowright') keys.d = true;
     if (k === ' ' || e.key === 'Spacebar') { keys.space = true; e.preventDefault(); }
     if (e.key === 'Shift') keys.shift = true;
+    if (e.key === 'Control') keys.ctrl = true;
     if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) e.preventDefault();
     if (k === 'f') toggleVehicleMount();
+    if (k === 'g') toggleFlightMode();
     if (k === 'e') handleInteraction();
     if (k === 't') cycleTimeOfDay();
-    if (k === 'c') toggleCameraMode();
+    if (k === 'v') toggleCameraMode();
+    if (k === 'c') {
+        if (isFlightMode) keys.c = true;
+        else toggleCameraMode();
+    }
     if (k === 'escape') {
         closeModal();
         closeLandmarkModal();
@@ -4204,12 +4269,109 @@ window.addEventListener('keyup', (e) => {
     if (k === 'd' || k === 'arrowright') keys.d = false;
     if (k === ' ' || e.key === 'Spacebar') keys.space = false;
     if (e.key === 'Shift') keys.shift = false;
+    if (e.key === 'Control') keys.ctrl = false;
+    if (k === 'c') keys.c = false;
 });
 
 function toggleCameraMode() {
     const modes = ['chase', 'cinematic', 'orbit'];
     cameraMode = modes[(modes.indexOf(cameraMode) + 1) % modes.length];
     orbitControls.enabled = (cameraMode === 'orbit');
+}
+
+// Iron Man JARVIS Flight HUD Elements
+const flightHudEl = document.getElementById('flight-hud');
+const flightSpdVal = document.getElementById('flight-spd-val');
+const flightMachVal = document.getElementById('flight-mach-val');
+const flightAltVal = document.getElementById('flight-alt-val');
+const flightAglVal = document.getElementById('flight-agl-val');
+const flightHeadingVal = document.getElementById('flight-heading-val');
+const flightBoostBar = document.getElementById('flight-boost-bar');
+const flightClimbVal = document.getElementById('flight-climb-val');
+const btnToggleFlight = document.getElementById('btn-toggle-flight');
+
+if (btnToggleFlight) {
+    btnToggleFlight.addEventListener('click', toggleFlightMode);
+}
+
+function enterFlightMode(launchOffDeck = false) {
+    if (activeVehicle) dismountVehicle();
+    isFlightMode = true;
+    ironManSuit.visible = true;
+    if (casualMeshRoot) casualMeshRoot.visible = false;
+    jetParticles.forEach(p => p.mesh.visible = true);
+    repulsorLight.intensity = 6.0;
+    playSound('repulsor');
+    startFlightAudio();
+
+    if (launchOffDeck) {
+        // Launch trajectory from Stark Tower Helipad at Y = 120m
+        characterGroup.position.set(0, 124, 120);
+        characterGroup.rotation.set(0, Math.PI, 0); // Face South toward Mumbai city
+        flightHeading = Math.PI;
+        flightSpeed = 38;
+        flightVertSpeed = 6;
+    } else {
+        // Ground or mid-air takeoff
+        if (characterGroup.position.y < currentFloorElevation + 2.5) {
+            characterGroup.position.y = currentFloorElevation + 4.5;
+        }
+        flightHeading = characterGroup.rotation.y;
+        flightSpeed = 20;
+        flightVertSpeed = 8;
+    }
+
+    if (flightHudEl) flightHudEl.classList.add('active');
+    if (btnToggleFlight) {
+        btnToggleFlight.textContent = '⚡ Land Suit [G]';
+        btnToggleFlight.classList.add('active');
+    }
+}
+
+function exitFlightMode(superheroLanding = true) {
+    isFlightMode = false;
+    stopFlightAudio();
+    characterGroup.rotation.x = 0;
+    characterGroup.rotation.z = 0;
+    flightSpeed = 0;
+    flightVertSpeed = 0;
+    camera.fov = 52;
+    camera.updateProjectionMatrix();
+
+    // Check if directly over Stark Tower Helipad (X: ~0, Z: ~140, Y >= 115)
+    const distToHelipad = Math.hypot(characterGroup.position.x - 0, characterGroup.position.z - 140);
+    if (distToHelipad < 22 && characterGroup.position.y >= 115) {
+        currentFloorElevation = 120;
+    } else {
+        currentFloorElevation = 0;
+    }
+    window.__currentFloorElevation = currentFloorElevation;
+
+    if (superheroLanding) {
+        characterGroup.position.y = currentFloorElevation;
+        playSound('landing');
+        shockwaveActive = true;
+        shockwaveScale = 0.5;
+        shockRing.position.set(characterGroup.position.x, currentFloorElevation + 0.05, characterGroup.position.z);
+        shockRingMat.opacity = 1.0;
+    }
+
+    jetParticles.forEach(p => p.mesh.visible = false);
+    repulsorLight.intensity = 0.2;
+
+    if (flightHudEl) flightHudEl.classList.remove('active');
+    if (btnToggleFlight) {
+        btnToggleFlight.textContent = '⚡ Iron Man [G]';
+        btnToggleFlight.classList.remove('active');
+    }
+}
+
+function toggleFlightMode() {
+    if (isFlightMode) {
+        exitFlightMode(true);
+    } else {
+        enterFlightMode(false);
+    }
 }
 
 // UI Dialogue Speech Bubble & Modals
@@ -4268,6 +4430,7 @@ if (btnLandmarkPreview) btnLandmarkPreview.addEventListener('click', openLandmar
 
 // Fast Travel Teleport System
 function teleportTo(targetX, targetZ, label, targetY = 0) {
+    if (isFlightMode) exitFlightMode(false);
     if (activeVehicle) dismountVehicle();
     const fade = document.getElementById('fade-overlay');
     fade.style.opacity = '1';
@@ -4315,7 +4478,13 @@ const floorNames = [
 
 function teleportToFloor(floorIndex) {
     closeElevatorModal();
-    const alt = floorAltitudes[floorIndex] !== undefined ? floorAltitudes[floorIndex] : 0;
+    let alt = 0;
+    if (floorIndex === 4 || floorIndex === 3) alt = 120;
+    else if (floorIndex === 2) alt = 80;
+    else if (floorIndex === 1) alt = 40;
+    else if (floorIndex === 0) alt = 0;
+    else if (floorAltitudes[floorIndex] !== undefined) alt = floorAltitudes[floorIndex];
+    if (isFlightMode) exitFlightMode(false);
     if (activeVehicle) dismountVehicle();
     const fade = document.getElementById('fade-overlay');
     fade.style.opacity = '1';
@@ -4345,6 +4514,7 @@ const speedoMode = document.getElementById('speedo-mode');
 const speedoVal = document.getElementById('speedo-val');
 
 function toggleVehicleMount() {
+    if (isFlightMode) exitFlightMode(false);
     if (activeVehicle) {
         dismountVehicle();
     } else {
@@ -4509,14 +4679,7 @@ console.log("Welcome to my Cyber Universe!");
         interactiveModalEl.classList.add('active');
         return;
     } else if (currentInteraction === 'starkFlightDeck') {
-        modalTitleEl.innerHTML = "⚡ Stark Tower Flight Deck & Armor Pad";
-        modalBodyEl.innerHTML = `
-            <strong>Upper Cantilever Flight Deck (Level 4 — Altitude: 120m)</strong><br><br>
-            • <strong>Helipad & Armor Dock:</strong> High-altitude takeoff deck overlooking all of Mumbai, Marine Drive, and the Arabian Sea.<br>
-            • <strong>Iron Man Armor Interface:</strong> Press <strong>SPACE</strong> to engage repulsor hover thrust, or survey the city from 120 metres in the sky!
-        `;
-        modalCodePreviewEl.style.display = 'none';
-        interactiveModalEl.classList.add('active');
+        enterFlightMode(true);
         return;
     }
 }
@@ -4938,7 +5101,7 @@ function animate() {
 
     // 5. Superhero Iron Man Landing Sequence
     if (isFlyingIn) {
-        characterGroup.position.y -= flightSpeed * delta;
+        characterGroup.position.y -= initialDropSpeed * delta;
         characterGroup.position.z = THREE.MathUtils.lerp(characterGroup.position.z, -6, 0.04);
 
         // Repulsor particles
@@ -4985,7 +5148,135 @@ function animate() {
         // ==========================================
         // ACTIVE ACTOR CONTROLS & CAMERA
         // ==========================================
-        if (activeVehicle === 'train') {
+        if (isFlightMode) {
+            // ==========================================
+            // IRON MAN 3D 6-DOF SUPERHERO FLIGHT ENGINE
+            // ==========================================
+            const isBoosting = keys.shift;
+
+            // 1. Yaw & Steering Control
+            const turnRate = (isBoosting ? 1.6 : 2.4);
+            if (keys.a) flightHeading += turnRate * delta;
+            if (keys.d) flightHeading -= turnRate * delta;
+
+            // 2. Roll Banking (into turns)
+            let targetRoll = 0;
+            if (keys.a) targetRoll = isBoosting ? 0.65 : 0.45;
+            if (keys.d) targetRoll = isBoosting ? -0.65 : -0.45;
+            flightRoll = THREE.MathUtils.lerp(flightRoll, targetRoll, 0.12);
+
+            // 3. Thrust & Speed
+            let targetForward = 0;
+            if (keys.w) targetForward = isBoosting ? 68.0 : 34.0;
+            else if (keys.s) targetForward = -12.0; // Airbrake / Reverse
+
+            flightSpeed = THREE.MathUtils.lerp(flightSpeed, targetForward, delta * (keys.w ? 3.5 : 2.5));
+
+            // 4. Vertical Ascent / Dive Control
+            let vertInput = 0;
+            if (keys.space) vertInput += 1;
+            if (keys.c || keys.ctrl) vertInput -= 1;
+
+            const targetVertSpeed = vertInput * (isBoosting ? 38.0 : 20.0);
+            flightVertSpeed = THREE.MathUtils.lerp(flightVertSpeed, targetVertSpeed, delta * 4.0);
+
+            // 5. Pitch Kinematics
+            const forwardPitchRatio = THREE.MathUtils.clamp(flightSpeed / 68.0, 0, 1);
+            const cruisePitch = -forwardPitchRatio * (isBoosting ? (Math.PI * 0.44) : (Math.PI * 0.28));
+            const vertPitchOffset = (flightVertSpeed / 38.0) * (Math.PI * 0.22);
+            const targetPitch = cruisePitch + vertPitchOffset;
+            flightPitch = THREE.MathUtils.lerp(flightPitch, targetPitch, 0.1);
+
+            // 6. Kinematic Displacement
+            const fwdX = Math.sin(flightHeading);
+            const fwdZ = Math.cos(flightHeading);
+            characterGroup.position.x += fwdX * flightSpeed * delta;
+            characterGroup.position.z += fwdZ * flightSpeed * delta;
+            characterGroup.position.y += flightVertSpeed * delta;
+
+            // Hover floating bobbing when idle in air
+            if (!keys.w && !keys.s && vertInput === 0) {
+                flightBobTimer += delta * 3.2;
+                characterGroup.position.y += Math.sin(flightBobTimer) * 0.04 * delta * 20;
+            }
+
+            // 7. World Clamps & Altitude Bounds
+            characterGroup.position.x = THREE.MathUtils.clamp(characterGroup.position.x, -390, 390);
+            characterGroup.position.z = THREE.MathUtils.clamp(characterGroup.position.z, -24, 524);
+            characterGroup.position.y = THREE.MathUtils.clamp(characterGroup.position.y, 0.1, 320);
+
+            // 8. Dynamic 3D Building Collisions
+            resolveCollision(characterGroup.position, 1.0);
+
+            // 9. Character Group Rotations
+            characterGroup.rotation.y = flightHeading;
+            characterGroup.rotation.x = flightPitch;
+            characterGroup.rotation.z = flightRoll;
+
+            // 10. Repulsor Flame Particles & Lighting
+            repulsorLight.intensity = isBoosting ? 14.0 : 6.0;
+            repulsorLight.color.setHex(isBoosting ? 0x60a5fa : 0x00f2fe);
+            const trailLen = isBoosting ? 2.2 : 1.1;
+            jetParticles.forEach((p) => {
+                p.mesh.visible = true;
+                const px = p.offset + (Math.random() - 0.5) * 0.12;
+                const py = -0.2 - Math.random() * (isBoosting ? 1.8 : 0.85);
+                const pz = (Math.random() - 0.5) * 0.15 - Math.random() * trailLen;
+                p.mesh.position.set(px, py, pz);
+            });
+
+            // 11. Audio Modulation
+            updateFlightAudio(flightSpeed, isBoosting);
+
+            // 12. Touchdown / Landing Detection
+            const distToHelipad = Math.hypot(characterGroup.position.x - 0, characterGroup.position.z - 140);
+            if (distToHelipad < 22 && characterGroup.position.y >= 115) {
+                currentFloorElevation = 120;
+            } else {
+                currentFloorElevation = 0;
+            }
+            window.__currentFloorElevation = currentFloorElevation;
+
+            if (characterGroup.position.y <= currentFloorElevation + 0.35 && flightVertSpeed < -2) {
+                exitFlightMode(true);
+            }
+
+            // 13. Dynamic Aerodynamic Chase Camera
+            if (cameraMode === 'chase' || cameraMode === 'cinematic') {
+                const followDist = isBoosting ? 22.0 : 16.0;
+                const followHeight = (cameraMode === 'cinematic' ? 3.0 : 4.5);
+                const camTargetX = characterGroup.position.x - fwdX * followDist;
+                const camTargetZ = characterGroup.position.z - fwdZ * followDist;
+                const camTargetY = characterGroup.position.y + followHeight;
+
+                camera.position.x = THREE.MathUtils.lerp(camera.position.x, camTargetX, 0.12);
+                camera.position.z = THREE.MathUtils.lerp(camera.position.z, camTargetZ, 0.12);
+                camera.position.y = THREE.MathUtils.lerp(camera.position.y, camTargetY, 0.12);
+                camera.lookAt(characterGroup.position.x + fwdX * 16, characterGroup.position.y + (cameraMode === 'cinematic' ? 2.5 : 0), characterGroup.position.z + fwdZ * 16);
+
+                camera.fov = THREE.MathUtils.lerp(camera.fov, isBoosting ? 66 : 52, 0.08);
+                camera.updateProjectionMatrix();
+            }
+
+            // 14. Flight HUD Telemetry Update
+            if (flightHudEl) {
+                const speedKmh = Math.round(Math.abs(flightSpeed) * 3.6);
+                flightSpdVal.textContent = speedKmh;
+                flightMachVal.textContent = "MACH " + (speedKmh / 1235).toFixed(2);
+                flightAltVal.textContent = characterGroup.position.y.toFixed(1);
+                flightAglVal.textContent = "AGL: " + Math.max(0, characterGroup.position.y - currentFloorElevation).toFixed(1) + " M";
+                flightClimbVal.textContent = "V/S: " + (flightVertSpeed > 0 ? "+" : "") + flightVertSpeed.toFixed(1) + " M/S";
+
+                const deg = Math.round(((flightHeading % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) * (180 / Math.PI));
+                const cardinal = deg < 22 ? 'N' : deg < 67 ? 'NE' : deg < 112 ? 'E' : deg < 157 ? 'SE' : deg < 202 ? 'S' : deg < 247 ? 'SW' : deg < 292 ? 'W' : deg < 337 ? 'NW' : 'N';
+                flightHeadingVal.textContent = "HDG: " + String(deg).padStart(3, '0') + "° " + cardinal;
+
+                flightBoostBar.style.width = isBoosting ? '100%' : (keys.w ? '60%' : '20%');
+            }
+
+            updateMiniMap(characterGroup.position.x, characterGroup.position.z, characterGroup.rotation.y);
+            checkProximity();
+        } else if (activeVehicle === 'train') {
             // Train Passenger Mode: calculate real speed in km/h
             speedoVal.textContent = Math.round(trainState.isDwelling ? 0 : (trainState.speed * 3.6));
 
@@ -5226,7 +5517,7 @@ function checkProximity() {
     // 10. Check Stark Tower Level 4 Rooftop Flight Deck (Y ~ 120, X=0, Z=126)
     if (p.y >= 115 && p.y <= 125 && Math.abs(p.x) < 7.0 && Math.abs(p.z - 126) < 7.0) {
         currentInteraction = 'starkFlightDeck';
-        showPrompt('E', 'Iron Man Flight Dock ⚡');
+        showPrompt('E', 'Launch Iron Man Flight ⚡');
         return;
     }
 
@@ -5280,6 +5571,17 @@ window.__starkTower = {
     openElevatorModal,
     closeElevatorModal
 };
+window.__isFlightMode = () => isFlightMode;
+window.__getIsFlightMode = () => isFlightMode;
+window.__enterFlightMode = enterFlightMode;
+window.__exitFlightMode = exitFlightMode;
+window.__toggleFlightMode = toggleFlightMode;
+window.__flightSpeed = () => flightSpeed;
+window.__flightVertSpeed = () => flightVertSpeed;
+window.__flightPitch = () => flightPitch;
+window.__flightRoll = () => flightRoll;
+window.__flightHeading = () => flightHeading;
+window.__keys = keys;
 
 // Responsive Resize
 window.addEventListener('resize', () => {
