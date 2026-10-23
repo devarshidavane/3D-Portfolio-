@@ -23,6 +23,7 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.15;
 window.__renderer = renderer;
+window.THREE = THREE;
 
 // Camera view mode: 'chase', 'cinematic', 'orbit'
 let cameraMode = 'chase';
@@ -674,16 +675,19 @@ const WORLD_CONFIG = {
 window.__WORLD_CONFIG = WORLD_CONFIG;
 
 // ==========================================
-// WORLD COLLISION PROXY ENGINE (Phase 2 & Phase B)
+// WORLD COLLISION PROXY ENGINE (Phase 2, Phase B & Phase C)
 // ==========================================
+let currentFloorElevation = 0;
+window.__currentFloorElevation = currentFloorElevation;
+
 const worldColliders = [];
 
-function registerBoxCollider(minX, maxX, minZ, maxZ, label = 'obstacle') {
-    worldColliders.push({ type: 'box', minX, maxX, minZ, maxZ, label });
+function registerBoxCollider(minX, maxX, minZ, maxZ, label = 'obstacle', minY = -10, maxY = 200) {
+    worldColliders.push({ type: 'box', minX, maxX, minZ, maxZ, minY, maxY, label });
 }
 
-function registerCylinderCollider(x, z, radius, label = 'pole') {
-    worldColliders.push({ type: 'cylinder', x, z, radius, label });
+function registerCylinderCollider(x, z, radius, label = 'pole', minY = -10, maxY = 200) {
+    worldColliders.push({ type: 'cylinder', x, z, radius, minY, maxY, label });
 }
 
 function resolveCollision(pos, radius = 0.5) {
@@ -691,9 +695,13 @@ function resolveCollision(pos, radius = 0.5) {
     pos.x = THREE.MathUtils.clamp(pos.x, WORLD_CONFIG.playableLimits.minX, WORLD_CONFIG.playableLimits.maxX);
     pos.z = THREE.MathUtils.clamp(pos.z, WORLD_CONFIG.playableLimits.minZ, WORLD_CONFIG.playableLimits.maxZ);
 
-    // 2. Spatial Obstacle Colliders
+    // 2. Spatial Obstacle Colliders with Vertical 3D Support
     for (let i = 0; i < worldColliders.length; i++) {
         const col = worldColliders[i];
+        if (col.minY !== undefined && col.maxY !== undefined) {
+            if (pos.y < col.minY || pos.y > col.maxY) continue;
+        }
+
         if (col.type === 'box') {
             if (pos.x >= col.minX - radius && pos.x <= col.maxX + radius &&
                 pos.z >= col.minZ - radius && pos.z <= col.maxZ + radius) {
@@ -904,7 +912,7 @@ function buildGatewayArch() {
     }
     if (darkStoneGeoms.length > 0) {
         const m = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(darkStoneGeoms), darkStoneMat);
-        m.castShadow = true;
+        m.castShadow = false;
         monument.add(m);
     }
     if (archGeoms.length > 0) {
@@ -1093,7 +1101,7 @@ function createArticulatedPedestrian(config) {
 
     const mergedBody = BufferGeometryUtils.mergeGeometries(bodyGeoms, false);
     const bodyMesh = new THREE.Mesh(mergedBody, sharedNpcMat);
-    bodyMesh.castShadow = true;
+    bodyMesh.castShadow = false;
     group.add(bodyMesh);
 
     // 2. Articulated Left Arm (Sleeve + Forearm)
@@ -1141,7 +1149,7 @@ function createArticulatedPedestrian(config) {
     shoeL.translate(0, -0.78, 0.03);
     const mergedLegL = BufferGeometryUtils.mergeGeometries([pantsL, shoeL], false);
     const legLMesh = new THREE.Mesh(mergedLegL, sharedNpcMat);
-    legLMesh.castShadow = true;
+    legLMesh.castShadow = false;
     legL.add(legLMesh);
     group.add(legL);
 
@@ -1154,7 +1162,7 @@ function createArticulatedPedestrian(config) {
     shoeR.translate(0, -0.78, 0.03);
     const mergedLegR = BufferGeometryUtils.mergeGeometries([pantsR, shoeR], false);
     const legRMesh = new THREE.Mesh(mergedLegR, sharedNpcMat);
-    legRMesh.castShadow = true;
+    legRMesh.castShadow = false;
     legR.add(legRMesh);
     group.add(legR);
 
@@ -1440,35 +1448,35 @@ function buildMumbaiStreetProps() {
     if (woodGeoms.length > 0) {
         const mergedWood = BufferGeometryUtils.mergeGeometries(woodGeoms);
         const woodMesh = new THREE.Mesh(mergedWood, woodDoorMat);
-        woodMesh.castShadow = true;
+        woodMesh.castShadow = false;
         scene.add(woodMesh);
     }
 
     if (metalGeoms.length > 0) {
         const mergedMetal = BufferGeometryUtils.mergeGeometries(metalGeoms);
         const metalMesh = new THREE.Mesh(mergedMetal, metalRailingMat);
-        metalMesh.castShadow = true;
+        metalMesh.castShadow = false;
         scene.add(metalMesh);
     }
 
     if (msebGeoms.length > 0) {
         const mergedMseb = BufferGeometryUtils.mergeGeometries(msebGeoms);
         const msebMesh = new THREE.Mesh(mergedMseb, msebMat);
-        msebMesh.castShadow = true;
+        msebMesh.castShadow = false;
         scene.add(msebMesh);
     }
 
     if (mcgmGeoms.length > 0) {
         const mergedMcgm = BufferGeometryUtils.mergeGeometries(mcgmGeoms);
         const mcgmMesh = new THREE.Mesh(mergedMcgm, mcgmMat);
-        mcgmMesh.castShadow = true;
+        mcgmMesh.castShadow = false;
         scene.add(mcgmMesh);
     }
 
     if (scooterGeoms.length > 0) {
         const mergedScooter = BufferGeometryUtils.mergeGeometries(scooterGeoms);
         const scooterMesh = new THREE.Mesh(mergedScooter, scooterMat);
-        scooterMesh.castShadow = true;
+        scooterMesh.castShadow = false;
         scene.add(scooterMesh);
     }
 
@@ -1572,7 +1580,6 @@ const starkPedestal = new THREE.Mesh(
 starkPedestal.position.set(0, 0.6, 140);
 starkPedestal.receiveShadow = true;
 scene.add(starkPedestal);
-registerCylinderCollider(0, 140, 18.5, 'StarkPlazaPedestal');
 
 // Glowing cyan Arc Reactor circular perimeter ring
 const arcRingMesh = new THREE.Mesh(
@@ -1583,18 +1590,18 @@ arcRingMesh.rotation.x = Math.PI / 2;
 arcRingMesh.position.set(0, 1.25, 140);
 scene.add(arcRingMesh);
 
-// Signboard at Stark Plaza
+// Grand Entrance Canopy Sign at Stark Plaza
 const starkSignCanvas = document.createElement('canvas');
 starkSignCanvas.width = 512; starkSignCanvas.height = 128;
 const stCtx = starkSignCanvas.getContext('2d');
 stCtx.fillStyle = '#090d16'; stCtx.fillRect(0, 0, 512, 128);
 stCtx.fillStyle = '#38bdf8'; stCtx.font = 'bold 24px sans-serif';
 stCtx.textAlign = 'center';
-stCtx.fillText("STARK TOWER CEREMONIAL PLAZA", 256, 48);
+stCtx.fillText("STARK TOWER — DEVARSHI DAVANE", 256, 48);
 stCtx.fillStyle = '#94a3b8'; stCtx.font = '16px sans-serif';
-stCtx.fillText("DEVARSHI HEADQUARTERS & FLIGHT DECK (PHASE C RESERVED)", 256, 88);
+stCtx.fillText("ENTERPRISES • CYBER HQ & FLIGHT DECK", 256, 88);
 const starkSign = new THREE.Mesh(new THREE.PlaneGeometry(16, 4), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(starkSignCanvas) }));
-starkSign.position.set(0, 3.5, 120);
+starkSign.position.set(0, 5.5, 122);
 scene.add(starkSign);
 
 // Build Unified Merged Road Network Mesh
@@ -1732,7 +1739,7 @@ function finalizeBatchedVegetationAndLamps() {
 
     if (batchedLampPoles.length > 0) {
         const m = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(batchedLampPoles), ironMat);
-        m.castShadow = true;
+        m.castShadow = false;
         scene.add(m);
     }
     if (batchedLampBulbs.length > 0) {
@@ -1740,7 +1747,7 @@ function finalizeBatchedVegetationAndLamps() {
     }
     if (batchedPalmTrunks.length > 0) {
         const m = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(batchedPalmTrunks), palmTrunkMat);
-        m.castShadow = true;
+        m.castShadow = false;
         scene.add(m);
     }
     if (batchedPalmLeaves.length > 0) {
@@ -1748,12 +1755,12 @@ function finalizeBatchedVegetationAndLamps() {
     }
     if (batchedCityTrunks.length > 0) {
         const m = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(batchedCityTrunks), cityTrunkMat);
-        m.castShadow = true;
+        m.castShadow = false;
         scene.add(m);
     }
     if (batchedCityFoliage.length > 0) {
         const m = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(batchedCityFoliage), cityLeafMat);
-        m.castShadow = true;
+        m.castShadow = false;
         scene.add(m);
     }
 }
@@ -1810,6 +1817,13 @@ function createChawlBuilding(x, z, width = 16, depth = 10, storeys = 3, rotY = 0
         }
     }
 
+    // Exposed vertical conduit pipes
+    [-width / 2 + 0.4, width / 2 - 0.4].forEach(px => {
+        const pipe = new THREE.BoxGeometry(0.12, totalH, 0.12);
+        pipe.translate(px, totalH / 2, depth / 2 + 0.1);
+        concreteGeoms.push(pipe);
+    });
+
     if (concreteGeoms.length > 0) {
         const mergedConcrete = BufferGeometryUtils.mergeGeometries(concreteGeoms);
         const cMesh = new THREE.Mesh(mergedConcrete, concreteTrimMat);
@@ -1831,18 +1845,8 @@ function createChawlBuilding(x, z, width = 16, depth = 10, storeys = 3, rotY = 0
         corrugatedRoofMat
     );
     roof.position.set(0, totalH + 0.18, corridorDepth / 2);
-    roof.castShadow = true;
+    roof.castShadow = false;
     group.add(roof);
-
-    // Exposed vertical conduit pipes
-    const pipeGeoms = [];
-    [-width / 2 + 0.4, width / 2 - 0.4].forEach(px => {
-        const pipe = new THREE.BoxGeometry(0.12, totalH, 0.12);
-        pipe.translate(px, totalH / 2, depth / 2 + 0.1);
-        pipeGeoms.push(pipe);
-    });
-    const mergedPipes = BufferGeometryUtils.mergeGeometries(pipeGeoms);
-    group.add(new THREE.Mesh(mergedPipes, pipeMat));
 
     group.position.set(x, 0, z);
     group.rotation.y = rotY;
@@ -1910,6 +1914,12 @@ function createApartmentBuilding(x, z, width = 12, depth = 10, storeys = 5, colo
         tankGeoms.push(tank);
     });
 
+    // Dish TV Antenna
+    const dishGeom = new THREE.CylinderGeometry(0.65, 0.65, 0.08, 10);
+    dishGeom.rotateX(Math.PI / 4);
+    dishGeom.translate(0, totalH + 1.2, -depth / 3);
+    metalGeoms.push(dishGeom);
+
     if (concreteGeoms.length > 0) {
         const mergedConcrete = BufferGeometryUtils.mergeGeometries(concreteGeoms);
         const cMesh = new THREE.Mesh(mergedConcrete, concreteTrimMat);
@@ -1926,15 +1936,6 @@ function createApartmentBuilding(x, z, width = 12, depth = 10, storeys = 5, colo
         tMesh.castShadow = false;
         group.add(tMesh);
     }
-
-    // Dish TV Antenna
-    const dish = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.65, 0.65, 0.08, 12),
-        whiteTrimMat
-    );
-    dish.rotation.x = Math.PI / 4;
-    dish.position.set(0, totalH + 1.2, -depth / 3);
-    group.add(dish);
 
     group.position.set(x, 0, z);
     group.rotation.y = rotY;
@@ -1975,6 +1976,10 @@ function createCommercialBuilding(x, z, width = 11, depth = 10, storeys = 4, mrN
     parapet.translate(0, totalH + 0.4, 0);
     concreteGeoms.push(parapet);
 
+    const tankGeom = new THREE.CylinderGeometry(1.0, 1.0, 1.9, 10);
+    tankGeom.translate(width / 4, totalH + 0.95, -depth / 4);
+    concreteGeoms.push(tankGeom);
+
     const mergedConcrete = BufferGeometryUtils.mergeGeometries(concreteGeoms);
     group.add(new THREE.Mesh(mergedConcrete, concreteTrimMat));
 
@@ -1988,7 +1993,7 @@ function createCommercialBuilding(x, z, width = 11, depth = 10, storeys = 4, mrN
     const mergedShutters = BufferGeometryUtils.mergeGeometries(shutterGeoms);
     const sMat = new THREE.MeshStandardMaterial({ color: shutterColor, roughness: 0.45, metalness: 0.65 });
     const sMesh = new THREE.Mesh(mergedShutters, sMat);
-    sMesh.castShadow = true;
+    sMesh.castShadow = false;
     group.add(sMesh);
 
     // 4. Fabric Awning
@@ -1998,7 +2003,7 @@ function createCommercialBuilding(x, z, width = 11, depth = 10, storeys = 4, mrN
     );
     awning.rotation.x = 0.18;
     awning.position.set(0, 3.3, depth / 2 + 0.8);
-    awning.castShadow = true;
+    awning.castShadow = false;
     group.add(awning);
 
     // 5. Bilingual Signboard
@@ -2009,15 +2014,6 @@ function createCommercialBuilding(x, z, width = 11, depth = 10, storeys = 4, mrN
     );
     signBoard.position.set(0, 4.0, depth / 2 + 0.16);
     group.add(signBoard);
-
-    // 6. Rooftop Tank
-    const tank = new THREE.Mesh(
-        new THREE.CylinderGeometry(1.0, 1.0, 1.9, 12),
-        sintexTankMat
-    );
-    tank.position.set(width / 4, totalH + 0.95, -depth / 4);
-    tank.castShadow = true;
-    group.add(tank);
 
     group.position.set(x, 0, z);
     group.rotation.y = rotY;
@@ -2049,7 +2045,7 @@ function createCorporateTower(x, z, width = 12, depth = 10, storeys = 8, glassTi
         })
     );
     glassBody.position.set(0, totalH / 2, 0);
-    glassBody.castShadow = true;
+    glassBody.castShadow = false;
     glassBody.receiveShadow = true;
     group.add(glassBody);
 
@@ -2083,18 +2079,14 @@ function createCorporateTower(x, z, width = 12, depth = 10, storeys = 8, glassTi
     hvac.translate(0, totalH + 1.25, 0);
     archGeoms.push(hvac);
 
+    const beaconGeom = new THREE.SphereGeometry(0.24, 8, 8);
+    beaconGeom.translate(0, totalH + 2.8, 0);
+    archGeoms.push(beaconGeom);
+
     const mergedArch = BufferGeometryUtils.mergeGeometries(archGeoms);
     const archMesh = new THREE.Mesh(mergedArch, concreteTrimMat);
-    archMesh.castShadow = true;
+    archMesh.castShadow = false;
     group.add(archMesh);
-
-    // 3. Red Warning Beacon
-    const beacon = new THREE.Mesh(
-        new THREE.SphereGeometry(0.24, 8, 8),
-        new THREE.MeshBasicMaterial({ color: 0xef4444 })
-    );
-    beacon.position.set(0, totalH + 2.8, 0);
-    group.add(beacon);
 
     group.position.set(x, 0, z);
     group.rotation.y = rotY;
@@ -2954,19 +2946,19 @@ function buildLandmarkIntegrationPlazasAndSignage() {
 
     if (batchedPlazaStone.length > 0) {
         const m = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(batchedPlazaStone), concreteTrimMat);
-        m.castShadow = true; m.receiveShadow = true;
+        m.castShadow = false; m.receiveShadow = true;
         scene.add(m);
     }
 
     if (batchedPlazaMetal.length > 0) {
         const m = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(batchedPlazaMetal), metalRailingMat);
-        m.castShadow = true;
+        m.castShadow = false;
         scene.add(m);
     }
 
     if (batchedPlazaFoliage.length > 0) {
         const m = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(batchedPlazaFoliage), new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.8 }));
-        m.castShadow = true;
+        m.castShadow = false;
         scene.add(m);
     }
 
@@ -2976,6 +2968,388 @@ function buildLandmarkIntegrationPlazasAndSignage() {
     }
 }
 buildLandmarkIntegrationPlazasAndSignage();
+
+// ==========================================
+// PHASE C: DEVARSHI'S STARK-INSPIRED SUPERHERO TOWER
+// 180m Skyscraper, Grand Atrium Lobby, Luxury Penthouse,
+// Cybersecurity Command Lab, and Rooftop Flight Landing Pad
+// ==========================================
+function buildStarkTower() {
+    const towerGroup = new THREE.Group();
+    towerGroup.name = "StarkTower";
+
+    const glassGeoms = [];
+    const structGeoms = [];
+    const glowGeoms = [];
+    const floorGeoms = [];
+    const interiorWallGeoms = [];
+    const furnitureGeoms = [];
+
+    // Helper: Add box to geometry array
+    function addBox(arr, x, y, z, w, h, d, rx = 0, ry = 0, rz = 0) {
+        const geom = new THREE.BoxGeometry(w, h, d);
+        if (rx !== 0) geom.rotateX(rx);
+        if (ry !== 0) geom.rotateY(ry);
+        if (rz !== 0) geom.rotateZ(rz);
+        geom.translate(x, y, z);
+        arr.push(geom);
+    }
+
+    // Helper: Add cylinder
+    function addCyl(arr, x, y, z, rTop, rBot, h, seg = 16, rx = 0, ry = 0, rz = 0) {
+        const geom = new THREE.CylinderGeometry(rTop, rBot, h, seg);
+        if (rx !== 0) geom.rotateX(rx);
+        if (ry !== 0) geom.rotateY(ry);
+        if (rz !== 0) geom.rotateZ(rz);
+        geom.translate(x, y, z);
+        arr.push(geom);
+    }
+
+    const tX = 0;
+    const tZ = 140;
+
+    // ----------------------------------------------------
+    // 1. EXTERIOR HIGH-RISE ARCHITECTURE (180m TOTAL HEIGHT)
+    // ----------------------------------------------------
+
+    // A. Grand Base Podium Atrium (Y = 0 to 16m)
+    // Curving glass facade around East, North, and West
+    for (let a = Math.PI * 0.15; a <= Math.PI * 1.85; a += Math.PI * 0.12) {
+        const px = tX + Math.sin(a) * 15.8;
+        const pz = tZ + Math.cos(a) * 15.8;
+        addBox(glassGeoms, px, 8, pz, 4.2, 16, 0.4, 0, a, 0);
+    }
+
+    // 8 Grand Titanium Structural Perimeter Columns (Ground to Y = 16m)
+    for (let i = 0; i < 8; i++) {
+        const ang = (i / 8) * Math.PI * 2;
+        const cx = tX + Math.sin(ang) * 16.2;
+        const cz = tZ + Math.cos(ang) * 16.2;
+        addCyl(structGeoms, cx, 8, cz, 0.65, 0.75, 16, 8);
+    }
+
+    // Grand Entrance Portal at South (X in [-4.5, 4.5], Z = 124.2)
+    addBox(structGeoms, tX - 4.6, 6, tZ - 15.8, 0.6, 12, 1.2);
+    addBox(structGeoms, tX + 4.6, 6, tZ - 15.8, 0.6, 12, 1.2);
+    addBox(glowGeoms, tX, 11.8, tZ - 15.8, 9.6, 0.6, 1.3);
+
+    // Cantilevered Grand Entrance Canopy (Y = 6.2m, extending to Z = 120)
+    addBox(structGeoms, tX, 6.2, tZ - 18.5, 11, 0.4, 6);
+    addBox(glassGeoms, tX, 6.5, tZ - 18.5, 10.2, 0.1, 5.4);
+    [-3.5, 0, 3.5].forEach(lx => {
+        addCyl(glowGeoms, tX + lx, 6.0, tZ - 18.5, 0.4, 0.4, 0.1, 8);
+    });
+
+    // B. Aerodynamic Tower Shaft (Y = 16 to 120m)
+    const shaftTiers = [
+        { yBot: 16,  yTop: 36,  rBot: 15.0, rTop: 14.2, zOff: 0.0 },
+        { yBot: 36,  yTop: 56,  rBot: 14.2, rTop: 13.5, zOff: 0.6 }, // L2 Penthouse at Y=40
+        { yBot: 56,  yTop: 76,  rBot: 13.5, rTop: 12.8, zOff: 1.2 },
+        { yBot: 76,  yTop: 96,  rBot: 12.8, rTop: 12.0, zOff: 1.8 }, // L3 Cyber Lab at Y=80
+        { yBot: 96,  yTop: 116, rBot: 12.0, rTop: 11.2, zOff: 2.4 },
+        { yBot: 116, yTop: 122, rBot: 11.2, rTop: 10.8, zOff: 3.0 }  // Under Flight Deck
+    ];
+
+    shaftTiers.forEach(tier => {
+        const h = tier.yTop - tier.yBot;
+        const cy = tier.yBot + h / 2;
+        const cz = tZ + tier.zOff;
+        addCyl(glassGeoms, tX, cy, cz, tier.rTop, tier.rBot, h, 24);
+        addCyl(structGeoms, tX, tier.yBot, cz, tier.rBot + 0.25, tier.rBot + 0.25, 0.8, 24);
+        addCyl(structGeoms, tX, tier.yTop, cz, tier.rTop + 0.25, tier.rTop + 0.25, 0.8, 24);
+    });
+
+    // 4 Titanium Aerodynamic Vertical Spine Ribs (from Ground to Y = 168m)
+    [-1, 1].forEach(sx => {
+        const finGeom = new THREE.BoxGeometry(0.8, 168, 2.5);
+        finGeom.translate(tX + sx * 13.2, 84, tZ + 2);
+        structGeoms.push(finGeom);
+
+        const neonStrip = new THREE.BoxGeometry(0.18, 168, 0.18);
+        neonStrip.translate(tX + sx * 14.5, 84, tZ + 2);
+        glowGeoms.push(neonStrip);
+    });
+
+    // C. Cantilevered Upper Flight Landing Pad & Armor Deck (Y = 120m)
+    const deckY = 120.0;
+    const deckLength = 36.0;
+    const deckWidth = 30.0;
+    const deckCenterZ = tZ - 14.0; // Z = 126
+
+    addBox(structGeoms, tX, deckY - 0.6, deckCenterZ, deckWidth, 1.2, deckLength);
+    addBox(floorGeoms, tX, deckY + 0.05, deckCenterZ, deckWidth - 0.8, 0.1, deckLength - 0.8);
+
+    // Diagonal Space-Frame Support Trusses
+    [-8, 0, 8].forEach(tx => {
+        const truss = new THREE.BoxGeometry(0.8, 0.8, 26);
+        truss.rotateX(-0.35);
+        truss.translate(tX + tx, 115.5, deckCenterZ + 3);
+        structGeoms.push(truss);
+    });
+
+    // Arc-Reactor Helipad Target on Deck (Center: X=0, Z=126, Y=120.15)
+    const padOuter = new THREE.TorusGeometry(8.5, 0.25, 6, 32);
+    padOuter.rotateX(Math.PI / 2);
+    padOuter.translate(tX, deckY + 0.15, deckCenterZ);
+    glowGeoms.push(padOuter);
+
+    const padInner = new THREE.TorusGeometry(4.5, 0.2, 6, 32);
+    padInner.rotateX(Math.PI / 2);
+    padInner.translate(tX, deckY + 0.15, deckCenterZ);
+    glowGeoms.push(padInner);
+
+    addBox(glowGeoms, tX, deckY + 0.15, deckCenterZ, 6.0, 0.08, 0.6);
+    addBox(glowGeoms, tX, deckY + 0.15, deckCenterZ, 0.6, 0.08, 6.0);
+
+    for (let r = 0; r < 16; r++) {
+        const rad = (r / 16) * Math.PI * 2;
+        const rx = tX + Math.sin(rad) * 11.5;
+        const rz = deckCenterZ + Math.cos(rad) * 11.5;
+        addCyl(glowGeoms, rx, deckY + 0.2, rz, 0.25, 0.25, 0.15, 8);
+    }
+
+    // Flight Deck Balustrade
+    addBox(glassGeoms, tX - deckWidth / 2 + 0.3, deckY + 0.7, deckCenterZ, 0.2, 1.4, deckLength);
+    addBox(structGeoms, tX - deckWidth / 2 + 0.3, deckY + 1.4, deckCenterZ, 0.3, 0.1, deckLength);
+    addBox(glassGeoms, tX + deckWidth / 2 - 0.3, deckY + 0.7, deckCenterZ, 0.2, 1.4, deckLength);
+    addBox(structGeoms, tX + deckWidth / 2 - 0.3, deckY + 1.4, deckCenterZ, 0.3, 0.1, deckLength);
+    addBox(glassGeoms, tX, deckY + 0.7, deckCenterZ - deckLength / 2 + 0.3, deckWidth, 1.4, 0.2);
+    addBox(structGeoms, tX, deckY + 1.4, deckCenterZ - deckLength / 2 + 0.3, deckWidth, 0.1, 0.3);
+
+    // D. Architectural Tower Crown & Communications Spire Needle (Y = 120 to 180m)
+    const crownFin1 = new THREE.ConeGeometry(9.5, 48, 16);
+    crownFin1.rotateX(0.12);
+    crownFin1.translate(tX, 144, tZ + 4);
+    glassGeoms.push(crownFin1);
+
+    const crownSpandrel = new THREE.CylinderGeometry(4.5, 8.5, 28, 16);
+    crownSpandrel.translate(tX, 154, tZ + 3);
+    structGeoms.push(crownSpandrel);
+
+    // Communications Spire Needle rising to precisely 180.0 metres!
+    addCyl(structGeoms, tX, 174, tZ + 2.5, 0.08, 0.75, 12, 8);
+    addCyl(glowGeoms, tX, 180.1, tZ + 2.5, 0.45, 0.45, 0.6, 8);
+
+    // E. Giant Glowing Cyan Lettermark 'D' (Devarshi Davane)
+    // Mounted high on South crown facade at Y = 145m, Z = 135.5m facing South
+    addBox(glowGeoms, tX - 4.5, 145, tZ - 4.5, 1.8, 15.0, 0.9);
+    addBox(glowGeoms, tX - 0.5, 151.6, tZ - 4.5, 6.2, 1.8, 0.9);
+    addBox(glowGeoms, tX - 0.5, 138.4, tZ - 4.5, 6.2, 1.8, 0.9);
+    addCyl(glowGeoms, tX + 2.6, 145, tZ - 4.5, 6.5, 6.5, 0.9, 16, Math.PI / 2);
+
+    // ----------------------------------------------------
+    // 2. COMPLETE WALKABLE INTERIORS & 4 LEVEL ARCHITECTURE
+    // ----------------------------------------------------
+
+    // Central High-Speed Turbo-Lift Shaft (North wall: X in [-4, 4], Z in [146, 151])
+    addBox(interiorWallGeoms, tX, 61, tZ + 9, 8.5, 122, 5.0);
+    [0, 40, 80, 120].forEach(alt => {
+        addBox(furnitureGeoms, tX - 1.1, alt + 1.8, tZ + 6.6, 1.8, 3.6, 0.2);
+        addBox(furnitureGeoms, tX + 1.1, alt + 1.8, tZ + 6.6, 1.8, 3.6, 0.2);
+        addBox(glowGeoms, tX, alt + 3.7, tZ + 6.7, 4.2, 0.35, 0.1);
+        addBox(glowGeoms, tX - 2.1, alt + 1.8, tZ + 6.7, 0.3, 3.6, 0.1);
+        addBox(glowGeoms, tX + 2.1, alt + 1.8, tZ + 6.7, 0.3, 3.6, 0.1);
+        addBox(glowGeoms, tX, alt + 4.1, tZ + 6.75, 1.8, 0.45, 0.08);
+    });
+
+    // LEVEL 1: GRAND ENTRANCE ATRIUM LOBBY (Y = 0m)
+    addCyl(floorGeoms, tX, 0.06, tZ, 16.0, 16.0, 0.2, 32);
+    addBox(furnitureGeoms, tX, 1.1, tZ - 6, 8.4, 1.2, 1.8);
+    addBox(glowGeoms, tX, 2.1, tZ - 6, 6.2, 0.7, 0.08);
+
+    [-3, -1, 1, 3].forEach(gx => {
+        addBox(furnitureGeoms, tX + gx, 0.8, tZ - 2, 0.35, 1.2, 2.0);
+        addBox(glowGeoms, tX + gx, 1.1, tZ - 2, 0.15, 0.6, 1.6);
+    });
+
+    [-8, 8].forEach(px => {
+        addCyl(furnitureGeoms, tX + px, 0.6, tZ - 4, 2.2, 2.4, 0.9, 16);
+        addCyl(furnitureGeoms, tX + px, 3.2, tZ - 4, 0.22, 0.35, 4.5, 8);
+        addCyl(furnitureGeoms, tX + px, 5.5, tZ - 4, 2.5, 0.1, 1.4, 8);
+        const uplight = new THREE.TorusGeometry(2.3, 0.1, 6, 16);
+        uplight.rotateX(Math.PI / 2);
+        uplight.translate(tX + px, 0.9, tZ - 4);
+        glowGeoms.push(uplight);
+    });
+
+    // Level 1 Colliders (Entrance at South X in [-4.5, 4.5], Z = 124 is open)
+    registerBoxCollider(tX - 16.5, tX - 4.5, tZ - 16.5, tZ - 15.0, 'StarkL1FrontWallL', -2, 14);
+    registerBoxCollider(tX + 4.5, tX + 16.5, tZ - 16.5, tZ - 15.0, 'StarkL1FrontWallR', -2, 14);
+    registerBoxCollider(tX - 16.5, tX - 14.8, tZ - 16.5, tZ + 16.5, 'StarkL1WestWall', -2, 14);
+    registerBoxCollider(tX + 14.8, tX + 16.5, tZ - 16.5, tZ + 16.5, 'StarkL1EastWall', -2, 14);
+    registerBoxCollider(tX - 16.5, tX + 16.5, tZ + 14.8, tZ + 16.5, 'StarkL1NorthWall', -2, 14);
+    registerBoxCollider(tX - 4.5, tX + 4.5, tZ - 7.0, tZ - 5.0, 'StarkL1Desk', -2, 14);
+    registerBoxCollider(tX - 4.2, tX + 4.2, tZ + 6.0, tZ + 9.5, 'StarkL1ElevatorShaft', -2, 14);
+
+    // LEVEL 2: LUXURY RESIDENTIAL PENTHOUSE SUITE (Y = 40m)
+    const l2Y = 40.0;
+    addBox(floorGeoms, tX, l2Y + 0.05, tZ, 24, 0.2, 24);
+    addBox(glassGeoms, tX - 12.0, l2Y + 3.0, tZ, 0.2, 6.0, 24);
+    addBox(glassGeoms, tX + 12.0, l2Y + 3.0, tZ, 0.2, 6.0, 24);
+    addBox(glassGeoms, tX, l2Y + 3.0, tZ - 12.0, 24, 6.0, 0.2);
+    addBox(glassGeoms, tX, l2Y + 3.0, tZ + 12.0, 24, 6.0, 0.2);
+
+    addBox(furnitureGeoms, tX + 6, l2Y + 0.5, tZ - 6, 5.4, 0.8, 2.2);
+    addBox(furnitureGeoms, tX + 8, l2Y + 0.5, tZ - 3, 2.0, 0.8, 4.0);
+    addBox(furnitureGeoms, tX + 5.5, l2Y + 0.35, tZ - 3.5, 2.8, 0.45, 1.8);
+    addBox(glowGeoms, tX + 6, l2Y + 3.0, tZ - 11.7, 5.2, 2.8, 0.08);
+
+    addBox(furnitureGeoms, tX - 6, l2Y + 0.9, tZ - 6, 5.8, 1.6, 2.4);
+    [-7.5, -6.0, -4.5].forEach(sx => {
+        addCyl(furnitureGeoms, tX + sx, l2Y + 0.7, tZ - 4.2, 0.4, 0.4, 1.1, 8);
+    });
+
+    addBox(furnitureGeoms, tX - 6, l2Y + 0.5, tZ + 4, 4.8, 0.9, 5.4);
+    addBox(furnitureGeoms, tX - 6, l2Y + 1.4, tZ + 6.8, 5.2, 1.8, 0.5);
+    addBox(glowGeoms, tX - 6, l2Y + 1.8, tZ + 6.5, 4.6, 0.25, 0.1);
+
+    registerBoxCollider(tX - 12.5, tX - 11.5, tZ - 12.5, tZ + 12.5, 'StarkL2W', 38, 55);
+    registerBoxCollider(tX + 11.5, tX + 12.5, tZ - 12.5, tZ + 12.5, 'StarkL2E', 38, 55);
+    registerBoxCollider(tX - 12.5, tX + 12.5, tZ - 12.5, tZ - 11.5, 'StarkL2S', 38, 55);
+    registerBoxCollider(tX - 12.5, tX + 12.5, tZ + 11.5, tZ + 12.5, 'StarkL2N', 38, 55);
+    registerBoxCollider(tX + 3.0, tX + 9.5, tZ - 7.5, tZ - 1.0, 'StarkL2Sofa', 38, 55);
+    registerBoxCollider(tX - 9.0, tX - 3.0, tZ - 7.5, tZ - 4.5, 'StarkL2Island', 38, 55);
+    registerBoxCollider(tX - 8.5, tX - 3.5, tZ + 1.5, tZ + 7.0, 'StarkL2Bed', 38, 55);
+    registerBoxCollider(tX - 4.2, tX + 4.2, tZ + 6.0, tZ + 9.5, 'StarkL2ElevatorShaft', 38, 55);
+
+    // LEVEL 3: CYBERSECURITY LAB & COMMAND PENTHOUSE (Y = 80m)
+    const l3Y = 80.0;
+    addBox(floorGeoms, tX, l3Y + 0.05, tZ, 24, 0.2, 24);
+    addBox(glassGeoms, tX - 12.0, l3Y + 3.0, tZ, 0.2, 6.0, 24);
+    addBox(glassGeoms, tX + 12.0, l3Y + 3.0, tZ, 0.2, 6.0, 24);
+    addBox(glassGeoms, tX, l3Y + 3.0, tZ - 12.0, 24, 6.0, 0.2);
+    addBox(glassGeoms, tX, l3Y + 3.0, tZ + 12.0, 24, 6.0, 0.2);
+
+    addBox(furnitureGeoms, tX, l3Y + 1.0, tZ - 4, 7.2, 1.0, 2.6);
+    addBox(furnitureGeoms, tX, l3Y + 1.2, tZ - 2.2, 1.4, 2.0, 1.4);
+
+    addBox(glowGeoms, tX - 2.4, l3Y + 2.2, tZ - 4.6, 2.4, 1.3, 0.08, 0, 0.25, 0);
+    addBox(glowGeoms, tX, l3Y + 2.2, tZ - 4.9, 2.6, 1.3, 0.08);
+    addBox(glowGeoms, tX + 2.4, l3Y + 2.2, tZ - 4.6, 2.4, 1.3, 0.08, 0, -0.25, 0);
+
+    [-2, 2].forEach(sz => {
+        addBox(furnitureGeoms, tX - 8.5, l3Y + 2.4, tZ + sz, 1.8, 4.4, 1.6);
+        for (let led = 0; led < 6; led++) {
+            addBox(glowGeoms, tX - 7.5, l3Y + 0.8 + led * 0.6, tZ + sz, 0.06, 0.12, 1.2);
+        }
+    });
+
+    addCyl(glassGeoms, tX + 8.0, l3Y + 2.0, tZ - 2, 1.8, 1.8, 3.8, 16);
+    addCyl(structGeoms, tX + 8.0, l3Y + 0.2, tZ - 2, 2.1, 2.2, 0.4, 16);
+    addCyl(structGeoms, tX + 8.0, l3Y + 3.9, tZ - 2, 2.1, 2.1, 0.4, 16);
+    const podRing = new THREE.TorusGeometry(1.4, 0.1, 6, 16);
+    podRing.rotateX(Math.PI / 2);
+    podRing.translate(tX + 8.0, l3Y + 0.45, tZ - 2);
+    glowGeoms.push(podRing);
+
+    addBox(glowGeoms, tX + 8.0, l3Y + 2.0, tZ - 2, 0.8, 1.1, 0.5);
+    addBox(glowGeoms, tX + 8.0, l3Y + 2.9, tZ - 2, 0.45, 0.55, 0.45);
+
+    registerBoxCollider(tX - 12.5, tX - 11.5, tZ - 12.5, tZ + 12.5, 'StarkL3W', 78, 95);
+    registerBoxCollider(tX + 11.5, tX + 12.5, tZ - 12.5, tZ + 12.5, 'StarkL3E', 78, 95);
+    registerBoxCollider(tX - 12.5, tX + 12.5, tZ - 12.5, tZ - 11.5, 'StarkL3S', 78, 95);
+    registerBoxCollider(tX - 12.5, tX + 12.5, tZ + 11.5, tZ + 12.5, 'StarkL3N', 78, 95);
+    registerBoxCollider(tX - 3.8, tX + 3.8, tZ - 5.5, tZ - 2.5, 'StarkL3Battlestation', 78, 95);
+    registerBoxCollider(tX - 10.0, tX - 7.0, tZ - 3.5, tZ + 4.5, 'StarkL3Servers', 78, 95);
+    registerBoxCollider(tX + 6.0, tX + 10.0, tZ - 4.0, tZ + 0.0, 'StarkL3ArmorPod', 78, 95);
+    registerBoxCollider(tX - 4.2, tX + 4.2, tZ + 6.0, tZ + 9.5, 'StarkL3ElevatorShaft', 78, 95);
+
+    // LEVEL 4: ROOFTOP FLIGHT LANDING PAD (Y = 120m)
+    addBox(structGeoms, tX, deckY + 2.5, tZ + 6.5, 7.5, 5.0, 4.0);
+    addBox(glassGeoms, tX, deckY + 2.0, tZ + 4.4, 4.2, 3.8, 0.2);
+
+    registerBoxCollider(tX - deckWidth / 2 - 0.5, tX - deckWidth / 2 + 0.8, deckCenterZ - deckLength / 2, deckCenterZ + deckLength / 2, 'StarkL4BalustradeW', 118, 135);
+    registerBoxCollider(tX + deckWidth / 2 - 0.8, tX + deckWidth / 2 + 0.5, deckCenterZ - deckLength / 2, deckCenterZ + deckLength / 2, 'StarkL4BalustradeE', 118, 135);
+    registerBoxCollider(tX - deckWidth / 2, tX + deckWidth / 2, deckCenterZ - deckLength / 2 - 0.5, deckCenterZ - deckLength / 2 + 0.8, 'StarkL4BalustradeS', 118, 135);
+    registerBoxCollider(tX - deckWidth / 2, tX + deckWidth / 2, deckCenterZ + deckLength / 2 - 0.8, deckCenterZ + deckLength / 2 + 0.5, 'StarkL4BalustradeN', 118, 135);
+    registerBoxCollider(tX - 4.0, tX + 4.0, tZ + 4.5, tZ + 9.0, 'StarkL4Vestibule', 118, 135);
+
+    // ----------------------------------------------------
+    // 3. UNIFIED GEOMETRY MERGE & MESH CREATION (Only 6 Draw Calls!)
+    // ----------------------------------------------------
+    const starkGlassMat = new THREE.MeshStandardMaterial({
+        color: 0x0284c7,
+        roughness: 0.1,
+        metalness: 0.9,
+        transparent: true,
+        opacity: 0.65
+    });
+
+    const starkMetalMat = new THREE.MeshStandardMaterial({
+        color: 0x334155,
+        emissive: 0x0f172a,
+        emissiveIntensity: 0.25,
+        roughness: 0.35,
+        metalness: 0.8
+    });
+
+    const starkGlowMat = new THREE.MeshBasicMaterial({
+        color: 0x38bdf8
+    });
+
+    const starkFloorMat = new THREE.MeshStandardMaterial({
+        color: 0x475569,
+        emissive: 0x1e293b,
+        emissiveIntensity: 0.35,
+        roughness: 0.3
+    });
+
+    const starkInteriorMat = new THREE.MeshStandardMaterial({
+        color: 0x94a3b8,
+        emissive: 0x334155,
+        emissiveIntensity: 0.45,
+        roughness: 0.35,
+        metalness: 0.25
+    });
+
+    if (glassGeoms.length > 0) {
+        const mergedGlass = BufferGeometryUtils.mergeGeometries(glassGeoms);
+        const glassMesh = new THREE.Mesh(mergedGlass, starkGlassMat);
+        glassMesh.castShadow = false;
+        towerGroup.add(glassMesh);
+    }
+
+    if (structGeoms.length > 0) {
+        const mergedStruct = BufferGeometryUtils.mergeGeometries(structGeoms);
+        const structMesh = new THREE.Mesh(mergedStruct, starkMetalMat);
+        structMesh.castShadow = false;
+        structMesh.receiveShadow = true;
+        towerGroup.add(structMesh);
+    }
+
+    if (glowGeoms.length > 0) {
+        const mergedGlow = BufferGeometryUtils.mergeGeometries(glowGeoms);
+        const glowMesh = new THREE.Mesh(mergedGlow, starkGlowMat);
+        glowMesh.castShadow = false;
+        towerGroup.add(glowMesh);
+    }
+
+    if (floorGeoms.length > 0) {
+        const mergedFloors = BufferGeometryUtils.mergeGeometries(floorGeoms);
+        const floorMesh = new THREE.Mesh(mergedFloors, starkFloorMat);
+        floorMesh.receiveShadow = true;
+        towerGroup.add(floorMesh);
+    }
+
+    if (interiorWallGeoms.length > 0) {
+        const mergedWalls = BufferGeometryUtils.mergeGeometries(interiorWallGeoms);
+        const wallMesh = new THREE.Mesh(mergedWalls, starkMetalMat);
+        wallMesh.receiveShadow = true;
+        towerGroup.add(wallMesh);
+    }
+
+    if (furnitureGeoms.length > 0) {
+        const mergedFurn = BufferGeometryUtils.mergeGeometries(furnitureGeoms);
+        const furnMesh = new THREE.Mesh(mergedFurn, starkInteriorMat);
+        furnMesh.castShadow = false;
+        furnMesh.receiveShadow = true;
+        towerGroup.add(furnMesh);
+    }
+
+    scene.add(towerGroup);
+    cityBuildings.push({ minX: -16, maxX: 16, minZ: 124, maxZ: 156, type: 'stark_tower' });
+}
+buildStarkTower();
 
 // ==========================================
 // VEHICLE 1: CYBER MOTORBIKE
@@ -3013,7 +3387,7 @@ function buildCyberBike() {
         const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.65, 0.4, 16), tireMat);
         wheel.rotation.z = Math.PI / 2;
         wheel.position.set(0, 0.65, wz);
-        wheel.castShadow = true;
+        wheel.castShadow = false;
         bikeGroup.add(wheel);
 
         const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.42, 16), chromeMat);
@@ -3096,7 +3470,7 @@ function buildCyberCar() {
             const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.4, 16), tireMat);
             wheel.rotation.z = Math.PI / 2;
             wheel.position.set(wx, 0.55, wz);
-            wheel.castShadow = true;
+            wheel.castShadow = false;
             carGroup.add(wheel);
 
             const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.42, 8), rimMat);
@@ -3456,7 +3830,7 @@ function buildRailwaySystem() {
         roughness: 0.5,
         metalness: 0.3
     }));
-    canopyMesh.castShadow = true;
+    canopyMesh.castShadow = false;
     scene.add(canopyMesh);
 
     // 8. Articulated 3-Car Mumbai Suburban EMU Rake
@@ -3489,7 +3863,7 @@ function buildRailwaySystem() {
 
         const mergedWhite = BufferGeometryUtils.mergeGeometries(whiteGeoms);
         const whiteMesh = new THREE.Mesh(mergedWhite, emuWhiteMat);
-        whiteMesh.castShadow = true;
+        whiteMesh.castShadow = false;
         coach.add(whiteMesh);
 
         // 2. Merged Purple Stripes (Waist & Roofline)
@@ -3893,25 +4267,77 @@ if (landmarkBackdropEl) landmarkBackdropEl.addEventListener('click', closeLandma
 if (btnLandmarkPreview) btnLandmarkPreview.addEventListener('click', openLandmarkModal);
 
 // Fast Travel Teleport System
-function teleportTo(targetX, targetZ, label) {
+function teleportTo(targetX, targetZ, label, targetY = 0) {
     if (activeVehicle) dismountVehicle();
     const fade = document.getElementById('fade-overlay');
     fade.style.opacity = '1';
     playSound('chime');
 
     setTimeout(() => {
-        characterGroup.position.set(targetX, 0, targetZ);
+        currentFloorElevation = targetY;
+        window.__currentFloorElevation = currentFloorElevation;
+        characterGroup.position.set(targetX, targetY, targetZ);
         characterGroup.rotation.y = 0;
-        camera.position.set(targetX, 7.5, targetZ - 14);
-        camera.lookAt(targetX, 2, targetZ + 4);
+        camera.position.set(targetX, targetY + 7.5, targetZ - 14);
+        camera.lookAt(targetX, targetY + 2, targetZ + 4);
         fade.style.opacity = '0';
     }, 400);
 }
 
-document.getElementById('btn-tp-gateway').addEventListener('click', () => teleportTo(0, -6, 'Gateway'));
-document.getElementById('btn-tp-home').addEventListener('click', () => teleportTo(-48, 34, 'Home HQ'));
-document.getElementById('btn-tp-school').addEventListener('click', () => teleportTo(0, 66, 'High School'));
-document.getElementById('btn-tp-college').addEventListener('click', () => teleportTo(48, 34, 'DMCE College'));
+document.getElementById('btn-tp-gateway').addEventListener('click', () => teleportTo(0, -6, 'Gateway', 0));
+document.getElementById('btn-tp-home').addEventListener('click', () => teleportTo(-48, 34, 'Home HQ', 0));
+document.getElementById('btn-tp-school').addEventListener('click', () => teleportTo(0, 66, 'High School', 0));
+document.getElementById('btn-tp-college').addEventListener('click', () => teleportTo(48, 34, 'DMCE College', 0));
+const btnTpStark = document.getElementById('btn-tp-stark');
+if (btnTpStark) btnTpStark.addEventListener('click', () => teleportTo(0, 115, 'Stark Plaza', 0));
+
+// Stark Tower Turbo-Lift Modal Controller
+const starkElevatorModalEl = document.getElementById('stark-elevator-modal');
+const elevatorCloseBtnEl = document.getElementById('elevator-close-btn');
+
+function openElevatorModal() {
+    if (starkElevatorModalEl) starkElevatorModalEl.classList.add('active');
+}
+
+function closeElevatorModal() {
+    if (starkElevatorModalEl) starkElevatorModalEl.classList.remove('active');
+}
+
+if (elevatorCloseBtnEl) elevatorCloseBtnEl.addEventListener('click', closeElevatorModal);
+
+const floorAltitudes = [0, 40, 80, 120];
+const floorNames = [
+    "Grand Entrance Lobby (0m)",
+    "Residential Penthouse (40m)",
+    "Cybersecurity Lab (80m)",
+    "Rooftop Flight Deck (120m)"
+];
+
+function teleportToFloor(floorIndex) {
+    closeElevatorModal();
+    const alt = floorAltitudes[floorIndex] !== undefined ? floorAltitudes[floorIndex] : 0;
+    if (activeVehicle) dismountVehicle();
+    const fade = document.getElementById('fade-overlay');
+    fade.style.opacity = '1';
+    playSound('chime');
+
+    setTimeout(() => {
+        currentFloorElevation = alt;
+        window.__currentFloorElevation = currentFloorElevation;
+        characterGroup.position.set(0, alt, 144);
+        characterGroup.rotation.set(0, Math.PI, 0); // Face South toward interior
+        camera.position.set(0, alt + 7.5, 144 - 14);
+        camera.lookAt(0, alt + 2, 144 + 4);
+        fade.style.opacity = '0';
+    }, 450);
+}
+
+document.querySelectorAll('.floor-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const fIdx = parseInt(btn.getAttribute('data-floor'), 10);
+        teleportToFloor(fIdx);
+    });
+});
 
 // Vehicle Speedometer HUD
 const speedoCard = document.getElementById('speedo-card');
@@ -4060,6 +4486,38 @@ console.log("Welcome to my Cyber Universe!");
         interactiveModalEl.classList.add('active');
     } else if (currentInteraction === 'gatewayPreview') {
         openLandmarkModal();
+    } else if (currentInteraction === 'starkElevator') {
+        openElevatorModal();
+        return;
+    } else if (currentInteraction === 'starkBattlestation') {
+        modalTitleEl.innerHTML = "🛡️ Devarshi's Cybersecurity Command Battlestation";
+        modalBodyEl.innerHTML = `
+            <strong>Stark Tower Cyber Command & Security Operations (Level 3 — Altitude: 80m)</strong><br><br>
+            • <strong>Core Systems:</strong> Triple 49" curved displays with automated DevSecOps pipelines, container vulnerability audits, and live network telemetry.<br>
+            • <strong>Active Stack:</strong> Linux Kernel, Docker, Python, Three.js/WebGL, React, Wireshark, Metasploit, Burp Suite, CI/CD Cloud Security.<br>
+            • <strong>Specialization:</strong> Full-Stack Systems Engineering & Offensive/Defensive Cybersecurity Infrastructure.
+        `;
+        modalCodePreviewEl.style.display = 'block';
+        modalCodePreviewEl.innerHTML = `
+# Stark Tower Cybersecurity Terminal v4.2
+[SYS_STATUS]: ALL DEFENSE MATRICES GREEN
+[NETWORK]: 10 Gbps Encrypted Mesh | Zero-Trust Architecture
+[CONTAINERS]: 14 Microservices Active (Kubernetes Cluster)
+[PIPELINE]: SAST/DAST Automated Scanning PASSED (0 Critical Vulnerabilities)
+[ARMOR_LINK]: MARK III Pod Synchronized | Arc Reactor Output: 100%
+        `;
+        interactiveModalEl.classList.add('active');
+        return;
+    } else if (currentInteraction === 'starkFlightDeck') {
+        modalTitleEl.innerHTML = "⚡ Stark Tower Flight Deck & Armor Pad";
+        modalBodyEl.innerHTML = `
+            <strong>Upper Cantilever Flight Deck (Level 4 — Altitude: 120m)</strong><br><br>
+            • <strong>Helipad & Armor Dock:</strong> High-altitude takeoff deck overlooking all of Mumbai, Marine Drive, and the Arabian Sea.<br>
+            • <strong>Iron Man Armor Interface:</strong> Press <strong>SPACE</strong> to engage repulsor hover thrust, or survey the city from 120 metres in the sky!
+        `;
+        modalCodePreviewEl.style.display = 'none';
+        interactiveModalEl.classList.add('active');
+        return;
     }
 }
 
@@ -4629,14 +5087,14 @@ function animate() {
                 characterGroup.rotation.y += diff * 0.25;
 
                 walkCycle += delta * (isSprinting ? 18 : 12);
-                characterGroup.position.y = Math.abs(Math.sin(walkCycle)) * 0.18;
+                characterGroup.position.y = currentFloorElevation + Math.abs(Math.sin(walkCycle)) * 0.18;
             } else {
-                characterGroup.position.y = THREE.MathUtils.lerp(characterGroup.position.y, 0, 0.2);
+                characterGroup.position.y = THREE.MathUtils.lerp(characterGroup.position.y, currentFloorElevation, 0.2);
             }
 
             // Spacebar Thruster Hover Boost
             if (keys.space) {
-                characterGroup.position.y = THREE.MathUtils.lerp(characterGroup.position.y, 4.2, 0.1);
+                characterGroup.position.y = THREE.MathUtils.lerp(characterGroup.position.y, currentFloorElevation + 4.2, 0.1);
                 repulsorLight.intensity = 4.2;
                 jetParticles.forEach(p => {
                     p.mesh.visible = true;
@@ -4651,11 +5109,17 @@ function animate() {
             resolveCollision(characterGroup.position, 0.6);
 
             // Elevated 3rd-person Panoramic Follow Camera (Open World RPG Style)
-            if (cameraMode === 'chase' || cameraMode === 'cinematic') {
+            if (cameraMode === 'chase') {
                 camera.position.x = THREE.MathUtils.lerp(camera.position.x, characterGroup.position.x, 0.08);
                 camera.position.z = THREE.MathUtils.lerp(camera.position.z, characterGroup.position.z - 14, 0.08);
-                camera.position.y = THREE.MathUtils.lerp(camera.position.y, 7.5, 0.08);
-                camera.lookAt(characterGroup.position.x, 2.0, characterGroup.position.z + 4);
+                camera.position.y = THREE.MathUtils.lerp(camera.position.y, characterGroup.position.y + 7.5, 0.08);
+                camera.lookAt(characterGroup.position.x, characterGroup.position.y + 2.0, characterGroup.position.z + 4);
+            } else if (cameraMode === 'cinematic') {
+                // Skyscraper & landmark low-angle cinematic panoramic framing
+                camera.position.x = THREE.MathUtils.lerp(camera.position.x, characterGroup.position.x, 0.08);
+                camera.position.z = THREE.MathUtils.lerp(camera.position.z, characterGroup.position.z - 34, 0.08);
+                camera.position.y = THREE.MathUtils.lerp(camera.position.y, characterGroup.position.y + 4.5, 0.08);
+                camera.lookAt(characterGroup.position.x, characterGroup.position.y + 60.0, characterGroup.position.z + 30);
             }
 
             updateMiniMap(characterGroup.position.x, characterGroup.position.z, characterGroup.rotation.y);
@@ -4745,6 +5209,27 @@ function checkProximity() {
         }
     }
 
+    // 8. Check Stark Tower Elevator Bank (on any of the 4 floors near X=0, Z=146.5)
+    if (Math.abs(p.x) < 4.2 && Math.abs(p.z - 146.5) < 3.5) {
+        currentInteraction = 'starkElevator';
+        showPrompt('E', 'Call Stark Turbo-Lift ⚡');
+        return;
+    }
+
+    // 9. Check Stark Tower Level 3 Cybersecurity Battlestation (Y ~ 80, X=0, Z=136)
+    if (p.y >= 75 && p.y <= 85 && Math.abs(p.x) < 3.8 && Math.abs(p.z - 136) < 3.8) {
+        currentInteraction = 'starkBattlestation';
+        showPrompt('E', 'Access DevSecOps Terminal 🛡️');
+        return;
+    }
+
+    // 10. Check Stark Tower Level 4 Rooftop Flight Deck (Y ~ 120, X=0, Z=126)
+    if (p.y >= 115 && p.y <= 125 && Math.abs(p.x) < 7.0 && Math.abs(p.z - 126) < 7.0) {
+        currentInteraction = 'starkFlightDeck';
+        showPrompt('E', 'Iron Man Flight Dock ⚡');
+        return;
+    }
+
     hidePrompt();
 }
 
@@ -4788,6 +5273,13 @@ window.__carVehicle = carVehicle;
 window.__getActiveVehicle = () => activeVehicle;
 window.__setWeatherMode = (m) => { weatherMode = m; };
 window.__setCameraMode = (m) => { cameraMode = m; orbitControls.enabled = (m === 'orbit'); };
+window.__starkTower = {
+    teleportToFloor,
+    floorAltitudes,
+    floorNames,
+    openElevatorModal,
+    closeElevatorModal
+};
 
 // Responsive Resize
 window.addEventListener('resize', () => {

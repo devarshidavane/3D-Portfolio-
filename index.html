@@ -581,13 +581,110 @@
             margin-top: 3px;
         }
 
-        .sketchfab-link {
-            color: #38bdf8;
-            text-decoration: none;
-            font-weight: 600;
+        /* Stark Tower Turbo-Lift Modal */
+        #stark-elevator-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.92);
+            background: rgba(10, 16, 30, 0.96);
+            backdrop-filter: blur(28px);
+            border: 2px solid rgba(56, 189, 248, 0.65);
+            border-radius: 22px;
+            padding: 24px 28px;
+            width: 92%;
+            max-width: 580px;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.9), 0 0 50px rgba(56, 189, 248, 0.35);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 60;
         }
-        .sketchfab-link:hover {
-            text-decoration: underline;
+
+        #stark-elevator-modal.active {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .elevator-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(56, 189, 248, 0.25);
+            padding-bottom: 14px;
+            margin-bottom: 18px;
+        }
+
+        .elevator-title {
+            font-size: 19px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            color: #38bdf8;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .elevator-floors {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .floor-btn {
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            border-radius: 14px;
+            padding: 12px 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            transition: all 0.2s ease;
+            color: #fff;
+            text-align: left;
+        }
+
+        .floor-btn:hover {
+            background: rgba(56, 189, 248, 0.2);
+            border-color: #38bdf8;
+            transform: translateX(4px);
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.3);
+        }
+
+        .floor-badge {
+            background: linear-gradient(135deg, #0284c7, #38bdf8);
+            color: #0b0f19;
+            font-weight: 900;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 16px;
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.5);
+            flex-shrink: 0;
+        }
+
+        .floor-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .floor-name {
+            font-size: 14px;
+            font-weight: 700;
+            color: #f8fafc;
+        }
+
+        .floor-desc {
+            font-size: 11px;
+            color: #94a3b8;
+            font-family: 'JetBrains Mono', monospace;
         }
 
         /* Loading Screen */
@@ -671,6 +768,44 @@
         <div class="code-preview" id="modal-code-preview" style="display:none;"></div>
     </div>
 
+    <!-- Stark Tower Turbo-Lift Modal -->
+    <div id="stark-elevator-modal">
+        <div class="elevator-header">
+            <div class="elevator-title">⚡ STARK TOWER TURBO-LIFT</div>
+            <button class="modal-close-btn" id="elevator-close-btn">&times;</button>
+        </div>
+        <div class="elevator-floors">
+            <button class="floor-btn" data-floor="3">
+                <div class="floor-badge">L4</div>
+                <div class="floor-info">
+                    <span class="floor-name">Rooftop Flight Deck & Armor Pad</span>
+                    <span class="floor-desc">Altitude: 120m — Panoramic City Overlook & Takeoff Deck</span>
+                </div>
+            </button>
+            <button class="floor-btn" data-floor="2">
+                <div class="floor-badge">L3</div>
+                <div class="floor-info">
+                    <span class="floor-name">Cybersecurity Lab & Command Penthouse</span>
+                    <span class="floor-desc">Altitude: 80m — DevSecOps Battlestation & Armor Pod</span>
+                </div>
+            </button>
+            <button class="floor-btn" data-floor="1">
+                <div class="floor-badge">L2</div>
+                <div class="floor-info">
+                    <span class="floor-name">Luxury Residential Penthouse Suite</span>
+                    <span class="floor-desc">Altitude: 40m — Living Lounge, Kitchen Island & King Suite</span>
+                </div>
+            </button>
+            <button class="floor-btn" data-floor="0">
+                <div class="floor-badge">L1</div>
+                <div class="floor-info">
+                    <span class="floor-name">Grand Entrance Atrium Lobby</span>
+                    <span class="floor-desc">Altitude: 0m — Reception, Security Turnstiles & Plaza Access</span>
+                </div>
+            </button>
+        </div>
+    </div>
+
     <!-- Landmark 3D Reference Model Preview Modal -->
     <div id="landmark-modal-backdrop"></div>
     <div id="landmark-modal">
@@ -711,6 +846,7 @@
                 <button class="ctrl-btn" id="btn-toggle-weather">🌧️ Weather</button>
                 <button class="ctrl-btn" id="btn-tp-gateway">📍 Gateway</button>
                 <button class="ctrl-btn" id="btn-landmark-preview">🏛️ 3D Model</button>
+                <button class="ctrl-btn" id="btn-tp-stark">⚡ Stark Tower</button>
                 <button class="ctrl-btn" id="btn-tp-home">🏠 Home</button>
                 <button class="ctrl-btn" id="btn-tp-school">🏫 School</button>
                 <button class="ctrl-btn" id="btn-tp-college">🎓 DMCE</button>
@@ -774,16 +910,16 @@
                 </div>
                 <div class="minimap-legend">
                     <div class="legend-item"><span class="legend-dot" style="background:#ef4444;"></span> Devarshi (GPS)</div>
+                    <div class="legend-item"><span class="legend-dot" style="background:#06b6d4;"></span> Stark Tower</div>
                     <div class="legend-item"><span class="legend-dot" style="background:#f59e0b;"></span> Gateway Arch</div>
                     <div class="legend-item"><span class="legend-dot" style="background:#3b82f6;"></span> Home (HQ)</div>
                     <div class="legend-item"><span class="legend-dot" style="background:#a855f7;"></span> High School</div>
                     <div class="legend-item"><span class="legend-dot" style="background:#10b981;"></span> DMCE College</div>
-                    <div class="legend-item"><span class="legend-dot" style="background:#f97316;"></span> City Train</div>
                 </div>
             </div>
         </div>
     </div>
 
-    <script type="module" src="./main.js"></script>
+    <script type="module" src="./main.js?v=phaseC5"></script>
 </body>
 </html>
