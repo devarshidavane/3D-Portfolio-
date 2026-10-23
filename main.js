@@ -9,7 +9,7 @@ import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js'
 const canvas = document.getElementById('webgl-canvas');
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0c1427);
-scene.fog = new THREE.FogExp2(0x0c1427, 0.009);
+scene.fog = new THREE.FogExp2(0x0c1427, 0.0022);
 
 const camera = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.1, 1200);
 // Initial position behind the character landing spot, looking forward into the open world city
@@ -593,13 +593,13 @@ document.getElementById('btn-toggle-time').addEventListener('click', cycleTimeOf
 
 // Weather: Dynamic Rain & Thunderstorm
 let weatherMode = 'clear'; // 'clear', 'rain', 'storm'
-const rainCount = 2200;
+const rainCount = 4500;
 const rainGeom = new THREE.BufferGeometry();
 const rainPositions = new Float32Array(rainCount * 3);
 for (let i = 0; i < rainCount * 3; i += 3) {
-    rainPositions[i] = (Math.random() - 0.5) * 200;
-    rainPositions[i + 1] = Math.random() * 55;
-    rainPositions[i + 2] = (Math.random() - 0.5) * 200 + 30;
+    rainPositions[i] = (Math.random() - 0.5) * 850;
+    rainPositions[i + 1] = Math.random() * 85;
+    rainPositions[i + 2] = (Math.random() - 0.5) * 850 + 160;
 }
 rainGeom.setAttribute('position', new THREE.BufferAttribute(rainPositions, 3));
 const rainMat = new THREE.PointsMaterial({ color: 0x93c5fd, size: 0.38, transparent: true, opacity: 0 });
@@ -641,7 +641,40 @@ function cycleWeather() {
 document.getElementById('btn-toggle-weather').addEventListener('click', cycleWeather);
 
 // ==========================================
-// WORLD COLLISION PROXY ENGINE (Phase 2)
+// SINGLE SOURCE OF TRUTH: WORLD ARCHITECTURE (Phase B: 800m x 800m Footprint)
+// ==========================================
+const WORLD_CONFIG = {
+    bounds: {
+        minX: -400,
+        maxX: 400,
+        minZ: -260,
+        maxZ: 540
+    },
+    playableLimits: {
+        minX: -395,
+        maxX: 395,
+        minZ: -21.5,
+        maxZ: 530
+    },
+    width: 800,
+    depth: 800,
+    districts: {
+        waterfront: { minX: -400, maxX: 400, minZ: -260, maxZ: 10, name: "Gateway Waterfront & Marine Promenade" },
+        historicResidential: { minX: -380, maxX: -110, minZ: 10, maxZ: 240, name: "Girgaon & Lalbaug Residential" },
+        modernDowntown: { minX: -100, maxX: 100, minZ: 10, maxZ: 240, name: "Modern Downtown & Stark Tower Site" },
+        commercialMarkets: { minX: 110, maxX: 380, minZ: 10, maxZ: 240, name: "Crawford Commercial & Markets" },
+        techAcademia: { minX: -360, maxX: 360, minZ: 240, maxZ: 530, name: "Tech Academia & DMCE Campus" }
+    },
+    starkTowerSite: {
+        x: 0,
+        z: 140,
+        radius: 36
+    }
+};
+window.__WORLD_CONFIG = WORLD_CONFIG;
+
+// ==========================================
+// WORLD COLLISION PROXY ENGINE (Phase 2 & Phase B)
 // ==========================================
 const worldColliders = [];
 
@@ -654,9 +687,9 @@ function registerCylinderCollider(x, z, radius, label = 'pole') {
 }
 
 function resolveCollision(pos, radius = 0.5) {
-    // 1. World Boundaries Clamp (Strict soft limits)
-    pos.x = THREE.MathUtils.clamp(pos.x, -75, 75);
-    pos.z = THREE.MathUtils.clamp(pos.z, -21.5, 104);
+    // 1. World Boundaries Clamp (Updated for 800m vast footprint)
+    pos.x = THREE.MathUtils.clamp(pos.x, WORLD_CONFIG.playableLimits.minX, WORLD_CONFIG.playableLimits.maxX);
+    pos.z = THREE.MathUtils.clamp(pos.z, WORLD_CONFIG.playableLimits.minZ, WORLD_CONFIG.playableLimits.maxZ);
 
     // 2. Spatial Obstacle Colliders
     for (let i = 0; i < worldColliders.length; i++) {
@@ -746,41 +779,41 @@ function addTree(x, z, type = 'palm') {
 // OPEN WORLD TERRAIN & DISTRICT GEOMETRY
 // ==========================================
 
-// 1. Arabian Sea (Z = -23 to -140)
-const waterGeom = new THREE.PlaneGeometry(360, 140, 48, 24);
+// 1. Arabian Sea (Z = -20 to -620, X = -600 to +600)
+const waterGeom = new THREE.PlaneGeometry(1200, 600, 48, 24);
 const waterMat = new THREE.MeshStandardMaterial({ color: 0x123c69, roughness: 0.12, metalness: 0.75, flatShading: true });
 const seaMesh = new THREE.Mesh(waterGeom, waterMat);
 seaMesh.rotation.x = -Math.PI / 2;
-seaMesh.position.set(0, -0.6, -90);
+seaMesh.position.set(0, -0.6, -320);
 seaMesh.receiveShadow = true;
 scene.add(seaMesh);
 
-// 2. Main Ground Turf (Lush Green Grass spanning across all districts)
+// 2. Main Ground Turf (Lush Green Grass spanning across all districts: 860m x 620m)
 const mainGround = new THREE.Mesh(
-    new THREE.PlaneGeometry(240, 200),
+    new THREE.PlaneGeometry(860, 620),
     new THREE.MeshStandardMaterial({ map: grassTex, roughness: 0.9 })
 );
 mainGround.rotation.x = -Math.PI / 2;
-mainGround.position.set(0, -0.4, 55);
+mainGround.position.set(0, -0.4, 250);
 mainGround.receiveShadow = true;
 scene.add(mainGround);
 
-// 3. Gateway Waterfront Promenade (Zone 1: Z = -22 to +10, X = -45 to +45)
+// 3. Gateway Waterfront Promenade (Marine Drive Seawalk: Z = -22 to +10, X = -380 to +380)
 const walkMat = new THREE.MeshStandardMaterial({ map: cobblestoneTex, roughness: 0.75 });
-const promenade = new THREE.Mesh(new THREE.BoxGeometry(90, 0.8, 32), walkMat);
+const promenade = new THREE.Mesh(new THREE.BoxGeometry(760, 0.8, 32), walkMat);
 promenade.position.set(0, -0.4, -6);
 promenade.receiveShadow = true;
 scene.add(promenade);
 
-// Sea Steps & Balustrade Railing at Z = -22
+// Sea Steps & Balustrade Railing at Z = -22 (Spanning full Marine Drive: 760m)
 const railMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.6 });
-const topBar = new THREE.Mesh(new THREE.BoxGeometry(90, 0.4, 0.6), railMat);
+const topBar = new THREE.Mesh(new THREE.BoxGeometry(760, 0.4, 0.6), railMat);
 topBar.position.set(0, 1.2, -22);
-topBar.castShadow = true;
+topBar.castShadow = false;
 scene.add(topBar);
 
 const postGeoms = [];
-for (let rx = -44; rx <= 44; rx += 2.5) {
+for (let rx = -380; rx <= 380; rx += 3.5) {
     const post = new THREE.CylinderGeometry(0.16, 0.2, 1.2, 8);
     post.translate(rx, 0.6, -22);
     postGeoms.push(post);
@@ -788,10 +821,10 @@ for (let rx = -44; rx <= 44; rx += 2.5) {
 if (postGeoms.length > 0) {
     const mergedPosts = BufferGeometryUtils.mergeGeometries(postGeoms);
     const postsMesh = new THREE.Mesh(mergedPosts, railMat);
-    postsMesh.castShadow = true;
+    postsMesh.castShadow = false;
     scene.add(postsMesh);
 }
-registerBoxCollider(-45, 45, -23.0, -21.0, 'SeaBalustrade');
+registerBoxCollider(-390, 390, -23.0, -21.0, 'SeaBalustrade');
 
 // Promenade Street Lamps
 [-40, -20, 0, 20, 40].forEach(lx => {
@@ -1442,7 +1475,7 @@ function buildMumbaiStreetProps() {
     if (wheelGeoms.length > 0) {
         const mergedWheels = BufferGeometryUtils.mergeGeometries(wheelGeoms);
         const wheelMesh = new THREE.Mesh(mergedWheels, scooterWheelMat);
-        wheelMesh.castShadow = true;
+        wheelMesh.castShadow = false;
         scene.add(wheelMesh);
     }
 
@@ -1477,50 +1510,100 @@ buildMumbaiStreetProps();
 // ROAD & TRANSIT NETWORK (Phase 3: City Foundation)
 // ==========================================
 
-// 1. East-West Marine Avenue (Z = 16, X = -75 to +75, width 12)
-const roadMain = new THREE.Mesh(
-    new THREE.BoxGeometry(150, 0.4, 12),
-    new THREE.MeshStandardMaterial({ map: asphaltCrossTex, roughness: 0.85 })
-);
-roadMain.position.set(0, -0.2, 16);
-roadMain.receiveShadow = true;
-scene.add(roadMain);
+// ==========================================
+// ROAD & TRANSIT NETWORK (Phase 3 & Phase B: 800m x 800m Arterial Grid)
+// ==========================================
+const allRoadGeoms = [];
 
-// 2. North Avenue (X = 0, connecting Marine Ave Z = 16 to School Z = 92, width 12)
-const roadNorth = new THREE.Mesh(
-    new THREE.BoxGeometry(12, 0.4, 76),
-    new THREE.MeshStandardMaterial({ map: asphaltTex, roughness: 0.85 })
-);
-roadNorth.position.set(0, -0.2, 54);
-roadNorth.receiveShadow = true;
-scene.add(roadNorth);
+function registerRoadSegment(x, z, length, width, isEastWest = true) {
+    const geom = isEastWest 
+        ? new THREE.BoxGeometry(length, 0.4, width)
+        : new THREE.BoxGeometry(width, 0.4, length);
+    geom.translate(x, -0.2, z);
+    allRoadGeoms.push(geom);
+}
 
-// 3. West Boulevard (X = -48, connecting Marine Ave to Home District Z = 62, width 12)
-const roadWest = new THREE.Mesh(
-    new THREE.BoxGeometry(12, 0.4, 46),
-    new THREE.MeshStandardMaterial({ map: asphaltTex, roughness: 0.85 })
-);
-roadWest.position.set(-48, -0.2, 39);
-roadWest.receiveShadow = true;
-scene.add(roadWest);
+// 1. South Arterial: Marine Avenue (Z = 16, X = -380 to +380, width 14m)
+registerRoadSegment(0, 16, 760, 14, true);
 
-// 4. East Boulevard (X = 48, connecting Marine Ave to DMCE College Z = 62, width 12)
-const roadEast = new THREE.Mesh(
-    new THREE.BoxGeometry(12, 0.4, 46),
-    new THREE.MeshStandardMaterial({ map: asphaltTex, roughness: 0.85 })
-);
-roadEast.position.set(48, -0.2, 39);
-roadEast.receiveShadow = true;
-scene.add(roadEast);
+// 2. Midtown Cross Avenue: Market Street (Z = 42, X = -380 to +380, width 10m)
+registerRoadSegment(0, 42, 760, 10, true);
 
-// 5. Market Street Cross Avenue (Z = 42, X = -75 to +75, width 8 - interconnected urban grid)
-const roadMarket = new THREE.Mesh(
-    new THREE.BoxGeometry(150, 0.4, 8),
-    new THREE.MeshStandardMaterial({ map: asphaltCrossTex, roughness: 0.85 })
+// 3. Central Downtown Boulevard: Midtown Avenue (Z = 140, X = -380 to +380, width 12m with gap for Stark Plaza)
+registerRoadSegment(-210, 140, 340, 12, true);
+registerRoadSegment(210, 140, 340, 12, true);
+
+// 4. North Arterial: Campus Cross Avenue (Z = 240, X = -360 to +360, width 12m)
+registerRoadSegment(0, 240, 720, 12, true);
+
+// 5. Far North Expressway: Terminal Way (Z = 380, X = -360 to +360, width 10m)
+registerRoadSegment(0, 380, 720, 10, true);
+
+// 6. Central Spine: North Express Avenue (X = 0, Z = 16 to 480, width 12m with gap for Stark Plaza)
+registerRoadSegment(0, 60, 88, 12, false); // Z = 16 to 104
+registerRoadSegment(0, 328, 304, 12, false); // Z = 176 to 480
+
+// 7. West Arterial Avenue (X = -180, Z = 16 to 480, width 12m)
+registerRoadSegment(-180, 248, 464, 12, false);
+
+// 8. East Arterial Avenue (X = +180, Z = 16 to 480, width 12m)
+registerRoadSegment(180, 248, 464, 12, false);
+
+// 9. Far West Coastal Expressway (X = -320, Z = 16 to 240, width 10m)
+registerRoadSegment(-320, 128, 224, 10, false);
+
+// 10. Far East Docks Expressway (X = +320, Z = 16 to 240, width 10m)
+registerRoadSegment(320, 128, 224, 10, false);
+
+// 11. Preserved Local Connectors: West Blvd (X = -48, Z = 16 to 62) & East Blvd (X = 48, Z = 16 to 62)
+registerRoadSegment(-48, 39, 46, 12, false);
+registerRoadSegment(48, 39, 46, 12, false);
+
+// 12. Stark Tower Ceremonial Roundabout & Plaza Foundation at (0, 140)
+const roundaboutOuter = new THREE.CylinderGeometry(40, 40, 0.4, 32);
+roundaboutOuter.translate(0, -0.2, 140);
+allRoadGeoms.push(roundaboutOuter);
+
+// Central Stark Tower Foundation Pedestal (radius 18m, height 1.2m)
+const starkPedestal = new THREE.Mesh(
+    new THREE.CylinderGeometry(18, 19, 1.2, 32),
+    darkGraniteMat
 );
-roadMarket.position.set(0, -0.2, 42);
-roadMarket.receiveShadow = true;
-scene.add(roadMarket);
+starkPedestal.position.set(0, 0.6, 140);
+starkPedestal.receiveShadow = true;
+scene.add(starkPedestal);
+registerCylinderCollider(0, 140, 18.5, 'StarkPlazaPedestal');
+
+// Glowing cyan Arc Reactor circular perimeter ring
+const arcRingMesh = new THREE.Mesh(
+    new THREE.TorusGeometry(17.8, 0.25, 8, 32),
+    new THREE.MeshBasicMaterial({ color: 0x38bdf8 })
+);
+arcRingMesh.rotation.x = Math.PI / 2;
+arcRingMesh.position.set(0, 1.25, 140);
+scene.add(arcRingMesh);
+
+// Signboard at Stark Plaza
+const starkSignCanvas = document.createElement('canvas');
+starkSignCanvas.width = 512; starkSignCanvas.height = 128;
+const stCtx = starkSignCanvas.getContext('2d');
+stCtx.fillStyle = '#090d16'; stCtx.fillRect(0, 0, 512, 128);
+stCtx.fillStyle = '#38bdf8'; stCtx.font = 'bold 24px sans-serif';
+stCtx.textAlign = 'center';
+stCtx.fillText("STARK TOWER CEREMONIAL PLAZA", 256, 48);
+stCtx.fillStyle = '#94a3b8'; stCtx.font = '16px sans-serif';
+stCtx.fillText("DEVARSHI HEADQUARTERS & FLIGHT DECK (PHASE C RESERVED)", 256, 88);
+const starkSign = new THREE.Mesh(new THREE.PlaneGeometry(16, 4), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(starkSignCanvas) }));
+starkSign.position.set(0, 3.5, 120);
+scene.add(starkSign);
+
+// Build Unified Merged Road Network Mesh
+if (allRoadGeoms.length > 0) {
+    const mergedRoads = BufferGeometryUtils.mergeGeometries(allRoadGeoms);
+    const roadMesh = new THREE.Mesh(mergedRoads, new THREE.MeshStandardMaterial({ map: asphaltCrossTex, roughness: 0.85 }));
+    roadMesh.receiveShadow = true;
+    scene.add(roadMesh);
+}
 
 // Sidewalk, Curb & Zebra Crosswalk Batched Geometries
 const allSidewalkGeoms = [];
@@ -1555,17 +1638,42 @@ function registerZebraCrossing(x, z, isEastWest = false) {
     }
 }
 
-// Register Sidewalk Network
-registerSidewalk(0, 23.5, 3.0, 150, true);
-registerSidewalk(0, 8.5, 3.0, 150, true);
-registerSidewalk(-7.5, 54, 3.0, 76, false);
-registerSidewalk(7.5, 54, 3.0, 76, false);
+// Paved circular plaza slab for Stark Tower foundation (radius 34m)
+const starkPlazaSlab = new THREE.CylinderGeometry(34, 34, 0.24, 32);
+starkPlazaSlab.translate(0, -0.1, 140);
+allSidewalkGeoms.push(starkPlazaSlab);
+
+// Register Sidewalk Network across Expanded Avenues
+registerSidewalk(0, 24.5, 3.0, 760, true);
+registerSidewalk(0, 7.5, 3.0, 760, true);
+registerSidewalk(0, 48.5, 3.0, 760, true);
+registerSidewalk(0, 35.5, 3.0, 760, true);
+registerSidewalk(-210, 147.5, 3.0, 340, true);
+registerSidewalk(-210, 132.5, 3.0, 340, true);
+registerSidewalk(210, 147.5, 3.0, 340, true);
+registerSidewalk(210, 132.5, 3.0, 340, true);
+registerSidewalk(0, 247.5, 3.0, 720, true);
+registerSidewalk(0, 232.5, 3.0, 720, true);
+registerSidewalk(0, 386.5, 3.0, 720, true);
+registerSidewalk(0, 373.5, 3.0, 720, true);
+
+// North Express sidewalks
+registerSidewalk(-7.5, 60, 3.0, 88, false);
+registerSidewalk(7.5, 60, 3.0, 88, false);
+registerSidewalk(-7.5, 328, 3.0, 304, false);
+registerSidewalk(7.5, 328, 3.0, 304, false);
+
+// West & East Arterial sidewalks
+registerSidewalk(-187.5, 248, 3.0, 464, false);
+registerSidewalk(-172.5, 248, 3.0, 464, false);
+registerSidewalk(172.5, 248, 3.0, 464, false);
+registerSidewalk(187.5, 248, 3.0, 464, false);
+
+// Local West & East Blvd sidewalks (preserved)
 registerSidewalk(-55.5, 39, 3.0, 46, false);
 registerSidewalk(-40.5, 39, 3.0, 46, false);
 registerSidewalk(40.5, 39, 3.0, 46, false);
 registerSidewalk(55.5, 39, 3.0, 46, false);
-registerSidewalk(0, 47.5, 3.0, 150, true);
-registerSidewalk(0, 36.5, 3.0, 150, true);
 
 // Register Zebra Crossings at Major Intersections
 registerZebraCrossing(0, 16, true);
@@ -1574,7 +1682,14 @@ registerZebraCrossing(0, 42, true);
 registerZebraCrossing(0, 42, false);
 registerZebraCrossing(-48, 42, true);
 registerZebraCrossing(48, 42, true);
-registerZebraCrossing(0, 86, true);
+registerZebraCrossing(-180, 16, true);
+registerZebraCrossing(180, 16, true);
+registerZebraCrossing(-180, 42, true);
+registerZebraCrossing(180, 42, true);
+registerZebraCrossing(0, 240, true);
+registerZebraCrossing(-180, 240, true);
+registerZebraCrossing(180, 240, true);
+registerZebraCrossing(0, 380, true);
 
 // Build Unified Merged Meshes
 if (allSidewalkGeoms.length > 0) {
@@ -1586,7 +1701,7 @@ if (allSidewalkGeoms.length > 0) {
 if (allCurbGeoms.length > 0) {
     const mergedCurbs = BufferGeometryUtils.mergeGeometries(allCurbGeoms);
     const curbMesh = new THREE.Mesh(mergedCurbs, concreteTrimMat);
-    curbMesh.castShadow = true;
+    curbMesh.castShadow = false;
     scene.add(curbMesh);
 }
 if (allZebraGeoms.length > 0) {
@@ -1698,7 +1813,7 @@ function createChawlBuilding(x, z, width = 16, depth = 10, storeys = 3, rotY = 0
     if (concreteGeoms.length > 0) {
         const mergedConcrete = BufferGeometryUtils.mergeGeometries(concreteGeoms);
         const cMesh = new THREE.Mesh(mergedConcrete, concreteTrimMat);
-        cMesh.castShadow = true;
+        cMesh.castShadow = false;
         group.add(cMesh);
     }
     if (railingGeoms.length > 0) {
@@ -1798,7 +1913,7 @@ function createApartmentBuilding(x, z, width = 12, depth = 10, storeys = 5, colo
     if (concreteGeoms.length > 0) {
         const mergedConcrete = BufferGeometryUtils.mergeGeometries(concreteGeoms);
         const cMesh = new THREE.Mesh(mergedConcrete, concreteTrimMat);
-        cMesh.castShadow = true;
+        cMesh.castShadow = false;
         group.add(cMesh);
     }
     if (metalGeoms.length > 0) {
@@ -1808,7 +1923,7 @@ function createApartmentBuilding(x, z, width = 12, depth = 10, storeys = 5, colo
     if (tankGeoms.length > 0) {
         const mergedTanks = BufferGeometryUtils.mergeGeometries(tankGeoms);
         const tMesh = new THREE.Mesh(mergedTanks, sintexTankMat);
-        tMesh.castShadow = true;
+        tMesh.castShadow = false;
         group.add(tMesh);
     }
 
@@ -2051,7 +2166,7 @@ function buildMumbaiUrbanGrid() {
     createApartmentBuilding(64, 82, 12, 10, 6, 'peach');
 
     // --- SECTOR 4: NORTH DISTRICT & ARTERIAL BOULEVARDS ---
-    // 22. St. Xavier's Academic Annex & Library (West of School)
+    // 22. Secondary School Academic Annex & Library (West of School)
     createCorporateTower(-24, 84, 12, 10, 5, 0x475569);
     // 23. Youth Sports & Cultural Pavilion (East of School)
     createCommercialBuilding(24, 84, 12, 10, 3, "युवा क्रीडा आणि सांस्कृतिक केंद्र", "YOUTH SPORTS & CULTURAL CENTRE", 0x15803d, 0x16a34a);
@@ -2059,6 +2174,241 @@ function buildMumbaiUrbanGrid() {
     createChawlBuilding(-48, 82, 14, 10, 3);
 }
 buildMumbaiUrbanGrid();
+
+// ==========================================
+// EXPANDED DISTRICTS BATCH GENERATOR (Phase B: 800m x 800m Vast City)
+// 44 Authentically Modeled Mumbai Buildings batched into unified draw calls
+// ==========================================
+function buildExpandedDistrictsBatch() {
+    const batchedWallsPlaster = [];
+    const batchedWallsApartments = [];
+    const batchedWallsCorporate = [];
+    const batchedConcreteTrim = [];
+    const batchedGlass = [];
+    const batchedMetal = [];
+    const batchedRoofs = [];
+
+    function addBox(arr, x, y, z, w, h, d, rotY = 0) {
+        const geom = new THREE.BoxGeometry(w, h, d);
+        if (rotY !== 0) geom.rotateY(rotY);
+        geom.translate(x, y, z);
+        arr.push(geom);
+    }
+
+    function addCylinder(arr, x, y, z, rTop, rBot, h, seg = 8) {
+        const geom = new THREE.CylinderGeometry(rTop, rBot, h, seg);
+        geom.translate(x, y, z);
+        arr.push(geom);
+    }
+
+    // Helper: Build a batched residential Chawl block
+    function buildBatchedChawl(x, z, w, d, storeys, rotY = 0) {
+        const storeyH = 3.4;
+        const totalH = storeys * storeyH;
+        // Main plaster structural block
+        addBox(batchedWallsPlaster, x, totalH / 2, z, w, totalH, d, rotY);
+        // Cantilevered gallery slabs
+        for (let s = 1; s < storeys; s++) {
+            const fy = s * storeyH;
+            addBox(batchedConcreteTrim, x, fy, z + d / 2 + 0.65, w + 0.4, 0.32, 1.3, rotY);
+            addBox(batchedMetal, x, fy + 0.55, z + d / 2 + 1.3, w + 0.4, 0.9, 0.08, rotY);
+        }
+        // Sloped tin roof
+        addBox(batchedRoofs, x, totalH + 0.2, z + 0.4, w + 0.8, 0.35, d + 1.6, rotY);
+        // Sintex water tanks on roof
+        addCylinder(batchedMetal, x - w / 4, totalH + 1.1, z, 0.9, 0.9, 1.8);
+        addCylinder(batchedMetal, x + w / 4, totalH + 1.1, z, 0.9, 0.9, 1.8);
+
+        const minX = x - (w + 0.6) / 2;
+        const maxX = x + (w + 0.6) / 2;
+        const minZ = z - d / 2;
+        const maxZ = z + d / 2 + 1.4;
+        registerBoxCollider(minX, maxX, minZ, maxZ, 'ExpandedChawl');
+        cityBuildings.push({ minX, maxX, minZ, maxZ, type: 'chawl' });
+    }
+
+    // Helper: Build a batched Apartment block
+    function buildBatchedApartment(x, z, w, d, storeys, theme = 'peach') {
+        const storeyH = 3.3;
+        const totalH = storeys * storeyH;
+
+        // Main body
+        addBox(batchedWallsApartments, x, totalH / 2, z, w, totalH, d);
+        // Parapet
+        addBox(batchedConcreteTrim, x, totalH + 0.45, z, w + 0.3, 0.9, d + 0.3);
+        // Balconies
+        for (let s = 1; s < storeys; s++) {
+            const fy = s * storeyH;
+            addBox(batchedConcreteTrim, x - w / 4, fy + 0.5, z + d / 2 + 0.6, w * 0.38, 1.0, 1.2);
+            addBox(batchedConcreteTrim, x + w / 4, fy + 0.5, z + d / 2 + 0.6, w * 0.38, 1.0, 1.2);
+            addBox(batchedMetal, x - w / 4 + 2.2, fy + 1.1, z + d / 2 + 0.25, 0.9, 0.6, 0.45);
+        }
+        // Rooftop water tanks
+        addCylinder(batchedMetal, x, totalH + 1.0, z, 1.0, 1.0, 2.0);
+
+        const minX = x - w / 2;
+        const maxX = x + w / 2;
+        const minZ = z - d / 2;
+        const maxZ = z + d / 2 + 1.2;
+        registerBoxCollider(minX, maxX, minZ, maxZ, 'ExpandedApartment');
+        cityBuildings.push({ minX, maxX, minZ, maxZ, type: 'apartment' });
+    }
+
+    // Helper: Build a batched Commercial Retail Plaza
+    function buildBatchedCommercial(x, z, w, d, storeys) {
+        const storeyH = 3.6;
+        const totalH = storeys * storeyH;
+        // Main block
+        addBox(batchedWallsCorporate, x, totalH / 2, z, w, totalH, d);
+        // Concrete band trim
+        addBox(batchedConcreteTrim, x, totalH + 0.5, z, w + 0.4, 0.8, d + 0.4);
+        // Ground-floor storefront portico canopy
+        addBox(batchedConcreteTrim, x, 3.8, z + d / 2 + 1.2, w + 0.6, 0.4, 2.4);
+        // Glass display windows
+        addBox(batchedGlass, x, 1.8, z + d / 2 + 0.08, w * 0.88, 2.4, 0.1);
+        addBox(batchedGlass, x, totalH * 0.65, z + d / 2 + 0.08, w * 0.75, totalH * 0.4, 0.1);
+
+        const minX = x - w / 2;
+        const maxX = x + w / 2;
+        const minZ = z - d / 2;
+        const maxZ = z + d / 2 + 2.4;
+        registerBoxCollider(minX, maxX, minZ, maxZ, 'ExpandedCommercial');
+        cityBuildings.push({ minX, maxX, minZ, maxZ, type: 'commercial' });
+    }
+
+    // Helper: Build a batched High-Rise Corporate Tower
+    function buildBatchedCorporate(x, z, w, d, storeys) {
+        const storeyH = 3.8;
+        const totalH = storeys * storeyH;
+        // Podium base
+        addBox(batchedConcreteTrim, x, 4.0, z, w + 1.0, 8.0, d + 1.0);
+        // Glass tower shaft
+        addBox(batchedGlass, x, (totalH + 8) / 2, z, w, totalH - 8, d);
+        // Architectural crown / mechanical penthouse
+        addBox(batchedConcreteTrim, x, totalH + 1.5, z, w * 0.75, 3.0, d * 0.75);
+        // Rooftop communications antenna
+        addBox(batchedMetal, x, totalH + 6.0, z, 0.8, 8.0, 0.8);
+
+        const minX = x - (w + 1.0) / 2;
+        const maxX = x + (w + 1.0) / 2;
+        const minZ = z - (d + 1.0) / 2;
+        const maxZ = z + (d + 1.0) / 2;
+        registerBoxCollider(minX, maxX, minZ, maxZ, 'ExpandedCorporate');
+        cityBuildings.push({ minX, maxX, minZ, maxZ, type: 'corporate' });
+    }
+
+    // Helper: Build a batched University / Academia Hall
+    function buildBatchedAcademia(x, z, w, d, storeys) {
+        const storeyH = 3.8;
+        const totalH = storeys * storeyH;
+        // Sandstone / brick academic hall
+        addBox(batchedWallsApartments, x, totalH / 2, z, w, totalH, d);
+        // Grand colonnade cornice & parapet
+        addBox(batchedConcreteTrim, x, totalH + 0.6, z, w + 0.6, 1.2, d + 0.6);
+        // Grand portico columns at front
+        [-w / 3, 0, w / 3].forEach(px => {
+            addCylinder(batchedConcreteTrim, x + px, 3.6, z + d / 2 + 1.6, 0.6, 0.6, 7.2);
+        });
+        addBox(batchedConcreteTrim, x, 7.4, z + d / 2 + 1.6, w * 0.8, 0.6, 3.2);
+        // Academic windows
+        addBox(batchedGlass, x, totalH * 0.55, z + d / 2 + 0.08, w * 0.82, totalH * 0.5, 0.1);
+
+        const minX = x - w / 2;
+        const maxX = x + w / 2;
+        const minZ = z - d / 2;
+        const maxZ = z + d / 2 + 3.2;
+        registerBoxCollider(minX, maxX, minZ, maxZ, 'ExpandedAcademia');
+        cityBuildings.push({ minX, maxX, minZ, maxZ, type: 'corporate' });
+    }
+
+    // ====================================================
+    // SECTOR 1: GIRGAON & LALBAUG RESIDENTIAL (12 Buildings)
+    // ====================================================
+    // Chawls
+    buildBatchedChawl(-240, 30, 18, 12, 3);
+    buildBatchedChawl(-240, 60, 18, 12, 3);
+    buildBatchedChawl(-240, 90, 18, 12, 3);
+    buildBatchedChawl(-240, 160, 18, 12, 3);
+    buildBatchedChawl(-240, 190, 18, 12, 3);
+    buildBatchedChawl(-300, 60, 16, 12, 3);
+
+    // Apartments
+    buildBatchedApartment(-140, 30, 14, 12, 5, 'peach');
+    buildBatchedApartment(-140, 60, 14, 12, 6, 'mint');
+    buildBatchedApartment(-140, 90, 14, 12, 5, 'cream');
+    buildBatchedApartment(-140, 160, 14, 12, 5, 'peach');
+    buildBatchedApartment(-140, 190, 14, 12, 6, 'mint');
+    buildBatchedApartment(-300, 160, 14, 12, 5, 'cream');
+
+    // ====================================================
+    // SECTOR 2: CRAWFORD COMMERCIAL & MARKETS (12 Buildings)
+    // ====================================================
+    // Retail Commercial Markets
+    buildBatchedCommercial(140, 30, 16, 12, 4);
+    buildBatchedCommercial(140, 60, 16, 12, 4);
+    buildBatchedCommercial(140, 90, 16, 12, 4);
+    buildBatchedCommercial(140, 160, 16, 12, 3);
+    buildBatchedCommercial(140, 190, 16, 12, 4);
+    buildBatchedCommercial(300, 60, 16, 12, 4);
+
+    // Corporate Commercial Towers
+    buildBatchedCorporate(240, 30, 16, 14, 8);
+    buildBatchedCorporate(240, 60, 16, 14, 9);
+    buildBatchedCorporate(240, 90, 16, 14, 10);
+    buildBatchedCorporate(240, 160, 16, 14, 8);
+    buildBatchedCorporate(240, 190, 16, 14, 9);
+    buildBatchedCorporate(300, 160, 16, 14, 9);
+
+    // ====================================================
+    // SECTOR 3: MODERN DOWNTOWN & STARK PLAZA FLANKS (8 Buildings)
+    // ====================================================
+    buildBatchedCorporate(-50, 110, 16, 14, 13);
+    buildBatchedCorporate(-50, 170, 16, 14, 13);
+    buildBatchedCorporate(50, 110, 16, 14, 13);
+    buildBatchedCorporate(50, 170, 16, 14, 13);
+    buildBatchedCorporate(-75, 140, 18, 14, 15);
+    buildBatchedCorporate(75, 140, 18, 14, 15);
+    buildBatchedCorporate(-45, 210, 16, 14, 12);
+    buildBatchedCorporate(45, 210, 16, 14, 12);
+
+    // ====================================================
+    // SECTOR 4: TECH ACADEMIA & CAMPUS WINGS (12 Buildings)
+    // ====================================================
+    buildBatchedAcademia(60, 290, 22, 16, 5);
+    buildBatchedAcademia(60, 340, 22, 16, 5);
+    buildBatchedAcademia(120, 290, 22, 16, 4);
+    buildBatchedAcademia(120, 340, 22, 16, 4);
+    buildBatchedAcademia(180, 315, 24, 18, 4);
+    buildBatchedAcademia(-60, 290, 22, 16, 4);
+    buildBatchedAcademia(-60, 340, 22, 16, 4);
+    buildBatchedAcademia(-120, 290, 22, 16, 4);
+    buildBatchedAcademia(-120, 340, 22, 16, 4);
+    buildBatchedAcademia(-180, 315, 24, 16, 6);
+    buildBatchedAcademia(-40, 420, 20, 14, 3);
+    buildBatchedAcademia(40, 420, 20, 14, 4);
+
+    // Merge and add batched meshes to scene
+    const mergeAndAdd = (arr, mat, castShadow = false) => {
+        if (arr.length === 0) return;
+        const merged = BufferGeometryUtils.mergeGeometries(arr, false);
+        const mesh = new THREE.Mesh(merged, mat);
+        mesh.castShadow = castShadow;
+        mesh.receiveShadow = true;
+        scene.add(mesh);
+    };
+
+    // Primary structural masses cast building shadows
+    mergeAndAdd(batchedWallsPlaster, chawlPlasterMat, true);
+    mergeAndAdd(batchedWallsApartments, aptMatPeach, true);
+    mergeAndAdd(batchedWallsCorporate, new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.6 }), true);
+
+    // Architectural trims, windows, metal, and roofs (no shadow pass needed)
+    mergeAndAdd(batchedConcreteTrim, concreteTrimMat, false);
+    mergeAndAdd(batchedGlass, new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.85, roughness: 0.15 }), false);
+    mergeAndAdd(batchedMetal, metalRailingMat, false);
+    mergeAndAdd(batchedRoofs, corrugatedRoofMat, false);
+}
+buildExpandedDistrictsBatch();
 window.__cityBuildings = cityBuildings;
 
 // ==========================================
@@ -2194,7 +2544,7 @@ function createWallPoster(parent, text, bg, textCol, x, y, z) {
 }
 
 // ==========================================
-// DISTRICT 2: HIGH SCHOOL CAMPUS (ST. XAVIER'S)
+// DISTRICT 2: HIGH SCHOOL CAMPUS
 // (X = 0, Z = 102)
 // ==========================================
 let poiSchool = { x: 0, z: 102, radius: 14 };
@@ -2238,9 +2588,9 @@ function buildSchoolDistrict() {
     sBoardCanvas.width = 512; sBoardCanvas.height = 128;
     const sbCtx = sBoardCanvas.getContext('2d');
     sbCtx.fillStyle = '#1e1b4b'; sbCtx.fillRect(0, 0, 512, 128);
-    sbCtx.fillStyle = '#f59e0b'; sbCtx.font = 'bold 26px serif';
+    sbCtx.fillStyle = '#f59e0b'; sbCtx.font = 'bold 24px serif';
     sbCtx.textAlign = 'center';
-    sbCtx.fillText("ST. XAVIER'S HIGH SCHOOL", 256, 52);
+    sbCtx.fillText("HIGH SCHOOL ACADEMIC CAMPUS", 256, 52);
     sbCtx.fillStyle = '#cbd5e1'; sbCtx.font = 'bold 18px sans-serif';
     sbCtx.fillText("Foundational Academic Excellence (2007 - 2017)", 256, 92);
     const sBoard = new THREE.Mesh(new THREE.PlaneGeometry(16, 4), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(sBoardCanvas) }));
@@ -2413,7 +2763,7 @@ function buildLandmarkIntegrationPlazasAndSignage() {
     });
 
     // ----------------------------------------------------
-    // 3. ST. XAVIER'S HIGH SCHOOL CAMPUS ENTRANCE & GATES
+    // 3. HIGH SCHOOL CAMPUS ENTRANCE & GATES
     // (Z = 88 to 97, X = -20 to +20)
     // ----------------------------------------------------
     // Paved courtyard forecourt slab
@@ -2505,7 +2855,7 @@ function buildLandmarkIntegrationPlazasAndSignage() {
     sCtx.fillRect(0, 0, 512, 512);
 
     const wayfindingLabels = [
-        "↑ ST. XAVIER'S HIGH SCHOOL",
+        "↑ HIGH SCHOOL CAMPUS",
         "↓ GATEWAY OF INDIA / SEA",
         "← DEVARSHI'S CYBER HQ",
         "DMCE ENGG COLLEGE →",
@@ -2547,7 +2897,7 @@ function buildLandmarkIntegrationPlazasAndSignage() {
     const signpostLocations = [
         // Junction 1: Marine Ave & North Ave
         { x: 3.5, z: 13.5, arms: [
-            { idx: 0, rotY: 0, dy: 3.8 },               // North: St. Xavier's
+            { idx: 0, rotY: 0, dy: 3.8 },               // North: High School Campus
             { idx: 1, rotY: Math.PI, dy: 3.4 },         // South: Gateway of India
             { idx: 2, rotY: Math.PI / 2, dy: 3.0 },     // West: Devarshi's HQ
             { idx: 3, rotY: -Math.PI / 2, dy: 2.6 }     // East: DMCE College
@@ -2932,7 +3282,7 @@ function buildRailwaySystem() {
         roughness: 0.18
     });
     const railsMesh = new THREE.Mesh(mergedRails, steelRailMat);
-    railsMesh.castShadow = true;
+    railsMesh.castShadow = false;
     scene.add(railsMesh);
 
     // 3. Batched Concrete Sleepers (Ties) along track
@@ -3004,7 +3354,7 @@ function buildRailwaySystem() {
     });
     const mergedGantries = BufferGeometryUtils.mergeGeometries(gantryGeoms);
     const gantryMesh = new THREE.Mesh(mergedGantries, metalRailingMat);
-    gantryMesh.castShadow = true;
+    gantryMesh.castShadow = false;
     scene.add(gantryMesh);
 
     // Continuous 25 kV AC Copper Contact Wire at Y = 5.2m
@@ -3689,10 +4039,10 @@ console.log("Welcome to my Cyber Universe!");
         `;
         interactiveModalEl.classList.add('active');
     } else if (currentInteraction === 'schoolBoard') {
-        modalTitleEl.innerHTML = "🏫 St. Xavier's High School";
+        modalTitleEl.innerHTML = "🏫 High School Academic Campus";
         modalBodyEl.innerHTML = `
             <strong>Foundational Academic Journey:</strong><br>
-            • <strong>Schooling:</strong> St. Xavier's High School (Graduated with Distinction)<br>
+            • <strong>Secondary Education:</strong> High School (Graduated with Distinction; pending institutional name verification)<br>
             • <strong>Milestones:</strong> Science Fair Gold Medalist, Inter-School Mathematics Olympiad finalist, and Football Team Captain.<br>
             • <strong>First Spark:</strong> Built first algorithmic automation script and explored computer architecture at age 14.
         `;
@@ -3725,13 +4075,17 @@ let radarAngle = 0;
 function updateMiniMap(playerX, playerZ, playerRot) {
     gpsCoordsEl.textContent = `X: ${Math.round(playerX)} | Z: ${Math.round(playerZ)}`;
 
-    // Nearest waypoint calculation
+    // Nearest waypoint calculation across all expanded districts
     const waypoints = [
         { name: "Gateway Arch", x: 0, z: -6 },
         { name: "Devarshi's HQ", x: poiHome.x, z: poiHome.z },
-        { name: "St. Xavier's School", x: poiSchool.x, z: poiSchool.z },
+        { name: "Stark Tower Plaza", x: WORLD_CONFIG.starkTowerSite.x, z: WORLD_CONFIG.starkTowerSite.z },
+        { name: "High School Campus", x: poiSchool.x, z: poiSchool.z },
         { name: "DMCE College", x: poiCollege.x, z: poiCollege.z },
-        { name: "City Train Station", x: trainState.x, z: 16 }
+        { name: "City Train Station", x: trainState.x, z: 16 },
+        { name: "West Residential District", x: -240, z: 90 },
+        { name: "East Commercial Bazaar", x: 240, z: 90 },
+        { name: "North Tech Academia", x: 0, z: 340 }
     ];
 
     let nearest = waypoints[0];
@@ -3744,64 +4098,113 @@ function updateMiniMap(playerX, playerZ, playerRot) {
 
     mapCtx.clearRect(0, 0, 190, 190);
 
-    // Coordinate Transform: Map Center (95, 95) represents World (0, 35)
-    // Scale: 1 unit in world = 1.15 px on map
+    // Player-Centric Scrolling GTA Radar
     const cx = 95;
     const cy = 95;
-    const scale = 1.15;
-    const worldCenterZ = 35;
+    const radarRadius = 88;
+    const scale = 0.65; // ~290m visual diameter around player
 
-    function toMapX(wx) { return cx + (wx * scale); }
-    function toMapY(wz) { return cy + ((wz - worldCenterZ) * scale); }
+    function toMapX(wx) { return cx + (wx - playerX) * scale; }
+    function toMapY(wz) { return cy + (wz - playerZ) * scale; }
 
-    // 1. Ocean Water (Top region)
-    mapCtx.fillStyle = '#1e3a8a';
-    mapCtx.fillRect(0, 0, 190, toMapY(-22));
-
-    // Shoreline accent
-    mapCtx.strokeStyle = '#38bdf8';
-    mapCtx.lineWidth = 1.5;
+    mapCtx.save();
     mapCtx.beginPath();
-    mapCtx.moveTo(0, toMapY(-22));
-    mapCtx.lineTo(190, toMapY(-22));
-    mapCtx.stroke();
+    mapCtx.arc(cx, cy, radarRadius, 0, Math.PI * 2);
+    mapCtx.clip();
 
-    // 2. Promenade Plaza
+    // 1. Dark radar background
+    mapCtx.fillStyle = '#090d16';
+    mapCtx.fillRect(0, 0, 190, 190);
+
+    // 2. Arabian Sea Water
+    const seaScreenY = toMapY(-22);
+    if (seaScreenY > 0) {
+        mapCtx.fillStyle = '#1e3a8a';
+        mapCtx.fillRect(0, 0, 190, Math.min(190, seaScreenY));
+        mapCtx.strokeStyle = '#38bdf8';
+        mapCtx.lineWidth = 1.5;
+        mapCtx.beginPath();
+        mapCtx.moveTo(0, seaScreenY);
+        mapCtx.lineTo(190, seaScreenY);
+        mapCtx.stroke();
+    }
+
+    // 3. Waterfront Promenade
+    const promY = toMapY(-22);
     mapCtx.fillStyle = '#64748b';
-    mapCtx.fillRect(toMapX(-45), toMapY(-22), 90 * scale, 32 * scale);
+    mapCtx.fillRect(toMapX(-380), promY, 760 * scale, 32 * scale);
 
-    // 3. Road Network
+    // 4. Arterial Road Grid
     mapCtx.fillStyle = '#1e293b';
-    // Marine Ave (East-West)
-    mapCtx.fillRect(toMapX(-75), toMapY(10), 150 * scale, 12 * scale);
-    // Market Street (East-West Cross Ave at Z = 42)
-    mapCtx.fillRect(toMapX(-75), toMapY(38), 150 * scale, 8 * scale);
-    // North Ave to School
-    mapCtx.fillRect(toMapX(-6), toMapY(16), 12 * scale, 76 * scale);
-    // West Blvd to Home
+    // Marine Ave (Z = 16)
+    mapCtx.fillRect(toMapX(-380), toMapY(9), 760 * scale, 14 * scale);
+    // Market Street (Z = 42)
+    mapCtx.fillRect(toMapX(-380), toMapY(37), 760 * scale, 10 * scale);
+    // Midtown Ave (Z = 140)
+    mapCtx.fillRect(toMapX(-380), toMapY(134), 760 * scale, 12 * scale);
+    // Campus Cross Ave (Z = 240)
+    mapCtx.fillRect(toMapX(-360), toMapY(234), 720 * scale, 12 * scale);
+    // Far North Expressway (Z = 380)
+    mapCtx.fillRect(toMapX(-360), toMapY(375), 720 * scale, 10 * scale);
+
+    // North Express Avenue Spine (X = 0)
+    mapCtx.fillRect(toMapX(-6), toMapY(16), 12 * scale, 464 * scale);
+    // West Arterial (X = -180)
+    mapCtx.fillRect(toMapX(-186), toMapY(16), 12 * scale, 464 * scale);
+    // East Arterial (X = 180)
+    mapCtx.fillRect(toMapX(174), toMapY(16), 12 * scale, 464 * scale);
+    // Far West Coastal (X = -320)
+    mapCtx.fillRect(toMapX(-325), toMapY(16), 10 * scale, 224 * scale);
+    // Far East Docks (X = 320)
+    mapCtx.fillRect(toMapX(315), toMapY(16), 10 * scale, 224 * scale);
+
+    // Local connectors
     mapCtx.fillRect(toMapX(-54), toMapY(16), 12 * scale, 46 * scale);
-    // East Blvd to DMCE
     mapCtx.fillRect(toMapX(42), toMapY(16), 12 * scale, 46 * scale);
 
-    // 4. Railway Track
-    mapCtx.strokeStyle = '#f97316';
-    mapCtx.lineWidth = 2.5;
-    mapCtx.setLineDash([4, 4]);
+    // Stark Plaza Roundabout
+    mapCtx.fillStyle = '#0284c7';
     mapCtx.beginPath();
-    mapCtx.moveTo(toMapX(-24), toMapY(12));
-    mapCtx.lineTo(toMapX(-24), toMapY(88));
-    mapCtx.stroke();
-    mapCtx.setLineDash([]);
+    mapCtx.arc(toMapX(0), toMapY(140), 34 * scale, 0, Math.PI * 2);
+    mapCtx.fill();
 
-    // 5. Building Footprints
-    // Procedural Mumbai City Buildings (24 Buildings)
+    // 5. Railway Track Spline Loop
+    if (trainSpline) {
+        mapCtx.strokeStyle = 'rgba(249, 115, 22, 0.75)';
+        mapCtx.lineWidth = 2.0;
+        mapCtx.beginPath();
+        for (let i = 0; i <= 64; i++) {
+            const pt = trainSpline.getPointAt(i / 64);
+            const mx = toMapX(pt.x);
+            const my = toMapY(pt.z);
+            if (i === 0) mapCtx.moveTo(mx, my);
+            else mapCtx.lineTo(mx, my);
+        }
+        mapCtx.closePath();
+        mapCtx.stroke();
+    }
+
+    // Station Platforms
+    trainStationZ.forEach(sz => {
+        mapCtx.fillStyle = '#38bdf8';
+        mapCtx.fillRect(toMapX(-30.8), toMapY(sz - 11), 4.2 * scale, 22 * scale);
+    });
+
+    // 6. Building Footprints across City (All 68 buildings)
     cityBuildings.forEach(b => {
+        const bx = toMapX(b.minX);
+        const by = toMapY(b.minZ);
+        const bw = (b.maxX - b.minX) * scale;
+        const bh = (b.maxZ - b.minZ) * scale;
+        // Radar viewport culling
+        if (bx + bw < 0 || bx > 190 || by + bh < 0 || by > 190) return;
+
         if (b.type === 'chawl') mapCtx.fillStyle = '#b45309';
         else if (b.type === 'apartment') mapCtx.fillStyle = '#eab308';
         else if (b.type === 'commercial') mapCtx.fillStyle = '#06b6d4';
         else if (b.type === 'corporate') mapCtx.fillStyle = '#3b82f6';
         else mapCtx.fillStyle = '#475569';
-        mapCtx.fillRect(toMapX(b.minX), toMapY(b.minZ), (b.maxX - b.minX) * scale, (b.maxZ - b.minZ) * scale);
+        mapCtx.fillRect(bx, by, bw, bh);
     });
 
     // Gateway Arch (Gold)
@@ -3820,45 +4223,21 @@ function updateMiniMap(playerX, playerZ, playerRot) {
     mapCtx.fillStyle = '#059669';
     mapCtx.fillRect(toMapX(poiCollege.x - 16), toMapY(poiCollege.z - 10), 32 * scale, 16 * scale);
 
-    // 6. Railway Track Spline Loop, Station Platforms & Articulated EMU Train Markers
-    if (trainSpline) {
-        mapCtx.strokeStyle = 'rgba(148, 163, 184, 0.65)';
-        mapCtx.lineWidth = 2.5;
-        mapCtx.beginPath();
-        for (let i = 0; i <= 64; i++) {
-            const pt = trainSpline.getPointAt(i / 64);
-            const mx = toMapX(pt.x);
-            const my = toMapY(pt.z);
-            if (i === 0) mapCtx.moveTo(mx, my);
-            else mapCtx.lineTo(mx, my);
-        }
-        mapCtx.closePath();
-        mapCtx.stroke();
-    }
-
-    // Station Platforms on Minimap
-    trainStationZ.forEach(sz => {
-        mapCtx.fillStyle = '#38bdf8';
-        mapCtx.fillRect(toMapX(-30.8), toMapY(sz - 11), 4.2 * scale, 22 * scale);
-    });
-
-    // 3 Articulated EMU Coaches on Minimap
+    // 7. Train Coaches
     [trainState.coach1, trainState.coach2, trainState.coach3].forEach((c, idx) => {
         if (!c) return;
         const cxMap = toMapX(c.position.x);
         const cyMap = toMapY(c.position.z);
+        if (Math.hypot(cxMap - cx, cyMap - cy) > radarRadius) return;
         mapCtx.save();
         mapCtx.translate(cxMap, cyMap);
         mapCtx.rotate(-c.rotation.y);
         mapCtx.fillStyle = idx === 0 ? '#facc15' : '#8b5cf6';
         mapCtx.fillRect(-2.5, -4.5, 5, 9);
-        mapCtx.strokeStyle = '#ffffff';
-        mapCtx.lineWidth = 0.8;
-        mapCtx.strokeRect(-2.5, -4.5, 5, 9);
         mapCtx.restore();
     });
 
-    // 7. Parked Vehicles (Car & Bike markers)
+    // Parked Vehicles
     mapCtx.fillStyle = '#06b6d4';
     mapCtx.beginPath();
     mapCtx.arc(toMapX(carVehicle.mesh.position.x), toMapY(carVehicle.mesh.position.z), 4, 0, Math.PI * 2);
@@ -3869,27 +4248,65 @@ function updateMiniMap(playerX, playerZ, playerRot) {
     mapCtx.arc(toMapX(bikeVehicle.mesh.position.x), toMapY(bikeVehicle.mesh.position.z), 3.5, 0, Math.PI * 2);
     mapCtx.fill();
 
-    // 8. 360° Rotating Radar Sweep Line
+    // 8. Landmark Waypoint Blips (In-radar vs Clamped to Rim)
+    waypoints.forEach(wp => {
+        const wx = toMapX(wp.x);
+        const wy = toMapY(wp.z);
+        const dist = Math.hypot(wx - cx, wy - cy);
+        if (dist <= radarRadius - 8) {
+            mapCtx.fillStyle = '#38bdf8';
+            mapCtx.beginPath();
+            mapCtx.arc(wx, wy, 4, 0, Math.PI * 2);
+            mapCtx.fill();
+            mapCtx.strokeStyle = '#ffffff';
+            mapCtx.lineWidth = 1;
+            mapCtx.stroke();
+        } else {
+            const angle = Math.atan2(wy - cy, wx - cx);
+            const rimX = cx + Math.cos(angle) * (radarRadius - 6);
+            const rimY = cy + Math.sin(angle) * (radarRadius - 6);
+            mapCtx.fillStyle = '#f59e0b';
+            mapCtx.beginPath();
+            mapCtx.arc(rimX, rimY, 3.5, 0, Math.PI * 2);
+            mapCtx.fill();
+        }
+    });
+
+    mapCtx.restore();
+
+    // 9. Radar Outer Ring, Gridlines & Sweeper Arm
+    mapCtx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
+    mapCtx.lineWidth = 2.0;
+    mapCtx.beginPath();
+    mapCtx.arc(cx, cy, radarRadius, 0, Math.PI * 2);
+    mapCtx.stroke();
+
+    // Range rings
+    mapCtx.strokeStyle = 'rgba(148, 163, 184, 0.2)';
+    mapCtx.lineWidth = 1;
+    mapCtx.beginPath();
+    mapCtx.arc(cx, cy, 40, 0, Math.PI * 2);
+    mapCtx.arc(cx, cy, 70, 0, Math.PI * 2);
+    mapCtx.stroke();
+
+    // Rotating Radar Sweeper
     radarAngle += 0.04;
     mapCtx.save();
     mapCtx.translate(cx, cy);
-    mapCtx.strokeStyle = 'rgba(56, 189, 248, 0.28)';
+    mapCtx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
     mapCtx.lineWidth = 1.5;
     mapCtx.beginPath();
     mapCtx.moveTo(0, 0);
-    mapCtx.lineTo(Math.cos(radarAngle) * 90, Math.sin(radarAngle) * 90);
+    mapCtx.lineTo(Math.cos(radarAngle) * (radarRadius - 2), Math.sin(radarAngle) * (radarRadius - 2));
     mapCtx.stroke();
     mapCtx.restore();
 
-    // 9. Player GPS Navigation Arrow (Red with white border)
-    const px = toMapX(playerX);
-    const py = toMapY(playerZ);
-
+    // 10. Player Center Navigation Marker & Heading Arrow
     mapCtx.save();
-    mapCtx.translate(px, py);
-    mapCtx.rotate(-playerRot);
+    mapCtx.translate(cx, cy);
+    mapCtx.rotate(-playerRot + Math.PI);
 
-    // Pulsing GPS signal ring
+    // Pulsing GPS signal
     const pulse = (Date.now() % 1000) / 1000;
     mapCtx.strokeStyle = `rgba(239, 68, 68, ${1 - pulse})`;
     mapCtx.lineWidth = 1.5;
@@ -4177,15 +4594,16 @@ function animate() {
             const isSprinting = keys.shift;
             const moveSpeed = isSprinting ? 16.0 : 9.0;
 
-            // Extract horizontal camera vectors
-            const camForward = new THREE.Vector3();
-            camera.getWorldDirection(camForward);
+            // Extract canonical horizontal camera vectors (screen-space relative)
+            const camRight = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+            camRight.y = 0;
+            if (camRight.lengthSq() < 0.001) camRight.set(1, 0, 0);
+            else camRight.normalize();
+
+            const camForward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
             camForward.y = 0;
             if (camForward.lengthSq() < 0.001) camForward.set(0, 0, 1);
             else camForward.normalize();
-
-            const camRight = new THREE.Vector3();
-            camRight.crossVectors(new THREE.Vector3(0, 1, 0), camForward).normalize();
 
             // Synthesize camera-relative input vector
             const inputVec = new THREE.Vector3();
@@ -4292,7 +4710,7 @@ function checkProximity() {
     // 3. Check High School Board
     if (p.distanceTo(new THREE.Vector3(poiSchool.x, 0, poiSchool.z - 16)) < 18) {
         currentInteraction = 'schoolBoard';
-        showPrompt('E', "Inspect St. Xavier's High School 🏫");
+        showPrompt('E', "Inspect High School Campus 🏫");
         return;
     }
 
@@ -4364,6 +4782,10 @@ window.__renderer = renderer;
 window.__characterGroup = characterGroup;
 window.__camera = camera;
 window.__npcs = npcs;
+window.__resolveCollision = resolveCollision;
+window.__bikeVehicle = bikeVehicle;
+window.__carVehicle = carVehicle;
+window.__getActiveVehicle = () => activeVehicle;
 window.__setWeatherMode = (m) => { weatherMode = m; };
 window.__setCameraMode = (m) => { cameraMode = m; orbitControls.enabled = (m === 'orbit'); };
 
