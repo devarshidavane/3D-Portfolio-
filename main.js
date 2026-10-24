@@ -2481,14 +2481,14 @@ function createWallPoster(parent, text, bg, textCol, x, y, z) {
 
 // ==========================================
 // DISTRICT 2: SCHOOL
-// (X = 0, Z = 102)
+// (X = 0, Z = 88)
 // Strictly Non-Interactive Architectural Landmark
 // Styled per Stitch Design Blueprint ARCH-3D-012
 // ==========================================
-let poiSchool = { x: 0, z: 102, radius: 14 };
+let poiSchool = { x: 0, z: 88, radius: 14 };
 function buildSchoolDistrict() {
-    registerBoxCollider(poiSchool.x - 18, poiSchool.x + 18, poiSchool.z - 13, poiSchool.z + 1, 'SchoolBuilding', -5, 24);
-    registerBoxCollider(poiSchool.x - 19, poiSchool.x - 13, poiSchool.z + 1.5, poiSchool.z + 10.5, 'SchoolBus', -5, 4.0);
+    registerBoxCollider(poiSchool.x - 18, poiSchool.x + 18, poiSchool.z - 9, poiSchool.z + 8, 'SchoolBuilding', -5, 24);
+    registerBoxCollider(poiSchool.x - 19, poiSchool.x - 13, poiSchool.z - 6, poiSchool.z + 4, 'SchoolBus', -5, 4.0);
     const school = new THREE.Group();
 
     // 1. Warm Sandstone / Ochre Academic Facade
@@ -2499,21 +2499,21 @@ function buildSchoolDistrict() {
     // Main Academic Hall (36m W x 18m H x 14m D)
     const facadeGeoms = [];
     const mainHall = new THREE.BoxGeometry(36, 18, 14);
-    mainHall.translate(0, 9, -6);
+    mainHall.translate(0, 9, 0);
     facadeGeoms.push(mainHall);
 
-    // Central Symmetrical Entrance Portal & Colonnade Portico
-    const portico = new THREE.BoxGeometry(12, 12, 4);
-    portico.translate(0, 6, 2.5);
+    // Central Symmetrical Entrance Portal & Colonnade Portico (facing South -Z)
+    const portico = new THREE.BoxGeometry(12, 12, 3);
+    portico.translate(0, 6, -7.5);
     facadeGeoms.push(portico);
 
     // Rooftop Parapet and HVAC / Machine Room
     const parapet = new THREE.BoxGeometry(36.6, 0.8, 14.6);
-    parapet.translate(0, 18.4, -6);
+    parapet.translate(0, 18.4, 0);
     facadeGeoms.push(parapet);
 
     const machineRoom = new THREE.BoxGeometry(10, 3.5, 8);
-    machineRoom.translate(0, 20.2, -6);
+    machineRoom.translate(0, 20.2, 0);
     facadeGeoms.push(machineRoom);
 
     const mergedFacade = BufferGeometryUtils.mergeGeometries(facadeGeoms);
@@ -2522,18 +2522,18 @@ function buildSchoolDistrict() {
     fMesh.receiveShadow = true;
     school.add(fMesh);
 
-    // 2. Concrete Trim, Steps & Columns
+    // 2. Concrete Trim, Steps & Columns (facing South -Z)
     const trimGeoms = [];
-    // Front Entrance Steps
+    // Front Entrance Steps descending South
     for (let step = 0; step < 3; step++) {
         const stepGeom = new THREE.BoxGeometry(10 - step * 1.2, 0.35, 1.2);
-        stepGeom.translate(0, step * 0.35 + 0.175, 4.8 - step * 0.8);
+        stepGeom.translate(0, step * 0.35 + 0.175, -8.6 - step * 0.8);
         trimGeoms.push(stepGeom);
     }
     // Ribbon Cornice bands across storeys
     [5.8, 11.8, 17.8].forEach(by => {
         const band = new THREE.BoxGeometry(36.4, 0.4, 14.4);
-        band.translate(0, by, -6);
+        band.translate(0, by, 0);
         trimGeoms.push(band);
     });
     const mergedTrim = BufferGeometryUtils.mergeGeometries(trimGeoms);
@@ -2541,22 +2541,24 @@ function buildSchoolDistrict() {
     tMesh.receiveShadow = true;
     school.add(tMesh);
 
-    // 3. Ribbon Window Glass Strips
+    // 3. Ribbon Window Glass Strips (facing South -Z)
     const glassGeoms = [];
     [3.2, 9.2, 15.2].forEach(wy => {
         // Left Wing Windows
         const winL = new THREE.PlaneGeometry(10, 1.8);
-        winL.translate(-10, wy, 1.05);
+        winL.rotateY(Math.PI);
+        winL.translate(-10, wy, -7.05);
         glassGeoms.push(winL);
         // Right Wing Windows
         const winR = new THREE.PlaneGeometry(10, 1.8);
-        winR.translate(10, wy, 1.05);
+        winR.rotateY(Math.PI);
+        winR.translate(10, wy, -7.05);
         glassGeoms.push(winR);
     });
     const mergedGlass = BufferGeometryUtils.mergeGeometries(glassGeoms);
     school.add(new THREE.Mesh(mergedGlass, glassMat));
 
-    // 4. Non-Interactive Clean Signage: "SCHOOL"
+    // 4. Non-Interactive Clean Signage: "SCHOOL" (facing South -Z)
     const sBoardCanvas = document.createElement('canvas');
     sBoardCanvas.width = 512; sBoardCanvas.height = 128;
     const sbCtx = sBoardCanvas.getContext('2d');
@@ -2565,27 +2567,28 @@ function buildSchoolDistrict() {
     sbCtx.textAlign = 'center';
     sbCtx.fillText("SCHOOL", 256, 76);
     const sBoard = new THREE.Mesh(new THREE.PlaneGeometry(8, 2.0), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(sBoardCanvas) }));
-    sBoard.position.set(0, 10.5, 4.55);
+    sBoard.position.set(0, 10.5, -9.05);
+    sBoard.rotation.y = Math.PI;
     school.add(sBoard);
 
     // 5. School Playground Football Goal
     const goalMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
     const goalGeoms = [];
     const crossbar = new THREE.BoxGeometry(8, 0.2, 0.2);
-    crossbar.translate(16, 2.5, 6);
+    crossbar.translate(16, 2.5, -2);
     goalGeoms.push(crossbar);
     [-4, 4].forEach(gx => {
         const post = new THREE.CylinderGeometry(0.1, 0.1, 2.5, 8);
-        post.translate(16 + gx, 1.25, 6);
+        post.translate(16 + gx, 1.25, -2);
         goalGeoms.push(post);
     });
     school.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(goalGeoms), goalMat));
 
     // 6. Yellow School Bus parked outside
     const busBody = applyVertexColor(new THREE.BoxGeometry(4.2, 2.8, 9), 0xf59e0b);
-    busBody.translate(-16, 1.8, 6);
+    busBody.translate(-16, 1.8, -2);
     const busRoof = applyVertexColor(new THREE.BoxGeometry(4.2, 0.4, 9), 0xffffff);
-    busRoof.translate(-16, 3.3, 6);
+    busRoof.translate(-16, 3.3, -2);
     const busMesh = new THREE.Mesh(BufferGeometryUtils.mergeGeometries([busBody, busRoof], false), new THREE.MeshStandardMaterial({ roughness: 0.6, vertexColors: true }));
     school.add(busMesh);
 
@@ -4379,11 +4382,11 @@ function teleportTo(targetX, targetZ, label, targetY = 0) {
 }
 
 document.getElementById('btn-tp-gateway').addEventListener('click', () => teleportTo(0, -6, 'Gateway', 0));
-document.getElementById('btn-tp-home').addEventListener('click', () => teleportTo(0, 115, 'Home HQ', 0));
-document.getElementById('btn-tp-school').addEventListener('click', () => teleportTo(0, 75, 'School', 0));
+document.getElementById('btn-tp-home').addEventListener('click', () => teleportTo(0, 122, 'Home HQ', 0));
+document.getElementById('btn-tp-school').addEventListener('click', () => teleportTo(0, 68, 'School', 0));
 document.getElementById('btn-tp-college').addEventListener('click', () => teleportTo(48, 34, 'DMCE College', 0));
 const btnTpStark = document.getElementById('btn-tp-stark');
-if (btnTpStark) btnTpStark.addEventListener('click', () => teleportTo(0, 115, 'Home HQ', 0));
+if (btnTpStark) btnTpStark.addEventListener('click', () => teleportTo(0, 122, 'Home HQ', 0));
 
 // Stark Tower Turbo-Lift Modal Controller
 const starkElevatorModalEl = document.getElementById('stark-elevator-modal');
