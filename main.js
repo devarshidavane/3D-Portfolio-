@@ -730,11 +730,11 @@ window.__currentFloorElevation = currentFloorElevation;
 
 const worldColliders = [];
 
-function registerBoxCollider(minX, maxX, minZ, maxZ, label = 'obstacle', minY = -10, maxY = 200) {
+function registerBoxCollider(minX, maxX, minZ, maxZ, label = 'obstacle', minY = -5, maxY = 4.5) {
     worldColliders.push({ type: 'box', minX, maxX, minZ, maxZ, minY, maxY, label });
 }
 
-function registerCylinderCollider(x, z, radius, label = 'pole', minY = -10, maxY = 200) {
+function registerCylinderCollider(x, z, radius, label = 'pole', minY = -5, maxY = 7.5) {
     worldColliders.push({ type: 'cylinder', x, z, radius, minY, maxY, label });
 }
 
@@ -903,7 +903,7 @@ scene.add(cat);
 
 // Gateway of India Basalt Monument (Detailed Indo-Saracenic Architecture at Z = -32)
 function buildGatewayArch() {
-    registerBoxCollider(-16, 16, -38, -26, 'GatewayArch');
+    registerBoxCollider(-16, 16, -38, -26, 'GatewayArch', -5, 28);
     const monument = new THREE.Group();
     const basaltMat = new THREE.MeshStandardMaterial({ color: 0xd4a373, roughness: 0.85, metalness: 0.08 });
     const darkStoneMat = new THREE.MeshStandardMaterial({ color: 0xb58452, roughness: 0.9 });
@@ -1645,9 +1645,9 @@ const stCtx = starkSignCanvas.getContext('2d');
 stCtx.fillStyle = '#090d16'; stCtx.fillRect(0, 0, 512, 128);
 stCtx.fillStyle = '#38bdf8'; stCtx.font = 'bold 24px sans-serif';
 stCtx.textAlign = 'center';
-stCtx.fillText("STARK TOWER — DEVARSHI DAVANE", 256, 48);
+stCtx.fillText("HOME HQ — DEVARSHI DAVANE", 256, 48);
 stCtx.fillStyle = '#94a3b8'; stCtx.font = '16px sans-serif';
-stCtx.fillText("ENTERPRISES • CYBER HQ & FLIGHT DECK", 256, 88);
+stCtx.fillText("RESIDENCE • CYBER LAB & FLIGHT DECK", 256, 88);
 const starkSign = new THREE.Mesh(new THREE.PlaneGeometry(16, 4), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(starkSignCanvas) }));
 starkSign.position.set(0, 5.5, 122);
 scene.add(starkSign);
@@ -1904,7 +1904,7 @@ function createChawlBuilding(x, z, width = 16, depth = 10, storeys = 3, rotY = 0
     const maxX = x + (width + 0.4) / 2;
     const minZ = z - depth / 2;
     const maxZ = z + depth / 2 + corridorDepth;
-    registerBoxCollider(minX, maxX, minZ, maxZ, 'Chawl');
+    registerBoxCollider(minX, maxX, minZ, maxZ, 'Chawl', -5, totalH + 1.5);
     cityBuildings.push({ minX, maxX, minZ, maxZ, type: 'chawl' });
     return group;
 }
@@ -1993,7 +1993,7 @@ function createApartmentBuilding(x, z, width = 12, depth = 10, storeys = 5, colo
     const maxX = x + (width + 0.4) / 2;
     const minZ = z - depth / 2;
     const maxZ = z + depth / 2 + 1.3;
-    registerBoxCollider(minX, maxX, minZ, maxZ, 'Apartment');
+    registerBoxCollider(minX, maxX, minZ, maxZ, 'Apartment', -5, totalH + 2.0);
     cityBuildings.push({ minX, maxX, minZ, maxZ, type: 'apartment' });
     return group;
 }
@@ -2071,7 +2071,7 @@ function createCommercialBuilding(x, z, width = 11, depth = 10, storeys = 4, mrN
     const maxX = x + (width + 0.4) / 2;
     const minZ = z - depth / 2;
     const maxZ = z + depth / 2 + 1.7;
-    registerBoxCollider(minX, maxX, minZ, maxZ, 'Commercial');
+    registerBoxCollider(minX, maxX, minZ, maxZ, 'Commercial', -5, totalH + 2.0);
     cityBuildings.push({ minX, maxX, minZ, maxZ, type: 'commercial' });
     return group;
 }
@@ -2144,7 +2144,7 @@ function createCorporateTower(x, z, width = 12, depth = 10, storeys = 8, glassTi
     const maxX = x + (width + 0.6) / 2;
     const minZ = z - depth / 2;
     const maxZ = z + depth / 2 + 2.2;
-    registerBoxCollider(minX, maxX, minZ, maxZ, 'CorporateTower');
+    registerBoxCollider(minX, maxX, minZ, maxZ, 'CorporateTower', -5, totalH + 4.0);
     cityBuildings.push({ minX, maxX, minZ, maxZ, type: 'corporate' });
     return group;
 }
@@ -2263,7 +2263,7 @@ function buildExpandedDistrictsBatch() {
         const maxX = x + (w + 0.6) / 2;
         const minZ = z - d / 2;
         const maxZ = z + d / 2 + 1.4;
-        registerBoxCollider(minX, maxX, minZ, maxZ, 'ExpandedChawl');
+        registerBoxCollider(minX, maxX, minZ, maxZ, 'ExpandedChawl', -5, totalH + 1.5);
         cityBuildings.push({ minX, maxX, minZ, maxZ, type: 'chawl' });
     }
 
@@ -2290,7 +2290,7 @@ function buildExpandedDistrictsBatch() {
         const maxX = x + w / 2;
         const minZ = z - d / 2;
         const maxZ = z + d / 2 + 1.2;
-        registerBoxCollider(minX, maxX, minZ, maxZ, 'ExpandedApartment');
+        registerBoxCollider(minX, maxX, minZ, maxZ, 'ExpandedApartment', -5, totalH + 2.0);
         cityBuildings.push({ minX, maxX, minZ, maxZ, type: 'apartment' });
     }
 
@@ -2312,7 +2312,7 @@ function buildExpandedDistrictsBatch() {
         const maxX = x + w / 2;
         const minZ = z - d / 2;
         const maxZ = z + d / 2 + 2.4;
-        registerBoxCollider(minX, maxX, minZ, maxZ, 'ExpandedCommercial');
+        registerBoxCollider(minX, maxX, minZ, maxZ, 'ExpandedCommercial', -5, totalH + 2.0);
         cityBuildings.push({ minX, maxX, minZ, maxZ, type: 'commercial' });
     }
 
@@ -2333,7 +2333,7 @@ function buildExpandedDistrictsBatch() {
         const maxX = x + (w + 1.0) / 2;
         const minZ = z - (d + 1.0) / 2;
         const maxZ = z + (d + 1.0) / 2;
-        registerBoxCollider(minX, maxX, minZ, maxZ, 'ExpandedCorporate');
+        registerBoxCollider(minX, maxX, minZ, maxZ, 'ExpandedCorporate', -5, totalH + 8.0);
         cityBuildings.push({ minX, maxX, minZ, maxZ, type: 'corporate' });
     }
 
@@ -2357,7 +2357,7 @@ function buildExpandedDistrictsBatch() {
         const maxX = x + w / 2;
         const minZ = z - d / 2;
         const maxZ = z + d / 2 + 3.2;
-        registerBoxCollider(minX, maxX, minZ, maxZ, 'ExpandedAcademia');
+        registerBoxCollider(minX, maxX, minZ, maxZ, 'ExpandedAcademia', -5, totalH + 2.0);
         cityBuildings.push({ minX, maxX, minZ, maxZ, type: 'corporate' });
     }
 
@@ -2452,118 +2452,14 @@ buildExpandedDistrictsBatch();
 window.__cityBuildings = cityBuildings;
 
 // ==========================================
-// DISTRICT 1: HOME & DEV WORKSTATION (HQ)
-// (X = -48, Z = 62)
+// DISTRICT 1: HOME HQ (STARK SKYSCRAPER)
+// (X = 0, Z = 140, Height = 180m)
+// Home = Stark Tower (Devarshi's Superhero Skyscraper & Residence)
 // ==========================================
-let poiHome = { x: -48, z: 62, radius: 10 };
+let poiHome = { x: 0, z: 140, radius: 18 };
 function buildHomeDistrict() {
-    // Precise wall colliders with central entrance opening (X: -50.8 to -45.2 open for direct entry)
-    registerBoxCollider(poiHome.x - 11.5, poiHome.x - 2.8, poiHome.z - 10.5, poiHome.z - 9.5, 'HomeFrontWallL');
-    registerBoxCollider(poiHome.x + 2.8, poiHome.x + 11.5, poiHome.z - 10.5, poiHome.z - 9.5, 'HomeFrontWallR');
-    registerBoxCollider(poiHome.x - 11.5, poiHome.x - 10.5, poiHome.z - 10.5, poiHome.z + 10.5, 'HomeWestWall');
-    registerBoxCollider(poiHome.x + 10.5, poiHome.x + 11.5, poiHome.z - 10.5, poiHome.z + 10.5, 'HomeEastWall');
-    registerBoxCollider(poiHome.x - 11.5, poiHome.x + 11.5, poiHome.z + 9.5, poiHome.z + 10.5, 'HomeNorthWall');
-    registerBoxCollider(poiHome.x + 0.5, poiHome.x + 7.5, poiHome.z - 8.5, poiHome.z - 5.5, 'HomeDesk');
-    registerBoxCollider(poiHome.x - 9.5, poiHome.x - 3.5, poiHome.z - 9.0, poiHome.z - 1.0, 'HomeBed');
-
-    const home = new THREE.Group();
-
-    // Modern polished wooden floor
-    const floor = new THREE.Mesh(new THREE.BoxGeometry(22, 0.6, 20), new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.5 }));
-    floor.position.set(0, -0.1, 0);
-    floor.receiveShadow = true;
-    home.add(floor);
-
-    // Merged Modern Walls (Front Left, Front Right, Lintel, West Wall, East Wall, North Wall)
-    const wallGeoms = [];
-    const fWallL = new THREE.BoxGeometry(8.2, 12, 0.8);
-    fWallL.translate(-6.9, 6, -10);
-    wallGeoms.push(fWallL);
-
-    const fWallR = new THREE.BoxGeometry(8.2, 12, 0.8);
-    fWallR.translate(6.9, 6, -10);
-    wallGeoms.push(fWallR);
-
-    const lintel = new THREE.BoxGeometry(5.6, 3.5, 0.8);
-    lintel.translate(0, 10.25, -10);
-    wallGeoms.push(lintel);
-
-    const sideWallW = new THREE.BoxGeometry(0.8, 12, 20);
-    sideWallW.translate(-11, 6, 0);
-    wallGeoms.push(sideWallW);
-
-    const sideWallE = new THREE.BoxGeometry(0.8, 12, 20);
-    sideWallE.translate(11, 6, 0);
-    wallGeoms.push(sideWallE);
-
-    const backWallN = new THREE.BoxGeometry(22, 12, 0.8);
-    backWallN.translate(0, 6, 10);
-    wallGeoms.push(backWallN);
-
-    const mergedWalls = BufferGeometryUtils.mergeGeometries(wallGeoms);
-    const wallsMesh = new THREE.Mesh(mergedWalls, new THREE.MeshStandardMaterial({ map: modernFacadeTex, roughness: 0.7 }));
-    wallsMesh.castShadow = true;
-    wallsMesh.receiveShadow = true;
-    home.add(wallsMesh);
-
-    // Neon Home Sign
-    const signCanvas = document.createElement('canvas');
-    signCanvas.width = 256; signCanvas.height = 64;
-    const ctx = signCanvas.getContext('2d');
-    ctx.fillStyle = '#0f172a'; ctx.fillRect(0, 0, 256, 64);
-    ctx.fillStyle = '#38bdf8'; ctx.font = 'bold 22px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText("🏠 DEVARSHI'S HQ", 128, 42);
-    const sign = new THREE.Mesh(new THREE.PlaneGeometry(8, 2), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(signCanvas) }));
-    sign.position.set(0, 10.5, -9.5);
-    home.add(sign);
-
-    // Bed Setup
-    const bed = new THREE.Mesh(new THREE.BoxGeometry(6, 1.2, 8), new THREE.MeshStandardMaterial({ color: 0x1d4ed8 }));
-    bed.position.set(-6.5, 0.6, -5);
-    home.add(bed);
-
-    // PC Gaming Desk Setup
-    const desk = new THREE.Mesh(new THREE.BoxGeometry(8, 0.3, 3.5), new THREE.MeshStandardMaterial({ color: 0x111827 }));
-    desk.position.set(4, 2.5, -7);
-    home.add(desk);
-
-    // Dual Monitors with Glowing Code
-    const monCanvas = document.createElement('canvas');
-    monCanvas.width = 256; monCanvas.height = 128;
-    const mCtx = monCanvas.getContext('2d');
-    mCtx.fillStyle = '#020617'; mCtx.fillRect(0, 0, 256, 128);
-    mCtx.fillStyle = '#38bdf8'; mCtx.font = 'bold 12px monospace';
-    mCtx.fillText("> Devarshi.role = 'DevSecOps';", 10, 28);
-    mCtx.fillText("> Devarshi.skills = ['ThreeJS', 'React'];", 10, 52);
-    mCtx.fillStyle = '#22c55e';
-    mCtx.fillText("> Status: Server Online (60 FPS)", 10, 80);
-    const monTex = new THREE.CanvasTexture(monCanvas);
-
-    const monGeoms = [];
-    [-1.6, 1.6].forEach(mx => {
-        const mon = new THREE.PlaneGeometry(2.8, 1.6);
-        mon.translate(4 + mx, 3.8, -7.5);
-        monGeoms.push(mon);
-    });
-    home.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(monGeoms), new THREE.MeshBasicMaterial({ map: monTex })));
-
-    // Gaming Chair
-    const chair = new THREE.Mesh(new THREE.BoxGeometry(1.8, 2.6, 1.8), new THREE.MeshStandardMaterial({ color: 0x06b6d4 }));
-    chair.position.set(4, 1.3, -4.5);
-    home.add(chair);
-
-    // Posters (Iron Man & Max Verstappen)
-    createWallPoster(home, 'IRON MAN', '#dc2626', '#fde047', -6.5, 6.5, -9.5);
-    createWallPoster(home, 'VERSTAPPEN 33', '#1e3a8a', '#ef4444', 4, 7.5, -9.5);
-
-    // Cozy Interior Ceiling Light
-    const roomLight = new THREE.PointLight(0xffedd5, 2.8, 26);
-    roomLight.position.set(0, 8, 0);
-    home.add(roomLight);
-
-    home.position.set(poiHome.x, 0, poiHome.z);
-    scene.add(home);
+    // Official Home HQ is unified inside the 180m Skyscraper at (0, 140).
+    // Legacy small bungalow decommissioned to preserve performance and architecture.
 }
 buildHomeDistrict();
 
@@ -2584,60 +2480,95 @@ function createWallPoster(parent, text, bg, textCol, x, y, z) {
 }
 
 // ==========================================
-// DISTRICT 2: HIGH SCHOOL CAMPUS
+// DISTRICT 2: SCHOOL
 // (X = 0, Z = 102)
+// Strictly Non-Interactive Architectural Landmark
+// Styled per Stitch Design Blueprint ARCH-3D-012
 // ==========================================
 let poiSchool = { x: 0, z: 102, radius: 14 };
 function buildSchoolDistrict() {
-    registerBoxCollider(poiSchool.x - 18, poiSchool.x + 18, poiSchool.z - 13, poiSchool.z + 1, 'SchoolBuilding');
-    registerBoxCollider(poiSchool.x - 19, poiSchool.x - 13, poiSchool.z + 1.5, poiSchool.z + 10.5, 'SchoolBus');
+    registerBoxCollider(poiSchool.x - 18, poiSchool.x + 18, poiSchool.z - 13, poiSchool.z + 1, 'SchoolBuilding', -5, 24);
+    registerBoxCollider(poiSchool.x - 19, poiSchool.x - 13, poiSchool.z + 1.5, poiSchool.z + 10.5, 'SchoolBus', -5, 4.0);
     const school = new THREE.Group();
 
-    // Red Brick School Main Building + Central Clock Tower
-    const brickMat = new THREE.MeshStandardMaterial({ map: brickTex, roughness: 0.8 });
-    const b1 = new THREE.BoxGeometry(34, 14, 12);
-    b1.translate(0, 7, -6);
-    const b2 = new THREE.BoxGeometry(8, 22, 8);
-    b2.translate(0, 11, -6);
-    const schoolBuilding = new THREE.Mesh(BufferGeometryUtils.mergeGeometries([b1, b2]), brickMat);
-    schoolBuilding.castShadow = true; schoolBuilding.receiveShadow = true;
-    school.add(schoolBuilding);
+    // 1. Warm Sandstone / Ochre Academic Facade
+    const facadeMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.75, metalness: 0.1 });
+    const trimMat = new THREE.MeshStandardMaterial({ color: 0xfef3c7, roughness: 0.65 });
+    const glassMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.2, metalness: 0.8 });
 
-    // Clock Face
-    const clockCanvas = document.createElement('canvas');
-    clockCanvas.width = 128; clockCanvas.height = 128;
-    const cCtx = clockCanvas.getContext('2d');
-    cCtx.fillStyle = '#f8fafc'; cCtx.beginPath(); cCtx.arc(64, 64, 60, 0, Math.PI * 2); cCtx.fill();
-    cCtx.strokeStyle = '#0f172a'; cCtx.lineWidth = 6; cCtx.stroke();
-    // Clock hands
-    cCtx.strokeStyle = '#0f172a'; cCtx.lineWidth = 5;
-    cCtx.beginPath(); cCtx.moveTo(64, 64); cCtx.lineTo(64, 25); cCtx.stroke();
-    cCtx.beginPath(); cCtx.moveTo(64, 64); cCtx.lineTo(95, 64); cCtx.stroke();
-    const clockMesh = new THREE.Mesh(new THREE.PlaneGeometry(4, 4), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(clockCanvas) }));
-    clockMesh.position.set(0, 18, -1.9);
-    school.add(clockMesh);
+    // Main Academic Hall (36m W x 18m H x 14m D)
+    const facadeGeoms = [];
+    const mainHall = new THREE.BoxGeometry(36, 18, 14);
+    mainHall.translate(0, 9, -6);
+    facadeGeoms.push(mainHall);
 
-    // School Roof Pyramid Spire
-    const spire = new THREE.Mesh(new THREE.ConeGeometry(5.8, 6, 4), new THREE.MeshStandardMaterial({ color: 0x0f172a }));
-    spire.rotation.y = Math.PI / 4;
-    spire.position.set(0, 25, -6);
-    school.add(spire);
+    // Central Symmetrical Entrance Portal & Colonnade Portico
+    const portico = new THREE.BoxGeometry(12, 12, 4);
+    portico.translate(0, 6, 2.5);
+    facadeGeoms.push(portico);
 
-    // Grand Entrance Doors & School Board
+    // Rooftop Parapet and HVAC / Machine Room
+    const parapet = new THREE.BoxGeometry(36.6, 0.8, 14.6);
+    parapet.translate(0, 18.4, -6);
+    facadeGeoms.push(parapet);
+
+    const machineRoom = new THREE.BoxGeometry(10, 3.5, 8);
+    machineRoom.translate(0, 20.2, -6);
+    facadeGeoms.push(machineRoom);
+
+    const mergedFacade = BufferGeometryUtils.mergeGeometries(facadeGeoms);
+    const fMesh = new THREE.Mesh(mergedFacade, facadeMat);
+    fMesh.castShadow = true;
+    fMesh.receiveShadow = true;
+    school.add(fMesh);
+
+    // 2. Concrete Trim, Steps & Columns
+    const trimGeoms = [];
+    // Front Entrance Steps
+    for (let step = 0; step < 3; step++) {
+        const stepGeom = new THREE.BoxGeometry(10 - step * 1.2, 0.35, 1.2);
+        stepGeom.translate(0, step * 0.35 + 0.175, 4.8 - step * 0.8);
+        trimGeoms.push(stepGeom);
+    }
+    // Ribbon Cornice bands across storeys
+    [5.8, 11.8, 17.8].forEach(by => {
+        const band = new THREE.BoxGeometry(36.4, 0.4, 14.4);
+        band.translate(0, by, -6);
+        trimGeoms.push(band);
+    });
+    const mergedTrim = BufferGeometryUtils.mergeGeometries(trimGeoms);
+    const tMesh = new THREE.Mesh(mergedTrim, trimMat);
+    tMesh.receiveShadow = true;
+    school.add(tMesh);
+
+    // 3. Ribbon Window Glass Strips
+    const glassGeoms = [];
+    [3.2, 9.2, 15.2].forEach(wy => {
+        // Left Wing Windows
+        const winL = new THREE.PlaneGeometry(10, 1.8);
+        winL.translate(-10, wy, 1.05);
+        glassGeoms.push(winL);
+        // Right Wing Windows
+        const winR = new THREE.PlaneGeometry(10, 1.8);
+        winR.translate(10, wy, 1.05);
+        glassGeoms.push(winR);
+    });
+    const mergedGlass = BufferGeometryUtils.mergeGeometries(glassGeoms);
+    school.add(new THREE.Mesh(mergedGlass, glassMat));
+
+    // 4. Non-Interactive Clean Signage: "SCHOOL"
     const sBoardCanvas = document.createElement('canvas');
     sBoardCanvas.width = 512; sBoardCanvas.height = 128;
     const sbCtx = sBoardCanvas.getContext('2d');
-    sbCtx.fillStyle = '#1e1b4b'; sbCtx.fillRect(0, 0, 512, 128);
-    sbCtx.fillStyle = '#f59e0b'; sbCtx.font = 'bold 24px serif';
+    sbCtx.fillStyle = '#0f172a'; sbCtx.fillRect(0, 0, 512, 128);
+    sbCtx.fillStyle = '#38bdf8'; sbCtx.font = 'bold 36px sans-serif';
     sbCtx.textAlign = 'center';
-    sbCtx.fillText("HIGH SCHOOL ACADEMIC CAMPUS", 256, 52);
-    sbCtx.fillStyle = '#cbd5e1'; sbCtx.font = 'bold 18px sans-serif';
-    sbCtx.fillText("Foundational Academic Excellence (2007 - 2017)", 256, 92);
-    const sBoard = new THREE.Mesh(new THREE.PlaneGeometry(16, 4), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(sBoardCanvas) }));
-    sBoard.position.set(0, 11, 0.2);
+    sbCtx.fillText("SCHOOL", 256, 76);
+    const sBoard = new THREE.Mesh(new THREE.PlaneGeometry(8, 2.0), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(sBoardCanvas) }));
+    sBoard.position.set(0, 10.5, 4.55);
     school.add(sBoard);
 
-    // School Playground Football Goal
+    // 5. School Playground Football Goal
     const goalMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
     const goalGeoms = [];
     const crossbar = new THREE.BoxGeometry(8, 0.2, 0.2);
@@ -2650,7 +2581,7 @@ function buildSchoolDistrict() {
     });
     school.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(goalGeoms), goalMat));
 
-    // Yellow School Bus parked outside (Merged with vertex colors)
+    // 6. Yellow School Bus parked outside
     const busBody = applyVertexColor(new THREE.BoxGeometry(4.2, 2.8, 9), 0xf59e0b);
     busBody.translate(-16, 1.8, 6);
     const busRoof = applyVertexColor(new THREE.BoxGeometry(4.2, 0.4, 9), 0xffffff);
@@ -2669,7 +2600,7 @@ buildSchoolDistrict();
 // ==========================================
 let poiCollege = { x: 48, z: 62, radius: 12 };
 function buildCollegeDistrict() {
-    registerBoxCollider(poiCollege.x - 17, poiCollege.x + 17, poiCollege.z - 12, poiCollege.z - 1, 'CollegeBuilding');
+    registerBoxCollider(poiCollege.x - 17, poiCollege.x + 17, poiCollege.z - 12, poiCollege.z - 1, 'CollegeBuilding', -5, 18);
     const college = new THREE.Group();
 
     // Grand College Building Facade
@@ -4448,11 +4379,11 @@ function teleportTo(targetX, targetZ, label, targetY = 0) {
 }
 
 document.getElementById('btn-tp-gateway').addEventListener('click', () => teleportTo(0, -6, 'Gateway', 0));
-document.getElementById('btn-tp-home').addEventListener('click', () => teleportTo(-48, 34, 'Home HQ', 0));
-document.getElementById('btn-tp-school').addEventListener('click', () => teleportTo(0, 66, 'High School', 0));
+document.getElementById('btn-tp-home').addEventListener('click', () => teleportTo(0, 115, 'Home HQ', 0));
+document.getElementById('btn-tp-school').addEventListener('click', () => teleportTo(0, 75, 'School', 0));
 document.getElementById('btn-tp-college').addEventListener('click', () => teleportTo(48, 34, 'DMCE College', 0));
 const btnTpStark = document.getElementById('btn-tp-stark');
-if (btnTpStark) btnTpStark.addEventListener('click', () => teleportTo(0, 115, 'Stark Plaza', 0));
+if (btnTpStark) btnTpStark.addEventListener('click', () => teleportTo(0, 115, 'Home HQ', 0));
 
 // Stark Tower Turbo-Lift Modal Controller
 const starkElevatorModalEl = document.getElementById('stark-elevator-modal');
@@ -4634,16 +4565,6 @@ const devarshi = {
 console.log("Welcome to my Cyber Universe!");
         `;
         interactiveModalEl.classList.add('active');
-    } else if (currentInteraction === 'schoolBoard') {
-        modalTitleEl.innerHTML = "🏫 High School Academic Campus";
-        modalBodyEl.innerHTML = `
-            <strong>Foundational Academic Journey:</strong><br>
-            • <strong>Secondary Education:</strong> High School (Graduated with Distinction; pending institutional name verification)<br>
-            • <strong>Milestones:</strong> Science Fair Gold Medalist, Inter-School Mathematics Olympiad finalist, and Football Team Captain.<br>
-            • <strong>First Spark:</strong> Built first algorithmic automation script and explored computer architecture at age 14.
-        `;
-        modalCodePreviewEl.style.display = 'none';
-        interactiveModalEl.classList.add('active');
     } else if (currentInteraction === 'collegeBoard') {
         modalTitleEl.innerHTML = "🎓 Datta Meghe College of Engineering (DMCE)";
         modalBodyEl.innerHTML = `
@@ -4699,9 +4620,8 @@ function updateMiniMap(playerX, playerZ, playerRot) {
     // Nearest waypoint calculation across all expanded districts
     const waypoints = [
         { name: "Gateway Arch", x: 0, z: -6 },
-        { name: "Devarshi's HQ", x: poiHome.x, z: poiHome.z },
-        { name: "Stark Tower Plaza", x: WORLD_CONFIG.starkTowerSite.x, z: WORLD_CONFIG.starkTowerSite.z },
-        { name: "High School Campus", x: poiSchool.x, z: poiSchool.z },
+        { name: "Home HQ (Tower)", x: 0, z: 140 },
+        { name: "School", x: poiSchool.x, z: poiSchool.z },
         { name: "DMCE College", x: poiCollege.x, z: poiCollege.z },
         { name: "City Train Station", x: trainState.x, z: 16 },
         { name: "West Residential District", x: -240, z: 90 },
@@ -4726,7 +4646,7 @@ function updateMiniMap(playerX, playerZ, playerRot) {
     const scale = 0.65; // ~290m visual diameter around player
 
     function toMapX(wx) { return cx + (wx - playerX) * scale; }
-    function toMapY(wz) { return cy + (wz - playerZ) * scale; }
+    function toMapY(wz) { return cy - (wz - playerZ) * scale; }
 
     mapCtx.save();
     mapCtx.beginPath();
@@ -4737,11 +4657,12 @@ function updateMiniMap(playerX, playerZ, playerRot) {
     mapCtx.fillStyle = '#090d16';
     mapCtx.fillRect(0, 0, 190, 190);
 
-    // 2. Arabian Sea Water
+    // 2. Arabian Sea Water (South of Z = -22)
     const seaScreenY = toMapY(-22);
-    if (seaScreenY > 0) {
+    if (seaScreenY < 190) {
+        const seaTop = Math.max(0, seaScreenY);
         mapCtx.fillStyle = '#1e3a8a';
-        mapCtx.fillRect(0, 0, 190, Math.min(190, seaScreenY));
+        mapCtx.fillRect(0, seaTop, 190, 190 - seaTop);
         mapCtx.strokeStyle = '#38bdf8';
         mapCtx.lineWidth = 1.5;
         mapCtx.beginPath();
@@ -4750,38 +4671,37 @@ function updateMiniMap(playerX, playerZ, playerRot) {
         mapCtx.stroke();
     }
 
-    // 3. Waterfront Promenade
-    const promY = toMapY(-22);
+    // 3. Waterfront Promenade (Z = -22 to 10)
     mapCtx.fillStyle = '#64748b';
-    mapCtx.fillRect(toMapX(-380), promY, 760 * scale, 32 * scale);
+    mapCtx.fillRect(toMapX(-380), toMapY(10), 760 * scale, 32 * scale);
 
     // 4. Arterial Road Grid
     mapCtx.fillStyle = '#1e293b';
-    // Marine Ave (Z = 16)
-    mapCtx.fillRect(toMapX(-380), toMapY(9), 760 * scale, 14 * scale);
-    // Market Street (Z = 42)
-    mapCtx.fillRect(toMapX(-380), toMapY(37), 760 * scale, 10 * scale);
-    // Midtown Ave (Z = 140)
-    mapCtx.fillRect(toMapX(-380), toMapY(134), 760 * scale, 12 * scale);
-    // Campus Cross Ave (Z = 240)
-    mapCtx.fillRect(toMapX(-360), toMapY(234), 720 * scale, 12 * scale);
-    // Far North Expressway (Z = 380)
-    mapCtx.fillRect(toMapX(-360), toMapY(375), 720 * scale, 10 * scale);
+    // Marine Ave (Z = 16, width 14)
+    mapCtx.fillRect(toMapX(-380), toMapY(23), 760 * scale, 14 * scale);
+    // Market Street (Z = 42, width 10)
+    mapCtx.fillRect(toMapX(-380), toMapY(47), 760 * scale, 10 * scale);
+    // Midtown Ave (Z = 140, width 12)
+    mapCtx.fillRect(toMapX(-380), toMapY(146), 760 * scale, 12 * scale);
+    // Campus Cross Ave (Z = 240, width 12)
+    mapCtx.fillRect(toMapX(-360), toMapY(246), 720 * scale, 12 * scale);
+    // Far North Expressway (Z = 380, width 10)
+    mapCtx.fillRect(toMapX(-360), toMapY(385), 720 * scale, 10 * scale);
 
-    // North Express Avenue Spine (X = 0)
-    mapCtx.fillRect(toMapX(-6), toMapY(16), 12 * scale, 464 * scale);
-    // West Arterial (X = -180)
-    mapCtx.fillRect(toMapX(-186), toMapY(16), 12 * scale, 464 * scale);
-    // East Arterial (X = 180)
-    mapCtx.fillRect(toMapX(174), toMapY(16), 12 * scale, 464 * scale);
-    // Far West Coastal (X = -320)
-    mapCtx.fillRect(toMapX(-325), toMapY(16), 10 * scale, 224 * scale);
-    // Far East Docks (X = 320)
-    mapCtx.fillRect(toMapX(315), toMapY(16), 10 * scale, 224 * scale);
+    // North Express Avenue Spine (X = 0, Z = 16 to 480)
+    mapCtx.fillRect(toMapX(-6), toMapY(480), 12 * scale, 464 * scale);
+    // West Arterial (X = -180, Z = 16 to 480)
+    mapCtx.fillRect(toMapX(-186), toMapY(480), 12 * scale, 464 * scale);
+    // East Arterial (X = 180, Z = 16 to 480)
+    mapCtx.fillRect(toMapX(174), toMapY(480), 12 * scale, 464 * scale);
+    // Far West Coastal (X = -320, Z = 16 to 240)
+    mapCtx.fillRect(toMapX(-325), toMapY(240), 10 * scale, 224 * scale);
+    // Far East Docks (X = 320, Z = 16 to 240)
+    mapCtx.fillRect(toMapX(315), toMapY(240), 10 * scale, 224 * scale);
 
-    // Local connectors
-    mapCtx.fillRect(toMapX(-54), toMapY(16), 12 * scale, 46 * scale);
-    mapCtx.fillRect(toMapX(42), toMapY(16), 12 * scale, 46 * scale);
+    // Local connectors (Z = 16 to 62)
+    mapCtx.fillRect(toMapX(-54), toMapY(62), 12 * scale, 46 * scale);
+    mapCtx.fillRect(toMapX(42), toMapY(62), 12 * scale, 46 * scale);
 
     // Stark Plaza Roundabout
     mapCtx.fillStyle = '#0284c7';
@@ -4808,13 +4728,13 @@ function updateMiniMap(playerX, playerZ, playerRot) {
     // Station Platforms
     trainStationZ.forEach(sz => {
         mapCtx.fillStyle = '#38bdf8';
-        mapCtx.fillRect(toMapX(-30.8), toMapY(sz - 11), 4.2 * scale, 22 * scale);
+        mapCtx.fillRect(toMapX(-30.8), toMapY(sz + 11), 4.2 * scale, 22 * scale);
     });
 
     // 6. Building Footprints across City (All 68 buildings)
     cityBuildings.forEach(b => {
         const bx = toMapX(b.minX);
-        const by = toMapY(b.minZ);
+        const by = toMapY(b.maxZ);
         const bw = (b.maxX - b.minX) * scale;
         const bh = (b.maxZ - b.minZ) * scale;
         // Radar viewport culling
@@ -4830,19 +4750,19 @@ function updateMiniMap(playerX, playerZ, playerRot) {
 
     // Gateway Arch (Gold)
     mapCtx.fillStyle = '#f59e0b';
-    mapCtx.fillRect(toMapX(-16), toMapY(-38), 32 * scale, 12 * scale);
+    mapCtx.fillRect(toMapX(-16), toMapY(-26), 32 * scale, 12 * scale);
 
     // Home HQ (Blue)
     mapCtx.fillStyle = '#2563eb';
-    mapCtx.fillRect(toMapX(poiHome.x - 11), toMapY(poiHome.z - 10), 22 * scale, 20 * scale);
+    mapCtx.fillRect(toMapX(poiHome.x - 11), toMapY(poiHome.z + 10), 22 * scale, 20 * scale);
 
-    // High School (Purple)
+    // School (Purple)
     mapCtx.fillStyle = '#9333ea';
-    mapCtx.fillRect(toMapX(poiSchool.x - 17), toMapY(poiSchool.z - 12), 34 * scale, 14 * scale);
+    mapCtx.fillRect(toMapX(poiSchool.x - 18), toMapY(poiSchool.z + 1), 36 * scale, 14 * scale);
 
     // DMCE College (Emerald)
     mapCtx.fillStyle = '#059669';
-    mapCtx.fillRect(toMapX(poiCollege.x - 16), toMapY(poiCollege.z - 10), 32 * scale, 16 * scale);
+    mapCtx.fillRect(toMapX(poiCollege.x - 16), toMapY(poiCollege.z + 6), 32 * scale, 16 * scale);
 
     // 7. Train Coaches
     [trainState.coach1, trainState.coach2, trainState.coach3].forEach((c, idx) => {
@@ -4852,7 +4772,7 @@ function updateMiniMap(playerX, playerZ, playerRot) {
         if (Math.hypot(cxMap - cx, cyMap - cy) > radarRadius) return;
         mapCtx.save();
         mapCtx.translate(cxMap, cyMap);
-        mapCtx.rotate(-c.rotation.y);
+        mapCtx.rotate(c.rotation.y);
         mapCtx.fillStyle = idx === 0 ? '#facc15' : '#8b5cf6';
         mapCtx.fillRect(-2.5, -4.5, 5, 9);
         mapCtx.restore();
@@ -4925,7 +4845,8 @@ function updateMiniMap(playerX, playerZ, playerRot) {
     // 10. Player Center Navigation Marker & Heading Arrow
     mapCtx.save();
     mapCtx.translate(cx, cy);
-    mapCtx.rotate(-playerRot + Math.PI);
+    const heading = (!isFlightMode && !activeVehicle) ? (playerRot - Math.PI) : playerRot;
+    mapCtx.rotate(heading);
 
     // Pulsing GPS signal
     const pulse = (Date.now() % 1000) / 1000;
@@ -5455,21 +5376,7 @@ function checkProximity() {
         return;
     }
 
-    // 2. Check Home PC Desk
-    if (p.distanceTo(new THREE.Vector3(poiHome.x, 0, poiHome.z - 6)) < 16) {
-        currentInteraction = 'homePC';
-        showPrompt('E', 'Sit at Developer PC 💻');
-        return;
-    }
-
-    // 3. Check High School Board
-    if (p.distanceTo(new THREE.Vector3(poiSchool.x, 0, poiSchool.z - 16)) < 18) {
-        currentInteraction = 'schoolBoard';
-        showPrompt('E', "Inspect High School Campus 🏫");
-        return;
-    }
-
-    // 4. Check DMCE College Board
+    // 2. Check DMCE College Board
     if (p.distanceTo(new THREE.Vector3(poiCollege.x, 0, poiCollege.z - 10)) < 18) {
         currentInteraction = 'collegeBoard';
         showPrompt('E', 'Inspect DMCE College 🎓');
@@ -5500,21 +5407,21 @@ function checkProximity() {
         }
     }
 
-    // 8. Check Stark Tower Elevator Bank (on any of the 4 floors near X=0, Z=146.5)
+    // 8. Check Home HQ Elevator Bank (on any of the 4 floors near X=0, Z=146.5)
     if (Math.abs(p.x) < 4.2 && Math.abs(p.z - 146.5) < 3.5) {
         currentInteraction = 'starkElevator';
-        showPrompt('E', 'Call Stark Turbo-Lift ⚡');
+        showPrompt('E', 'Call Home HQ Turbo-Lift ⚡');
         return;
     }
 
-    // 9. Check Stark Tower Level 3 Cybersecurity Battlestation (Y ~ 80, X=0, Z=136)
+    // 9. Check Home HQ Level 3 Cybersecurity Battlestation (Y ~ 80, X=0, Z=136)
     if (p.y >= 75 && p.y <= 85 && Math.abs(p.x) < 3.8 && Math.abs(p.z - 136) < 3.8) {
         currentInteraction = 'starkBattlestation';
         showPrompt('E', 'Access DevSecOps Terminal 🛡️');
         return;
     }
 
-    // 10. Check Stark Tower Level 4 Rooftop Flight Deck (Y ~ 120, X=0, Z=126)
+    // 10. Check Home HQ Level 4 Rooftop Flight Deck (Y ~ 120, X=0, Z=126)
     if (p.y >= 115 && p.y <= 125 && Math.abs(p.x) < 7.0 && Math.abs(p.z - 126) < 7.0) {
         currentInteraction = 'starkFlightDeck';
         showPrompt('E', 'Launch Iron Man Flight ⚡');
@@ -5539,6 +5446,7 @@ function showPrompt(key, text) {
 }
 
 function hidePrompt() {
+    currentInteraction = null;
     interactionPromptEl.classList.remove('show');
 }
 
@@ -5582,6 +5490,7 @@ window.__flightPitch = () => flightPitch;
 window.__flightRoll = () => flightRoll;
 window.__flightHeading = () => flightHeading;
 window.__keys = keys;
+window.__updateMiniMap = updateMiniMap;
 
 // Responsive Resize
 window.addEventListener('resize', () => {
