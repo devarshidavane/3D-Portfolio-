@@ -697,19 +697,19 @@ const WORLD_CONFIG = {
     bounds: {
         minX: -400,
         maxX: 400,
-        minZ: -260,
+        minZ: -450,
         maxZ: 540
     },
     playableLimits: {
         minX: -395,
         maxX: 395,
-        minZ: -21.5,
+        minZ: -380,
         maxZ: 530
     },
     width: 800,
     depth: 800,
     districts: {
-        waterfront: { minX: -400, maxX: 400, minZ: -260, maxZ: 10, name: "Gateway Waterfront & Marine Promenade" },
+        waterfront: { minX: -400, maxX: 400, minZ: -450, maxZ: 10, name: "Gateway Waterfront & Arabian Sea" },
         historicResidential: { minX: -380, maxX: -110, minZ: 10, maxZ: 240, name: "Girgaon & Lalbaug Residential" },
         modernDowntown: { minX: -100, maxX: 100, minZ: 10, maxZ: 240, name: "Modern Downtown & Stark Tower Site" },
         commercialMarkets: { minX: 110, maxX: 380, minZ: 10, maxZ: 240, name: "Crawford Commercial & Markets" },
@@ -729,10 +729,35 @@ window.__WORLD_CONFIG = WORLD_CONFIG;
 let currentFloorElevation = 0;
 window.__currentFloorElevation = currentFloorElevation;
 
+function getSurfaceElevationAt(x, z) {
+    let topY = 0;
+    // Stark Tower Helipad (X: 0, Z: 140, radius: 22, height: 120)
+    if (Math.hypot(x - 0, z - 140) < 22) {
+        return 120;
+    }
+    // Check all building and platform colliders
+    for (let i = 0; i < worldColliders.length; i++) {
+        const c = worldColliders[i];
+        if (c.type === 'box') {
+            const rY = (c.roofY !== undefined) ? c.roofY : ((c.maxY !== undefined && c.maxY >= 2.0) ? c.maxY : 0);
+            if (rY >= 0.5 && !c.label?.includes('Balustrade') && !c.label?.includes('Boundary') && !c.label?.includes('Pier')) {
+                if (x >= c.minX && x <= c.maxX && z >= c.minZ && z <= c.maxZ) {
+                    if (rY > topY) topY = rY;
+                }
+            }
+        }
+    }
+    return topY;
+}
+window.__getSurfaceElevationAt = getSurfaceElevationAt;
+
 const worldColliders = [];
 
-function registerBoxCollider(minX, maxX, minZ, maxZ, label = 'obstacle', minY = -5, maxY = 4.5) {
-    worldColliders.push({ type: 'box', minX, maxX, minZ, maxZ, minY, maxY, label });
+function registerBoxCollider(minX, maxX, minZ, maxZ, label = 'obstacle', minY = -5, maxY = 4.5, roofY = undefined) {
+    if (roofY === undefined && maxY > 4.5) {
+        roofY = maxY;
+    }
+    worldColliders.push({ type: 'box', minX, maxX, minZ, maxZ, minY, maxY, roofY, label });
 }
 
 function registerCylinderCollider(x, z, radius, label = 'pole', minY = -5, maxY = 7.5) {
@@ -748,7 +773,8 @@ function resolveCollision(pos, radius = 0.5) {
     for (let i = 0; i < worldColliders.length; i++) {
         const col = worldColliders[i];
         if (col.minY !== undefined && col.maxY !== undefined) {
-            if (pos.y < col.minY || pos.y > col.maxY) continue;
+            const topElevation = (col.roofY !== undefined) ? col.roofY : col.maxY;
+            if (pos.y < col.minY || pos.y >= topElevation - 0.25) continue;
         }
 
         if (col.type === 'box') {
@@ -842,7 +868,7 @@ const waterMat = new THREE.MeshStandardMaterial({ color: 0x123c69, roughness: 0.
 const seaMesh = new THREE.Mesh(waterGeom, waterMat);
 seaMesh.rotation.x = -Math.PI / 2;
 seaMesh.position.set(0, -0.6, -320);
-seaMesh.receiveShadow = true;
+seaMesh.receiveShadow = false;
 scene.add(seaMesh);
 
 // 2. Main Ground Turf (Lush Green Grass spanning north of Marine Drive waterfront: Z = -20 to 560)
@@ -862,15 +888,33 @@ promenade.position.set(0, -0.4, -6);
 promenade.receiveShadow = true;
 scene.add(promenade);
 
-// Sea Steps & Balustrade Railing at Z = -22 (Spanning full Marine Drive: 760m)
+// Sea Steps & Balustrade Railing at Z = -22 (Spanning Marine Drive with portals for Gateway & Haji Ali Causeway)
 const railMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.6 });
-const topBar = new THREE.Mesh(new THREE.BoxGeometry(760, 0.4, 0.6), railMat);
-topBar.position.set(0, 1.2, -22);
+const barGeoms = [];
+const postGeoms = [];
+
+// Section 1: Far West (-380 to -186)
+const barWest = new THREE.BoxGeometry(194, 0.4, 0.6);
+barWest.translate(-283, 1.2, -22);
+barGeoms.push(barWest);
+
+// Section 2: West-Mid (-174 to -22)
+const barMid = new THREE.BoxGeometry(152, 0.4, 0.6);
+barMid.translate(-98, 1.2, -22);
+barGeoms.push(barMid);
+
+// Section 3: East (+22 to +380)
+const barEast = new THREE.BoxGeometry(358, 0.4, 0.6);
+barEast.translate(201, 1.2, -22);
+barGeoms.push(barEast);
+
+const topBar = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(barGeoms), railMat);
 topBar.castShadow = false;
 scene.add(topBar);
 
-const postGeoms = [];
 for (let rx = -380; rx <= 380; rx += 3.5) {
+    if (rx >= -22 && rx <= 22) continue; // Clear opening for Gateway & Jetty
+    if (rx >= -186 && rx <= -174) continue; // Clear opening for Haji Ali Causeway
     const post = new THREE.CylinderGeometry(0.16, 0.2, 1.2, 8);
     post.translate(rx, 0.6, -22);
     postGeoms.push(post);
@@ -881,7 +925,11 @@ if (postGeoms.length > 0) {
     postsMesh.castShadow = false;
     scene.add(postsMesh);
 }
-registerBoxCollider(-390, 390, -23.0, -21.0, 'SeaBalustrade');
+
+// Colliders allowing unobstructed walking out to Gateway jetty and Haji Ali causeway
+registerBoxCollider(-390, -186, -23.0, -21.0, 'SeaBalustradeWest');
+registerBoxCollider(-174, -22, -23.0, -21.0, 'SeaBalustradeMid');
+registerBoxCollider(22, 390, -23.0, -21.0, 'SeaBalustradeEast');
 
 // Promenade Street Lamps
 [-40, -20, 0, 20, 40].forEach(lx => {
@@ -904,30 +952,36 @@ scene.add(cat);
 
 // Gateway of India Basalt Monument (Detailed Indo-Saracenic Architecture at Z = -32)
 function buildGatewayArch() {
-    registerBoxCollider(-16, 16, -38, -26, 'GatewayArch', -5, 28);
+    registerBoxCollider(-17, -5.5, -38, -26, 'GatewayArchLeftPier', -5, 28);
+    registerBoxCollider(5.5, 17, -38, -26, 'GatewayArchRightPier', -5, 28);
+    registerBoxCollider(-5.5, 5.5, -38, -26, 'GatewayArchRoof', 14, 28);
+
     const monument = new THREE.Group();
     const basaltMat = new THREE.MeshStandardMaterial({ color: 0xd4a373, roughness: 0.85, metalness: 0.08 });
     const darkStoneMat = new THREE.MeshStandardMaterial({ color: 0xb58452, roughness: 0.9 });
-    const archMat = new THREE.MeshStandardMaterial({ color: 0x1c140d });
 
     const basaltGeoms = [];
     const darkStoneGeoms = [];
-    const archGeoms = [];
 
-    // Central Mass
-    const base = new THREE.BoxGeometry(32, 20, 12);
-    base.translate(0, 10, -32);
-    basaltGeoms.push(base);
+    // Two Main Gateway Piers (left & right) leaving a clear central archway opening
+    const pierLeft = new THREE.BoxGeometry(10.5, 20, 12);
+    pierLeft.translate(-10.75, 10, -32);
+    basaltGeoms.push(pierLeft);
 
-    // Archway Openings (Central + Sides)
-    const centralArch = new THREE.BoxGeometry(11, 14, 12.4);
-    centralArch.translate(0, 7, -32);
-    archGeoms.push(centralArch);
+    const pierRight = new THREE.BoxGeometry(10.5, 20, 12);
+    pierRight.translate(10.75, 10, -32);
+    basaltGeoms.push(pierRight);
 
-    [-11, 11].forEach(ax => {
-        const sideArch = new THREE.BoxGeometry(4.5, 9.5, 12.2);
-        sideArch.translate(ax, 4.75, -32);
-        archGeoms.push(sideArch);
+    // Archway Top Span (Y: 14 to 20 over the central opening)
+    const archTopSpan = new THREE.BoxGeometry(11, 6, 12);
+    archTopSpan.translate(0, 17, -32);
+    basaltGeoms.push(archTopSpan);
+
+    // Side Archways Cut-Ins / Details
+    [-10.75, 10.75].forEach(ax => {
+        const sideArchTrim = new THREE.BoxGeometry(4.2, 8.5, 12.2);
+        sideArchTrim.translate(ax, 4.25, -32);
+        darkStoneGeoms.push(sideArchTrim);
     });
 
     // Attic & Parapet Cornice
@@ -963,9 +1017,6 @@ function buildGatewayArch() {
         const m = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(darkStoneGeoms), darkStoneMat);
         m.castShadow = false;
         monument.add(m);
-    }
-    if (archGeoms.length > 0) {
-        monument.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(archGeoms), archMat));
     }
 
     // Indian National Flag
@@ -1107,6 +1158,150 @@ function buildGatewayMaritime() {
     createTouristFerryBoat(16, -50, -0.35, 1.8);
 }
 buildGatewayMaritime();
+
+// ==========================================
+// HAJI ALI DARGAH COASTAL SHRINE & CAUSEWAY
+// (Stitch Architectural Reference Sheet 5)
+// Arabian Sea Islet: X = -180, Z = -160, Minaret Y = 26m
+// ==========================================
+function buildHajiAliDargah() {
+    const hajiAliGroup = new THREE.Group();
+    const hajiAliGeoms = [];
+
+    // 1. 140m Elevated Stone Causeway Walkway into Arabian Sea (Z = -22 to -142)
+    // Causeway deck platform (6.4m wide, flush at Y = 0.5)
+    const deck = applyVertexColor(new THREE.BoxGeometry(6.4, 0.8, 120), 0xb58452);
+    deck.translate(-180, 0.4, -82);
+    hajiAliGeoms.push(deck);
+
+    // Left & Right Causeway Parapet Balustrades
+    [-183.1, -176.9].forEach(px => {
+        const wall = applyVertexColor(new THREE.BoxGeometry(0.35, 0.9, 120), 0xb58452);
+        wall.translate(px, 0.95, -82);
+        hajiAliGeoms.push(wall);
+    });
+
+    // Causeway Mooring Bollards & Lantern Posts
+    for (let lz = -26; lz >= -138; lz -= 14) {
+        [-183.1, -176.9].forEach(lx => {
+            const post = applyVertexColor(new THREE.CylinderGeometry(0.12, 0.15, 1.6, 6), 0x94a3b8);
+            post.translate(lx, 1.4, lz);
+            hajiAliGeoms.push(post);
+        });
+    }
+
+    // Islet Bedrock Foundation (X: -180, Z: -160)
+    const isletRock = applyVertexColor(new THREE.CylinderGeometry(24, 26, 2.2, 16), 0x78350f);
+    isletRock.translate(-180, 0.1, -160);
+    hajiAliGeoms.push(isletRock);
+
+    // 2. Whitewashed Marble Dargah Sanctuary, Courtyard, Dome & Minaret
+    // Courtyard Terrace Slabs
+    const courtyard = applyVertexColor(new THREE.BoxGeometry(42, 0.4, 36), 0xf8fafc);
+    courtyard.translate(-180, 1.0, -160);
+    hajiAliGeoms.push(courtyard);
+
+    // Courtyard Perimeter Jali Screen Parapets
+    const jaliN = applyVertexColor(new THREE.BoxGeometry(42, 1.2, 0.4), 0xf8fafc);
+    jaliN.translate(-180, 1.8, -178);
+    hajiAliGeoms.push(jaliN);
+    const jaliS = applyVertexColor(new THREE.BoxGeometry(42, 1.2, 0.4), 0xf8fafc);
+    jaliS.translate(-180, 1.8, -142);
+    hajiAliGeoms.push(jaliS);
+    const jaliW = applyVertexColor(new THREE.BoxGeometry(0.4, 1.2, 36), 0xf8fafc);
+    jaliW.translate(-201, 1.8, -160);
+    hajiAliGeoms.push(jaliW);
+
+    // Main Sanctuary Prayer Hall (22m W x 7.5m H x 18m D)
+    const hall = applyVertexColor(new THREE.BoxGeometry(22, 7.5, 18), 0xf8fafc);
+    hall.translate(-180, 4.95, -162);
+    hajiAliGeoms.push(hall);
+
+    // Arched Entrance Portico / Vestibule (South Facing)
+    const portico = applyVertexColor(new THREE.BoxGeometry(9, 6.2, 4.5), 0xf8fafc);
+    portico.translate(-180, 4.3, -151);
+    hajiAliGeoms.push(portico);
+
+    // Central Indo-Islamic Marble Dome
+    const drum = applyVertexColor(new THREE.CylinderGeometry(5.2, 5.2, 1.8, 16), 0xf8fafc);
+    drum.translate(-180, 9.4, -162);
+    hajiAliGeoms.push(drum);
+
+    const dome = applyVertexColor(new THREE.SphereGeometry(5.4, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.7), 0xf8fafc);
+    dome.translate(-180, 10.8, -162);
+    hajiAliGeoms.push(dome);
+
+    const domeFinial = applyVertexColor(new THREE.ConeGeometry(0.35, 3.2, 8), 0xf59e0b);
+    domeFinial.translate(-180, 16.2, -162);
+    hajiAliGeoms.push(domeFinial);
+
+    // 4 Corner Chattris with miniature domes
+    [-8.8, 8.8].forEach(cx => {
+        [-7.2, 7.2].forEach(cz => {
+            const chPillar = applyVertexColor(new THREE.BoxGeometry(1.2, 3.0, 1.2), 0xf8fafc);
+            chPillar.translate(-180 + cx, 10.0, -162 + cz);
+            hajiAliGeoms.push(chPillar);
+            const chDome = applyVertexColor(new THREE.SphereGeometry(1.1, 8, 8, 0, Math.PI * 2, 0, Math.PI * 0.7), 0xf8fafc);
+            chDome.translate(-180 + cx, 12.0, -162 + cz);
+            hajiAliGeoms.push(chDome);
+        });
+    });
+
+    // 3. 26-meter White Marble Minaret (NE Courtyard: X = -168, Z = -148)
+    const minaretBase = applyVertexColor(new THREE.BoxGeometry(4.4, 4.0, 4.4), 0xf8fafc);
+    minaretBase.translate(-168, 3.0, -148);
+    hajiAliGeoms.push(minaretBase);
+
+    const minaretShaft = applyVertexColor(new THREE.CylinderGeometry(1.6, 2.0, 18, 10), 0xf8fafc);
+    minaretShaft.translate(-168, 13.0, -148);
+    hajiAliGeoms.push(minaretShaft);
+
+    // Minaret Balconies
+    [10.5, 17.5].forEach(by => {
+        const bRing = applyVertexColor(new THREE.CylinderGeometry(2.4, 1.8, 0.8, 10), 0xf8fafc);
+        bRing.translate(-168, by, -148);
+        hajiAliGeoms.push(bRing);
+    });
+
+    // Minaret Lantern & Dome Spire
+    const minLantern = applyVertexColor(new THREE.CylinderGeometry(1.4, 1.4, 3.0, 8), 0xf8fafc);
+    minLantern.translate(-168, 22.0, -148);
+    hajiAliGeoms.push(minLantern);
+
+    const minDome = applyVertexColor(new THREE.SphereGeometry(1.5, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.7), 0xf8fafc);
+    minDome.translate(-168, 24.2, -148);
+    hajiAliGeoms.push(minDome);
+
+    const minSpire = applyVertexColor(new THREE.ConeGeometry(0.25, 2.6, 8), 0xf59e0b);
+    minSpire.translate(-168, 26.2, -148);
+    hajiAliGeoms.push(minSpire);
+
+    // Flagpole with Islamic Green Pennant at Entrance
+    const mast = applyVertexColor(new THREE.CylinderGeometry(0.08, 0.08, 8, 6), 0xffffff);
+    mast.translate(-180, 5.0, -148);
+    hajiAliGeoms.push(mast);
+
+    const flag = applyVertexColor(new THREE.BoxGeometry(1.8, 1.0, 0.04), 0x15803d);
+    flag.translate(-179, 8.4, -148);
+    hajiAliGeoms.push(flag);
+
+    // Assemble unified single-draw-call mesh
+    const hajiAliMesh = new THREE.Mesh(
+        BufferGeometryUtils.mergeGeometries(hajiAliGeoms, false),
+        new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.45, metalness: 0.08 })
+    );
+    hajiAliMesh.receiveShadow = true;
+    hajiAliGroup.add(hajiAliMesh);
+
+    scene.add(hajiAliGroup);
+
+    // Register Box Colliders for Walking & Rooftop Superhero Landing
+    registerBoxCollider(-183.5, -176.5, -142, -22, 'HajiAliCauseway', -2, 1.4, 0.6);
+    registerBoxCollider(-201, -159, -179, -141, 'HajiAliIslet', -2, 2.0, 0.9);
+    registerBoxCollider(-192, -168, -172, -152, 'HajiAliSanctuary', -2, 17.0, 8.7);
+    registerBoxCollider(-170.5, -165.5, -150.5, -145.5, 'HajiAliMinaret', -2, 28.0, 26.0);
+}
+buildHajiAliDargah();
 
 // Vada Pav Food Cart
 let poiVadaPav = { x: -14, z: -4, radius: 4.5 };
@@ -1286,6 +1481,24 @@ function createArticulatedPedestrian(config) {
         const tie = applyVertexColor(new THREE.BoxGeometry(0.06, 0.35, 0.02), 0xb91c1c);
         tie.translate(0, 1.35, 0.14);
         bodyGeoms.push(tie);
+    } else if (config.type === 'police') {
+        // Khaki Police Peaked Cap
+        const cap = applyVertexColor(new THREE.CylinderGeometry(0.24, 0.22, 0.12, 10), 0x78350f);
+        cap.translate(0, 1.95, 0.04);
+        bodyGeoms.push(cap);
+        const visor = applyVertexColor(new THREE.BoxGeometry(0.22, 0.02, 0.12), 0x0f172a);
+        visor.translate(0, 1.90, 0.16);
+        bodyGeoms.push(visor);
+    } else if (config.type === 'tourist') {
+        // Camera slung around chest
+        const camBody = applyVertexColor(new THREE.BoxGeometry(0.18, 0.12, 0.10), 0x0f172a);
+        camBody.translate(0, 1.30, 0.18);
+        bodyGeoms.push(camBody);
+    } else if (config.type === 'scholar') {
+        // Leatherbound book under arm
+        const book = applyVertexColor(new THREE.BoxGeometry(0.12, 0.28, 0.22), 0x1e3a8a);
+        book.translate(-0.16, 1.25, 0.12);
+        bodyGeoms.push(book);
     }
 
     const head = applyVertexColor(new THREE.SphereGeometry(0.20, 10, 10), skinColor);
@@ -1331,6 +1544,11 @@ function createArticulatedPedestrian(config) {
         const bCase = applyVertexColor(new THREE.BoxGeometry(0.08, 0.28, 0.36), 0x451a03);
         bCase.translate(0, -0.65, 0.05);
         armLGeoms.push(bCase);
+    } else if (config.type === 'traveler') {
+        // Rolling Trolley Suitcase beside left hand
+        const tCase = applyVertexColor(new THREE.BoxGeometry(0.24, 0.44, 0.34), 0x1e293b);
+        tCase.translate(-0.12, -0.62, 0.05);
+        armLGeoms.push(tCase);
     }
     const mergedArmL = BufferGeometryUtils.mergeGeometries(armLGeoms, false);
     const armLMesh = new THREE.Mesh(mergedArmL, sharedNpcMat);
@@ -1402,7 +1620,7 @@ function createArticulatedPedestrian(config) {
 const npcs = [];
 
 function buildMumbaiCrowd() {
-    // 8 Diverse Authentic Mumbai Pedestrians Distributed across Urban Sectors
+    // 8 Diverse Articulated Walking Pedestrians + 28 Batched Ambient Citizens across Mumbai
     const crowdConfig = [
         // --- ZONE 1: ARABIAN SEA WATERFRONT PROMENADE ---
         { skin: 3, shirt: 0, pants: 0, hair: 0, type: 'chaiwala', wps: [{x: -8, z: -3}, {x: 12, z: -3}] },
@@ -1454,6 +1672,109 @@ function buildMumbaiCrowd() {
 }
 buildMumbaiCrowd();
 window.__npcs = npcs;
+
+// ==========================================
+// AMBIENT MUMBAI CITIZENS (BATHED IN 1 DRAW CALL)
+// Seated on Promenade Sea Wall, Chai Addas, Bus Stops,
+// Railway Platforms & Asiatic Library Steps
+// ==========================================
+function buildAmbientCitizens() {
+    const ambientGeoms = [];
+
+    // Helper: Add a seated citizen
+    function addSeatedCitizen(x, y, z, rotY, skinHex, shirtHex, pantsHex, hairHex) {
+        // Torso
+        const torso = applyVertexColor(new THREE.BoxGeometry(0.42, 0.58, 0.24), shirtHex);
+        torso.rotateY(rotY);
+        torso.translate(x, y + 0.65, z);
+        ambientGeoms.push(torso);
+
+        // Head & Hair
+        const head = applyVertexColor(new THREE.SphereGeometry(0.18, 8, 8), skinHex);
+        head.translate(x, y + 1.1, z);
+        ambientGeoms.push(head);
+        const hair = applyVertexColor(new THREE.SphereGeometry(0.19, 8, 8, 0, Math.PI * 2, 0, Math.PI * 0.55), hairHex);
+        hair.translate(x, y + 1.12, z);
+        ambientGeoms.push(hair);
+
+        // Seated Thighs (projecting forward)
+        const forwardX = Math.sin(rotY);
+        const forwardZ = Math.cos(rotY);
+        const thighs = applyVertexColor(new THREE.BoxGeometry(0.38, 0.16, 0.44), pantsHex);
+        thighs.rotateY(rotY);
+        thighs.translate(x + forwardX * 0.15, y + 0.36, z + forwardZ * 0.15);
+        ambientGeoms.push(thighs);
+
+        // Hanging Shins
+        const shins = applyVertexColor(new THREE.BoxGeometry(0.36, 0.42, 0.16), pantsHex);
+        shins.rotateY(rotY);
+        shins.translate(x + forwardX * 0.32, y + 0.16, z + forwardZ * 0.32);
+        ambientGeoms.push(shins);
+    }
+
+    // Helper: Add a standing ambient citizen
+    function addStandingCitizen(x, y, z, rotY, skinHex, shirtHex, pantsHex, hairHex) {
+        // Torso
+        const torso = applyVertexColor(new THREE.BoxGeometry(0.42, 0.60, 0.24), shirtHex);
+        torso.rotateY(rotY);
+        torso.translate(x, y + 1.25, z);
+        ambientGeoms.push(torso);
+
+        // Head & Hair
+        const head = applyVertexColor(new THREE.SphereGeometry(0.19, 8, 8), skinHex);
+        head.translate(x, y + 1.72, z);
+        ambientGeoms.push(head);
+        const hair = applyVertexColor(new THREE.SphereGeometry(0.20, 8, 8, 0, Math.PI * 2, 0, Math.PI * 0.55), hairHex);
+        hair.translate(x, y + 1.74, z);
+        ambientGeoms.push(hair);
+
+        // Legs
+        const legs = applyVertexColor(new THREE.BoxGeometry(0.36, 0.85, 0.20), pantsHex);
+        legs.rotateY(rotY);
+        legs.translate(x, y + 0.45, z);
+        ambientGeoms.push(legs);
+    }
+
+    // 1. Citizens sitting on Marine Promenade Sea Wall (facing Arabian Sea)
+    [-60, -42, -18, 16, 38, 55].forEach((px, i) => {
+        const skins = [0x8d5524, 0xc68642, 0xe0ac69, 0xf1c27d];
+        const shirts = [0xffffff, 0xef4444, 0x3b82f6, 0x10b981, 0xf59e0b];
+        addSeatedCitizen(px, 0.6, -21.4, Math.PI, skins[i % skins.length], shirts[i % shirts.length], 0x1e293b, 0x0f172a);
+    });
+
+    // 2. Citizens chatting at Chai Stalls (X = -20, Z = -2 and X = 20, Z = -2)
+    [[-19, 0, -2.5, 0.8], [-21, 0, -2.5, -0.6], [19, 0, -2.5, 0.5], [21, 0, -2.5, -0.7]].forEach(p => {
+        addStandingCitizen(p[0], p[1], p[2], p[3], 0xc68642, 0xf8fafc, 0x334155, 0x0f172a);
+    });
+
+    // 3. Commuters waiting at BEST Bus Stops (X = -10, Z = 25 and X = 10, Z = 25)
+    [[-10.2, 0, 24.5, 0], [-9.8, 0, 25.5, 0], [9.8, 0, 24.5, Math.PI], [10.2, 0, 25.5, Math.PI]].forEach(p => {
+        addStandingCitizen(p[0], p[1], p[2], p[3], 0xe0ac69, 0x0284c7, 0x1e293b, 0x1e1b4b);
+    });
+
+    // 4. Commuters on Railway Station Platforms (Platform 1 & 2: X = -30, Z = 20 to 35)
+    [[-29.5, 0.8, 18, 0.5], [-29.5, 0.8, 24, -0.4], [-29.5, 0.8, 30, 0.2], [-29.5, 0.8, 35, 0]].forEach(p => {
+        addStandingCitizen(p[0], p[1], p[2], p[3], 0x8d5524, 0xf8fafc, 0x475569, 0x0f172a);
+    });
+
+    // 5. Readers & Citizens sitting on the Grand Steps of Asiatic Library (X = 100, Z = 100 to 104)
+    [[94, 1.35, 101, 0], [106, 1.8, 102, 0], [97, 2.25, 103, 0], [103, 2.7, 104, 0]].forEach(p => {
+        addSeatedCitizen(p[0], p[1], p[2], p[3], 0xc68642, 0xea580c, 0x1e293b, 0x0f172a);
+    });
+
+    // 6. Travelers waiting outside Airport Terminal 2 (X = 85, Z = 345)
+    [[82, 0, 345, 0], [88, 0, 345, 0.4], [94, 0, 345, -0.3]].forEach(p => {
+        addStandingCitizen(p[0], p[1], p[2], p[3], 0xe0ac69, 0x4338ca, 0x020617, 0x0f172a);
+    });
+
+    if (ambientGeoms.length > 0) {
+        const ambientMesh = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(ambientGeoms, false), sharedNpcMat);
+        ambientMesh.castShadow = false;
+        ambientMesh.receiveShadow = true;
+        scene.add(ambientMesh);
+    }
+}
+buildAmbientCitizens();
 
 // ==========================================
 // MUMBAI STREET-LEVEL PROPS & URBAN LIFE
@@ -2793,8 +3114,65 @@ function buildAirportDistrict() {
     jetGroup.add(jetMesh);
     airport.add(jetGroup);
 
+    // 4. Passenger Terminal 2 & Jetway Aerobridge per Stitch CAD Sheet 3
+    const terminalGroup = new THREE.Group();
+    const termSolidGeoms = [];
+    const termGlassGeoms = [];
+
+    // Main Terminal Concourse Hall (72m W x 14m H x 26m D at X = 95, Z = 356)
+    const termHall = applyVertexColor(new THREE.BoxGeometry(72, 14, 26), 0x94a3b8);
+    termHall.translate(95, 7, 356);
+    termSolidGeoms.push(termHall);
+
+    // Structural Perimeter Columns
+    for (let cx = 62; cx <= 128; cx += 11) {
+        const col = applyVertexColor(new THREE.CylinderGeometry(0.7, 0.9, 15, 8), 0x64748b);
+        col.translate(cx, 7.5, 342);
+        termSolidGeoms.push(col);
+    }
+
+    // Aerodynamic Modern Roof with Cantilevered Overhang (78m W x 32m D)
+    const roofBase = applyVertexColor(new THREE.BoxGeometry(78, 1.2, 32), 0xe2e8f0);
+    roofBase.translate(95, 14.6, 356);
+    termSolidGeoms.push(roofBase);
+    const roofCap = applyVertexColor(new THREE.BoxGeometry(72, 1.2, 28), 0xf1f5f9);
+    roofCap.translate(95, 15.8, 356);
+    termSolidGeoms.push(roofCap);
+
+    // Terminal Curtain Glass Facade (facing Runway/Apron - South)
+    const glassFacade = new THREE.PlaneGeometry(68, 11);
+    glassFacade.translate(95, 6.5, 369.1);
+    termGlassGeoms.push(glassFacade);
+
+    // Articulated Telescoping Jetway Aerobridge (connecting Terminal Concourse to Jetliner Fuselage at 45, 376)
+    const jetwayTunnel = applyVertexColor(new THREE.BoxGeometry(16, 3.2, 3.4), 0x64748b);
+    jetwayTunnel.rotateY(-0.62);
+    jetwayTunnel.translate(52, 4.8, 371);
+    termSolidGeoms.push(jetwayTunnel);
+
+    // Jetway Support Gantry Stilt Legs
+    [-1.2, 1.2].forEach(ox => {
+        const stilt = applyVertexColor(new THREE.CylinderGeometry(0.25, 0.3, 4.6, 6), 0x475569);
+        stilt.translate(52 + ox, 2.3, 371);
+        termSolidGeoms.push(stilt);
+    });
+
+    // Illuminated Terminal Signboard
+    const signBoard = applyVertexColor(new THREE.BoxGeometry(32, 2.2, 0.4), 0xf97316);
+    signBoard.translate(95, 14.5, 369.2);
+    termSolidGeoms.push(signBoard);
+
+    terminalGroup.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(termSolidGeoms, false), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.15 })));
+    terminalGroup.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(termGlassGeoms, false), new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.15, metalness: 0.85, transparent: true, opacity: 0.85 })));
+
+    airport.add(terminalGroup);
+
+    airport.add(terminalGroup);
+
     registerBoxCollider(-76, -64, 354, 366, 'ATCRadarTower');
     registerBoxCollider(28, 62, 360, 392, 'JetlinerApron');
+    registerBoxCollider(59, 131, 343, 369, 'AirportTerminalBuilding', -5, 18, 16.0);
+    registerBoxCollider(43, 61, 364, 378, 'AirportJetway', -5, 8.5, 5.8);
 
     scene.add(airport);
 }
@@ -3012,6 +3390,188 @@ function buildCollegeDistrict() {
     scene.add(college);
 }
 buildCollegeDistrict();
+
+// ==========================================
+// ART DECO CINEMA ("ART REGAL") & MARINE DRIVE BLOCK
+// (Stitch Architectural Reference Sheet 2)
+// West Commercial Boulevard: X = -100, Z = 60, Neon Spire Y = 28m
+// ==========================================
+function buildArtDecoCinemaDistrict() {
+    const artDecoGroup = new THREE.Group();
+    const solidGeoms = [];
+    const neonGeoms = [];
+
+    // --- 1. REGAL CINEMA BUILDING (X = -90, Z = 60) ---
+    // Stepped Ziggurat Tier 1 (Base: 22m W x 12m H x 22m D)
+    const tier1 = applyVertexColor(new THREE.BoxGeometry(22, 12, 22), 0xfef08a);
+    tier1.translate(-90, 6, 60);
+    solidGeoms.push(tier1);
+
+    // Stepped Ziggurat Tier 2 (18m W x 3.5m H x 19m D)
+    const tier2 = applyVertexColor(new THREE.BoxGeometry(18, 3.5, 19), 0xfef08a);
+    tier2.translate(-90, 13.75, 60);
+    solidGeoms.push(tier2);
+
+    // Stepped Ziggurat Tier 3 (14m W x 2.2m H x 16m D)
+    const tier3 = applyVertexColor(new THREE.BoxGeometry(14, 2.2, 16), 0xfef08a);
+    tier3.translate(-90, 16.6, 60);
+    solidGeoms.push(tier3);
+
+    // Central Vertical Neon Fin Spire (Y = 14 to 28m)
+    const spireCore = applyVertexColor(new THREE.BoxGeometry(1.2, 14, 3.6), 0x991b1b);
+    spireCore.translate(-90, 21, 52);
+    solidGeoms.push(spireCore);
+
+    // Cyan Neon Glowing Fin Lines
+    [-0.65, 0.65].forEach(nx => {
+        const neonStrip = new THREE.BoxGeometry(0.1, 13.8, 0.2);
+        neonStrip.translate(-90 + nx, 21, 53.8);
+        neonGeoms.push(neonStrip);
+    });
+
+    // Curved Cantilevered Marquee Canopy over Entrance (facing South -Z)
+    const canopy = applyVertexColor(new THREE.CylinderGeometry(5.5, 5.5, 0.8, 16, 1, false, 0, Math.PI), 0x991b1b);
+    canopy.rotateX(Math.PI / 2);
+    canopy.translate(-90, 4.2, 48.5);
+    solidGeoms.push(canopy);
+
+    // Entrance Marquee Signboard ("REGAL CINEMA • रीगल सिनेमा")
+    const marqueeSign = applyVertexColor(new THREE.BoxGeometry(14, 1.6, 0.4), 0xd97706);
+    marqueeSign.translate(-90, 5.2, 48.8);
+    solidGeoms.push(marqueeSign);
+
+    // --- 2. ADJOINING 6-STOREY STREAMLINE MODERNE RESIDENTIAL BLOCK (X = -115, Z = 60) ---
+    // Main Body (18m W x 21m H x 22m D)
+    const aptBody = applyVertexColor(new THREE.BoxGeometry(18, 21, 22), 0xfde047);
+    aptBody.translate(-115, 10.5, 60);
+    solidGeoms.push(aptBody);
+
+    // Streamline Rounded Corner Balconies across 6 Storeys
+    for (let s = 1; s <= 5; s++) {
+        const by = s * 3.5;
+        // Curved balcony slab
+        const bSlab = applyVertexColor(new THREE.CylinderGeometry(2.8, 2.8, 0.35, 12, 1, false, 0, Math.PI * 0.5), 0x991b1b);
+        bSlab.rotateX(-Math.PI / 2);
+        bSlab.translate(-106, by, 49);
+        solidGeoms.push(bSlab);
+
+        // Nautical speed-line horizontal trim bands
+        const speedLine = applyVertexColor(new THREE.BoxGeometry(18.4, 0.25, 22.4), 0x991b1b);
+        speedLine.translate(-115, by + 1.2, 60);
+        solidGeoms.push(speedLine);
+
+        // Circular Porthole Accent Windows
+        const porthole = applyVertexColor(new THREE.TorusGeometry(0.55, 0.08, 6, 12), 0x991b1b);
+        porthole.translate(-115, by + 1.8, 48.9);
+        solidGeoms.push(porthole);
+    }
+
+    // Parapet trim on apartment roof (Y = 21.5m)
+    const aptParapet = applyVertexColor(new THREE.BoxGeometry(18.6, 0.8, 22.6), 0x991b1b);
+    aptParapet.translate(-115, 21.4, 60);
+    solidGeoms.push(aptParapet);
+
+    // Assemble unified batched meshes
+    const solidMesh = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(solidGeoms, false), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6 }));
+    solidMesh.castShadow = false;
+    solidMesh.receiveShadow = true;
+    artDecoGroup.add(solidMesh);
+
+    if (neonGeoms.length > 0) {
+        artDecoGroup.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(neonGeoms), new THREE.MeshBasicMaterial({ color: 0x06b6d4 })));
+    }
+
+    scene.add(artDecoGroup);
+
+    // Register Box Colliders for Walking & Rooftop Superhero Landing
+    registerBoxCollider(-101, -79, 49, 71, 'ArtDecoRegalCinema', -5, 20.0, 17.6);
+    registerBoxCollider(-125, -105, 49, 71, 'ArtDecoMarineBlock', -5, 24.0, 21.8);
+}
+buildArtDecoCinemaDistrict();
+
+// ==========================================
+// HISTORIC MUMBAI ASIATIC LIBRARY & TOWN HALL
+// (Stitch Architectural Reference Sheet 4)
+// Central Civic Plaza: X = 100, Z = 110, Roof Y = 15m
+// ==========================================
+function buildAsiaticLibraryDistrict() {
+    const asiaticGroup = new THREE.Group();
+    const stoneGeoms = [];
+
+    // 1. Monumental Flight of 30 Classical Steps (34m W x 3.6m H x 12m D)
+    for (let step = 0; step < 8; step++) {
+        const stepGeom = applyVertexColor(new THREE.BoxGeometry(34 - step * 0.6, 0.45, 1.5), 0xf1f5f9);
+        stepGeom.translate(100, step * 0.45 + 0.225, 96 + step * 1.3);
+        stoneGeoms.push(stepGeom);
+    }
+
+    // Elevated Portico Terrace Deck (Platform at Y = 3.6m)
+    const porticoDeck = applyVertexColor(new THREE.BoxGeometry(34, 0.6, 6), 0xe2e8f0);
+    porticoDeck.translate(100, 3.6, 107);
+    stoneGeoms.push(porticoDeck);
+
+    // 2. Colonnade of 8 Classical Doric/Ionic Columns
+    for (let col = -14; col <= 14; col += 4.0) {
+        // Fluted column shaft (9.5m tall)
+        const shaft = applyVertexColor(new THREE.CylinderGeometry(0.55, 0.65, 9.5, 12), 0xf8fafc);
+        shaft.translate(100 + col, 8.65, 107);
+        stoneGeoms.push(shaft);
+
+        // Column capital & base
+        const cap = applyVertexColor(new THREE.BoxGeometry(1.6, 0.5, 1.6), 0xe2e8f0);
+        cap.translate(100 + col, 13.65, 107);
+        stoneGeoms.push(cap);
+        const base = applyVertexColor(new THREE.BoxGeometry(1.8, 0.4, 1.8), 0xe2e8f0);
+        base.translate(100 + col, 4.1, 107);
+        stoneGeoms.push(base);
+    }
+
+    // 3. Imposing Classical Triangular Pediment with Frieze
+    const entablature = applyVertexColor(new THREE.BoxGeometry(34.8, 1.2, 5.5), 0xe2e8f0);
+    entablature.translate(100, 14.5, 107);
+    stoneGeoms.push(entablature);
+
+    // Triangular Pediment Gabled Tympanum
+    const pediment = applyVertexColor(new THREE.ConeGeometry(17.4, 4.2, 4), 0xf1f5f9);
+    pediment.rotateY(Math.PI / 4);
+    pediment.scale(1.0, 1.0, 0.25);
+    pediment.translate(100, 17.2, 107);
+    stoneGeoms.push(pediment);
+
+    // 4. Main Neo-Classical Library Halls & Reading Room (38m W x 14.5m H x 22m D)
+    const mainHall = applyVertexColor(new THREE.BoxGeometry(38, 11, 22), 0xf1f5f9);
+    mainHall.translate(100, 9.1, 120);
+    stoneGeoms.push(mainHall);
+
+    // Rooftop Classical Balustrade Parapet (Y = 14.6m)
+    const roofParapet = applyVertexColor(new THREE.BoxGeometry(38.6, 0.9, 22.6), 0xe2e8f0);
+    roofParapet.translate(100, 15.05, 120);
+    stoneGeoms.push(roofParapet);
+
+    // Symmetrical Arched Windows along Hall
+    [-12, 12].forEach(wx => {
+        const win = applyVertexColor(new THREE.BoxGeometry(4.2, 6.5, 0.3), 0x1e293b);
+        win.translate(100 + wx, 9.5, 108.9);
+        stoneGeoms.push(win);
+    });
+
+    // Bronze Commemorative Plaque ("THE ASIATIC SOCIETY OF MUMBAI • टाऊन हॉल")
+    const plaque = applyVertexColor(new THREE.BoxGeometry(4.8, 1.2, 0.2), 0x78350f);
+    plaque.translate(100, 5.2, 109.1);
+    stoneGeoms.push(plaque);
+
+    const asiaticMesh = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(stoneGeoms, false), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.65 }));
+    asiaticMesh.castShadow = false;
+    asiaticMesh.receiveShadow = true;
+    asiaticGroup.add(asiaticMesh);
+
+    scene.add(asiaticGroup);
+
+    // Register Box Colliders for Walking & Rooftop Superhero Landing
+    registerBoxCollider(83, 117, 95, 107, 'AsiaticLibrarySteps', -2, 5.0, 3.6);
+    registerBoxCollider(81, 119, 107, 131, 'AsiaticLibraryHall', -5, 18.0, 14.6);
+}
+buildAsiaticLibraryDistrict();
 
 // ==========================================
 // PHASE 6: LANDMARK INTEGRATION & MUNICIPAL SIGNAGE
@@ -4840,10 +5400,10 @@ function exitFlightMode(superheroLanding = true) {
     camera.fov = 52;
     camera.updateProjectionMatrix();
 
-    // Check if directly over Stark Tower Helipad (X: ~0, Z: ~140, Y >= 115)
-    const distToHelipad = Math.hypot(characterGroup.position.x - 0, characterGroup.position.z - 140);
-    if (distToHelipad < 22 && characterGroup.position.y >= 115) {
-        currentFloorElevation = 120;
+    // Dynamic Surface Elevation Check (Helipad, Building Rooftops, or Ground)
+    const surfaceY = getSurfaceElevationAt(characterGroup.position.x, characterGroup.position.z);
+    if (surfaceY > 0 && characterGroup.position.y >= surfaceY - 2.5) {
+        currentFloorElevation = surfaceY;
     } else {
         currentFloorElevation = 0;
     }
@@ -5716,10 +6276,11 @@ function animate() {
                 characterGroup.position.y += Math.sin(flightBobTimer) * 0.04 * delta * 20;
             }
 
-            // 7. World Clamps & Altitude Bounds
+            // 7. World Clamps & Altitude Bounds (Allow full oceanic flight down to Z = -380)
             characterGroup.position.x = THREE.MathUtils.clamp(characterGroup.position.x, -390, 390);
-            characterGroup.position.z = THREE.MathUtils.clamp(characterGroup.position.z, -24, 524);
-            characterGroup.position.y = THREE.MathUtils.clamp(characterGroup.position.y, 0.1, 320);
+            characterGroup.position.z = THREE.MathUtils.clamp(characterGroup.position.z, -380, 524);
+            const minFlyY = (characterGroup.position.z < -20) ? 0.6 : 0.2;
+            characterGroup.position.y = THREE.MathUtils.clamp(characterGroup.position.y, minFlyY, 320);
 
             // 8. Dynamic 3D Building Collisions
             resolveCollision(characterGroup.position, 1.0);
@@ -5744,16 +6305,16 @@ function animate() {
             // 11. Audio Modulation
             updateFlightAudio(flightSpeed, isBoosting);
 
-            // 12. Touchdown / Landing Detection
-            const distToHelipad = Math.hypot(characterGroup.position.x - 0, characterGroup.position.z - 140);
-            if (distToHelipad < 22 && characterGroup.position.y >= 115) {
-                currentFloorElevation = 120;
+            // 12. Touchdown / Landing Detection (Helipad, Any Building Rooftop, or Ground)
+            const surfaceY = getSurfaceElevationAt(characterGroup.position.x, characterGroup.position.z);
+            if (surfaceY > 0 && characterGroup.position.y >= surfaceY - 1.8) {
+                currentFloorElevation = surfaceY;
             } else {
                 currentFloorElevation = 0;
             }
             window.__currentFloorElevation = currentFloorElevation;
 
-            if (characterGroup.position.y <= currentFloorElevation + 0.35 && flightVertSpeed < -2) {
+            if (characterGroup.position.y <= currentFloorElevation + 0.35 && (flightVertSpeed < -1.5 || keys.c)) {
                 exitFlightMode(true);
             }
 
@@ -5895,9 +6456,21 @@ function animate() {
                 characterGroup.rotation.y += diff * 0.25;
 
                 walkCycle += delta * (isSprinting ? 18 : 12);
-                characterGroup.position.y = currentFloorElevation + Math.abs(Math.sin(walkCycle)) * 0.18;
+                if (characterGroup.position.y > currentFloorElevation + 0.6) {
+                    characterGroup.position.y = THREE.MathUtils.lerp(characterGroup.position.y, currentFloorElevation, 0.16);
+                } else {
+                    characterGroup.position.y = currentFloorElevation + Math.abs(Math.sin(walkCycle)) * 0.18;
+                }
             } else {
                 characterGroup.position.y = THREE.MathUtils.lerp(characterGroup.position.y, currentFloorElevation, 0.2);
+            }
+
+            // Rooftop Edge-Drop / Vertical Gravity Step Detection
+            if (currentFloorElevation > 0) {
+                const surfaceY = getSurfaceElevationAt(characterGroup.position.x, characterGroup.position.z);
+                if (surfaceY < currentFloorElevation - 0.8) {
+                    currentFloorElevation = surfaceY;
+                }
             }
 
             // Spacebar Thruster Hover Boost
