@@ -24,6 +24,7 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.15;
 window.__renderer = renderer;
 window.THREE = THREE;
+window.__scene = scene;
 
 // Camera view mode: 'chase', 'cinematic', 'orbit'
 let cameraMode = 'chase';
@@ -528,7 +529,7 @@ const ambientLight = new THREE.AmbientLight(0xffa07a, 0.9);
 scene.add(ambientLight);
 
 // Skybox Dome with dynamic procedural canvas gradient
-const skyGeom = new THREE.SphereGeometry(350, 32, 16);
+const skyGeom = new THREE.SphereGeometry(1100, 32, 16);
 const canvasSky = document.createElement('canvas');
 canvasSky.width = 16; canvasSky.height = 256;
 const skyCtx = canvasSky.getContext('2d');
@@ -541,9 +542,9 @@ const starCount = 900;
 const starGeom = new THREE.BufferGeometry();
 const starPositions = new Float32Array(starCount * 3);
 for (let i = 0; i < starCount * 3; i += 3) {
-    starPositions[i] = (Math.random() - 0.5) * 600;
-    starPositions[i + 1] = 20 + Math.random() * 250;
-    starPositions[i + 2] = (Math.random() - 0.5) * 600;
+    starPositions[i] = (Math.random() - 0.5) * 1800;
+    starPositions[i + 1] = 20 + Math.random() * 450;
+    starPositions[i + 2] = (Math.random() - 0.5) * 1800;
 }
 starGeom.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
 const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 1.3, transparent: true, opacity: 0.1 });
@@ -835,8 +836,8 @@ function addTree(x, z, type = 'palm') {
 // OPEN WORLD TERRAIN & DISTRICT GEOMETRY
 // ==========================================
 
-// 1. Arabian Sea (Z = -20 to -620, X = -600 to +600)
-const waterGeom = new THREE.PlaneGeometry(1200, 600, 48, 24);
+// 1. Arabian Sea (Z = -10 to -630, X = -600 to +600)
+const waterGeom = new THREE.PlaneGeometry(1200, 620, 48, 24);
 const waterMat = new THREE.MeshStandardMaterial({ color: 0x123c69, roughness: 0.12, metalness: 0.75, flatShading: true });
 const seaMesh = new THREE.Mesh(waterGeom, waterMat);
 seaMesh.rotation.x = -Math.PI / 2;
@@ -844,13 +845,13 @@ seaMesh.position.set(0, -0.6, -320);
 seaMesh.receiveShadow = true;
 scene.add(seaMesh);
 
-// 2. Main Ground Turf (Lush Green Grass spanning across all districts: 860m x 620m)
+// 2. Main Ground Turf (Lush Green Grass spanning north of Marine Drive waterfront: Z = -20 to 560)
 const mainGround = new THREE.Mesh(
-    new THREE.PlaneGeometry(860, 620),
+    new THREE.PlaneGeometry(860, 580),
     new THREE.MeshStandardMaterial({ map: grassTex, roughness: 0.9 })
 );
 mainGround.rotation.x = -Math.PI / 2;
-mainGround.position.set(0, -0.4, 250);
+mainGround.position.set(0, -0.4, 270);
 mainGround.receiveShadow = true;
 scene.add(mainGround);
 
@@ -986,6 +987,126 @@ function buildGatewayArch() {
     scene.add(monument);
 }
 buildGatewayArch();
+
+// ==========================================
+// MARITIME & TOURIST FERRY BOATS (Gateway Harbor)
+// Styled per Gateway Maritime Architecture Sheet
+// ==========================================
+const maritimeFerryBoats = [];
+
+function buildGatewayMaritime() {
+    // 1. Basalt Stone Jetty Pier & Steps descending into Arabian Sea (Z = -22 down to Z = -44)
+    const jettyMat = new THREE.MeshStandardMaterial({ color: 0xb58452, roughness: 0.85 });
+    const jettyGeoms = [];
+    // Main Jetty Pier Platform (14m W x 22m L, flush with promenade at Y = -0.1)
+    const pier = new THREE.BoxGeometry(14, 0.6, 22);
+    pier.translate(0, -0.3, -33);
+    jettyGeoms.push(pier);
+
+    // 6 Wide Jetty Steps stepping down into the water (from Y = 0 to Y = -0.6 at Z = -41 to -45)
+    for (let st = 0; st < 6; st++) {
+        const step = new THREE.BoxGeometry(14, 0.15, 0.6);
+        step.translate(0, -st * 0.1 - 0.05, -41.5 - st * 0.6);
+        jettyGeoms.push(step);
+    }
+
+    // Mooring Bollards along jetty
+    [-6.5, 6.5].forEach(bx => {
+        [-26, -32, -38, -43].forEach(bz => {
+            const bollard = new THREE.CylinderGeometry(0.18, 0.22, 0.7, 8);
+            bollard.translate(bx, 0.35, bz);
+            jettyGeoms.push(bollard);
+        });
+    });
+
+    const mergedJetty = BufferGeometryUtils.mergeGeometries(jettyGeoms);
+    const jettyMesh = new THREE.Mesh(mergedJetty, jettyMat);
+    jettyMesh.receiveShadow = true;
+    scene.add(jettyMesh);
+
+    // 2. Iconic Mumbai Wooden Tourist Ferry Boats
+    const boatHullMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.4 });
+    const boatBlueMat = new THREE.MeshStandardMaterial({ color: 0x0369a1, roughness: 0.5 });
+    const boatTeakMat = new THREE.MeshStandardMaterial({ color: 0x9a3412, roughness: 0.7 });
+    const boatCanopyMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.6 });
+    const buoyMat = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.4 });
+
+    function createTouristFerryBoat(x, z, rotY, phase) {
+        const boat = new THREE.Group();
+
+        // Hull (White base + Blue waterline band)
+        const hullGeoms = [];
+        // Merge entire ferry boat into a single batched mesh with vertex colors
+        const boatParts = [];
+        const baseHull = applyVertexColor(new THREE.BoxGeometry(3.6, 1.4, 7.5), 0xf8fafc);
+        baseHull.translate(0, 0.7, 0);
+        boatParts.push(baseHull);
+
+        const bow = applyVertexColor(new THREE.CylinderGeometry(0.1, 1.8, 2.2, 4), 0xf8fafc);
+        bow.rotateY(Math.PI / 4);
+        bow.scale(1.0, 0.65, 1.4);
+        bow.translate(0, 0.7, 4.6);
+        boatParts.push(bow);
+
+        // Waterline Blue Stripe
+        const stripe = applyVertexColor(new THREE.BoxGeometry(3.7, 0.28, 9.0), 0x0284c7);
+        stripe.translate(0, 0.5, 0);
+        boatParts.push(stripe);
+
+        // Teak Main Passenger Deck
+        const deck = applyVertexColor(new THREE.BoxGeometry(3.8, 0.15, 8.6), 0x78350f);
+        deck.translate(0, 1.45, 0);
+        boatParts.push(deck);
+
+        // Lower Cabin with Windows
+        const cabin = applyVertexColor(new THREE.BoxGeometry(2.8, 1.2, 5.8), 0xf8fafc);
+        cabin.translate(0, 2.1, -0.4);
+        boatParts.push(cabin);
+
+        // Upper Observation Deck Canopy Roof
+        const canopy = applyVertexColor(new THREE.BoxGeometry(3.2, 0.1, 6.2), 0x059669);
+        canopy.translate(0, 3.2, -0.4);
+        boatParts.push(canopy);
+
+        // Canopy Support Pillars
+        [-1.4, 1.4].forEach(px => {
+            [-2.8, -0.4, 2.0].forEach(pz => {
+                const p = applyVertexColor(new THREE.CylinderGeometry(0.04, 0.04, 1.6, 6), 0x64748b);
+                p.translate(px, 2.4, pz);
+                boatParts.push(p);
+            });
+        });
+
+        // Orange Lifebuoy Rings
+        [-1.45, 1.45].forEach(bx => {
+            [-1.2, 0.8].forEach(bz => {
+                const ring = applyVertexColor(new THREE.TorusGeometry(0.22, 0.06, 6, 12), 0xf97316);
+                ring.rotateY(Math.PI / 2);
+                ring.translate(bx, 2.1, bz);
+                boatParts.push(ring);
+            });
+        });
+
+        // Stern Indian Flag
+        const flag = applyVertexColor(new THREE.BoxGeometry(1.0, 0.6, 0.04), 0xff9933);
+        flag.translate(0, 3.6, -3.4);
+        boatParts.push(flag);
+
+        const singleBoatMesh = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(boatParts), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55 }));
+        singleBoatMesh.castShadow = false;
+        boat.add(singleBoatMesh);
+
+        boat.position.set(x, -0.4, z);
+        boat.rotation.y = rotY;
+        scene.add(boat);
+
+        maritimeFerryBoats.push({ group: boat, baseX: x, baseZ: z, phase });
+    }
+
+    createTouristFerryBoat(-16, -46, 0.25, 0.0);
+    createTouristFerryBoat(16, -50, -0.35, 1.8);
+}
+buildGatewayMaritime();
 
 // Vada Pav Food Cart
 let poiVadaPav = { x: -14, z: -4, radius: 4.5 };
@@ -1130,6 +1251,41 @@ function createArticulatedPedestrian(config) {
         const backpack = applyVertexColor(new THREE.BoxGeometry(0.32, 0.42, 0.16), 0x1e293b);
         backpack.translate(0, 1.25, -0.2);
         bodyGeoms.push(backpack);
+    } else if (config.type === 'student_headphones') {
+        // Cyan Headband across top of head
+        const band = applyVertexColor(new THREE.TorusGeometry(0.23, 0.025, 6, 12, Math.PI), 0x06b6d4);
+        band.translate(0, 1.76, 0);
+        bodyGeoms.push(band);
+        // Dual Earcups
+        [-0.22, 0.22].forEach(hx => {
+            const cup = applyVertexColor(new THREE.CylinderGeometry(0.065, 0.065, 0.05, 8), 0x06b6d4);
+            cup.rotateZ(Math.PI / 2);
+            cup.translate(hx, 1.74, 0);
+            bodyGeoms.push(cup);
+        });
+        // College Sling Bag
+        const bag = applyVertexColor(new THREE.BoxGeometry(0.28, 0.36, 0.12), 0x0f172a);
+        bag.translate(0.1, 1.15, -0.16);
+        bodyGeoms.push(bag);
+    } else if (config.type === 'chaiwala') {
+        // Saffron Gamcha (towel) draped over shoulder
+        const gamcha = applyVertexColor(new THREE.BoxGeometry(0.14, 0.48, 0.28), 0xea580c);
+        gamcha.translate(-0.18, 1.35, 0);
+        bodyGeoms.push(gamcha);
+    } else if (config.type === 'poncho') {
+        // Translucent Yellow Monsoon Poncho Cloak
+        const poncho = applyVertexColor(new THREE.ConeGeometry(0.52, 0.75, 8, 1, true), 0xfacc15);
+        poncho.translate(0, 1.25, 0);
+        bodyGeoms.push(poncho);
+        // Poncho Hood
+        const hood = applyVertexColor(new THREE.SphereGeometry(0.24, 8, 8, 0, Math.PI * 2, 0, Math.PI * 0.65), 0xfacc15);
+        hood.translate(0, 1.76, -0.04);
+        bodyGeoms.push(hood);
+    } else if (config.type === 'commuter') {
+        // Formal Necktie
+        const tie = applyVertexColor(new THREE.BoxGeometry(0.06, 0.35, 0.02), 0xb91c1c);
+        tie.translate(0, 1.35, 0.14);
+        bodyGeoms.push(tie);
     }
 
     const head = applyVertexColor(new THREE.SphereGeometry(0.20, 10, 10), skinColor);
@@ -1152,14 +1308,31 @@ function createArticulatedPedestrian(config) {
     bodyMesh.castShadow = false;
     group.add(bodyMesh);
 
-    // 2. Articulated Left Arm (Sleeve + Forearm)
+    // 2. Articulated Left Arm (Sleeve + Forearm + Item)
     const armL = new THREE.Group();
     armL.position.set(-0.28, 1.50, 0);
     const sleeveL = applyVertexColor(new THREE.CylinderGeometry(0.065, 0.06, 0.35, 8), shirtColor);
     sleeveL.translate(0, -0.175, 0);
     const forearmL = applyVertexColor(new THREE.CylinderGeometry(0.055, 0.05, 0.28, 8), skinColor);
     forearmL.translate(0, -0.45, 0);
-    const mergedArmL = BufferGeometryUtils.mergeGeometries([sleeveL, forearmL], false);
+    const armLGeoms = [sleeveL, forearmL];
+
+    if (config.type === 'chaiwala') {
+        // Stainless-Steel Cutting Chai Kettle in hand
+        const kBody = applyVertexColor(new THREE.CylinderGeometry(0.08, 0.1, 0.18, 8), 0xe2e8f0);
+        kBody.translate(0, -0.68, 0.06);
+        armLGeoms.push(kBody);
+        const kSpout = applyVertexColor(new THREE.ConeGeometry(0.03, 0.08, 6), 0xe2e8f0);
+        kSpout.rotateX(-Math.PI / 3);
+        kSpout.translate(0, -0.62, 0.15);
+        armLGeoms.push(kSpout);
+    } else if (config.type === 'commuter') {
+        // Executive Laptop Briefcase
+        const bCase = applyVertexColor(new THREE.BoxGeometry(0.08, 0.28, 0.36), 0x451a03);
+        bCase.translate(0, -0.65, 0.05);
+        armLGeoms.push(bCase);
+    }
+    const mergedArmL = BufferGeometryUtils.mergeGeometries(armLGeoms, false);
     const armLMesh = new THREE.Mesh(mergedArmL, sharedNpcMat);
     armL.add(armLMesh);
     group.add(armL);
@@ -1216,6 +1389,7 @@ function createArticulatedPedestrian(config) {
 
     return {
         group,
+        type: config.type,
         armL,
         armR,
         legL,
@@ -1228,31 +1402,25 @@ function createArticulatedPedestrian(config) {
 const npcs = [];
 
 function buildMumbaiCrowd() {
-    // 10 Diverse Pedestrians Distributed across 5 Urban Sectors
+    // 8 Diverse Authentic Mumbai Pedestrians Distributed across Urban Sectors
     const crowdConfig = [
-        // --- ZONE 1: ARABIAN SEA WATERFRONT PROMENADE (2 Pedestrians) ---
-        { skin: 2, shirt: 3, pants: 3, hair: 0, type: 'saree', wps: [{x: 10, z: -4}, {x: 28, z: -4}] },
+        // --- ZONE 1: ARABIAN SEA WATERFRONT PROMENADE ---
+        { skin: 3, shirt: 0, pants: 0, hair: 0, type: 'chaiwala', wps: [{x: -8, z: -3}, {x: 12, z: -3}] },
         { skin: 2, shirt: 0, pants: 3, hair: 0, type: 'dabbawala', wps: [{x: -28, z: 2}, {x: 6, z: 2}] },
+        { skin: 2, shirt: 3, pants: 3, hair: 0, type: 'saree', wps: [{x: 10, z: -4}, {x: 28, z: -4}] },
 
-        // --- ZONE 2: NORTH AVENUE SIDEWALKS (3 Pedestrians) ---
-        // West Sidewalk (X = -5.0)
-        { skin: 1, shirt: 0, pants: 2, hair: 0, type: 'formal', wps: [{x: -5.0, z: 18}, {x: -5.0, z: 42}] },
-        { skin: 3, shirt: 2, pants: 0, hair: 1, type: 'kurta', wps: [{x: -5.0, z: 50}, {x: -5.0, z: 80}] },
-        // East Sidewalk (X = 5.0)
-        { skin: 2, shirt: 0, pants: 0, hair: 1, type: 'student', wps: [{x: 5.0, z: 30}, {x: 5.0, z: 70}] },
+        // --- ZONE 2: NORTH AVENUE SIDEWALKS ---
+        { skin: 1, shirt: 0, pants: 2, hair: 0, type: 'commuter', wps: [{x: -5.0, z: 18}, {x: -5.0, z: 42}] },
+        { skin: 2, shirt: 4, pants: 0, hair: 1, type: 'student_headphones', wps: [{x: 5.0, z: 30}, {x: 5.0, z: 70}] },
 
-        // --- ZONE 3: MARKET STREET CROSS AVENUE (2 Pedestrians) ---
-        // South Sidewalk (Z = 39.0)
-        { skin: 2, shirt: 2, pants: 4, hair: 0, type: 'kurta', wps: [{x: -26, z: 39.0}, {x: 18, z: 39.0}] },
-        // North Sidewalk (Z = 45.0)
-        { skin: 1, shirt: 5, pants: 0, hair: 0, type: 'casual', wps: [{x: -28, z: 45.0}, {x: 14, z: 45.0}] },
+        // --- ZONE 3: MARKET STREET CROSS AVENUE ---
+        { skin: 1, shirt: 1, pants: 0, hair: 0, type: 'poncho', wps: [{x: -28, z: 45.0}, {x: 14, z: 45.0}] },
 
-        // --- ZONE 4: RAILWAY STATION PLATFORMS (1 Pedestrian) ---
-        { skin: 1, shirt: 0, pants: 2, hair: 0, type: 'formal', wps: [{x: -28.6, z: 12}, {x: -28.6, z: 22}] },
+        // --- ZONE 4: RAILWAY STATION PLATFORMS ---
+        { skin: 2, shirt: 2, pants: 4, hair: 0, type: 'kurta', wps: [{x: -28.6, z: 12}, {x: -28.6, z: 36}] },
 
-        // --- ZONE 5: EAST CAMPUS & ACADEMIA (2 Pedestrians) ---
-        { skin: 2, shirt: 0, pants: 0, hair: 0, type: 'student', wps: [{x: 24, z: 52}, {x: 38, z: 52}] },
-        { skin: 3, shirt: 5, pants: 1, hair: 1, type: 'student', wps: [{x: 30, z: 68}, {x: 42, z: 68}] }
+        // --- ZONE 5: EAST CAMPUS & ACADEMIA ---
+        { skin: 2, shirt: 0, pants: 0, hair: 0, type: 'student', wps: [{x: 50, z: 74}, {x: 68, z: 74}] }
     ];
 
     crowdConfig.forEach((cfg, idx) => {
@@ -1271,6 +1439,7 @@ function buildMumbaiCrowd() {
 
         npcs.push({
             group: p.group,
+            type: cfg.type,
             armL: p.armL,
             armR: p.armR,
             legL: p.legL,
@@ -1832,7 +2001,7 @@ function createChawlBuilding(x, z, width = 16, depth = 10, storeys = 3, rotY = 0
         chawlPlasterMat
     );
     mainMesh.position.set(0, totalH / 2, 0);
-    mainMesh.castShadow = true;
+    mainMesh.castShadow = false;
     mainMesh.receiveShadow = true;
     group.add(mainMesh);
 
@@ -1926,7 +2095,7 @@ function createApartmentBuilding(x, z, width = 12, depth = 10, storeys = 5, colo
         aptMat
     );
     mainBody.position.set(0, totalH / 2, 0);
-    mainBody.castShadow = true;
+    mainBody.castShadow = false;
     mainBody.receiveShadow = true;
     group.add(mainBody);
 
@@ -2011,7 +2180,7 @@ function createCommercialBuilding(x, z, width = 11, depth = 10, storeys = 4, mrN
         aptMatCream
     );
     upperBody.position.set(0, groundH + (totalH - groundH) / 2, 0);
-    upperBody.castShadow = true;
+    upperBody.castShadow = false;
     group.add(upperBody);
 
     // 2. Merged Ground Base & Parapet
@@ -2198,12 +2367,7 @@ function buildMumbaiUrbanGrid() {
     createCorporateTower(32, 70, 12, 10, 8, 0x0f766e);
     // 18. Corporate Tower T5 (Cyber City High-Rise)
     createCorporateTower(64, 30, 14, 10, 8, 0x1d4ed8);
-    // 19. Commercial C6 (Campus Cafe & Bakery)
-    createCommercialBuilding(64, 54, 14, 10, 3, "कॅम्पस कॅफे आणि बेकरी", "CAMPUS CAFE & BAKERY", 0xb91c1c, 0xf43f5e);
-    // 20. Corporate Tower T6 (Cloud Data Center)
-    createCorporateTower(64, 70, 14, 10, 7, 0x0369a1);
-    // 21. Apartment A6 (Seawoods Enclave)
-    createApartmentBuilding(64, 82, 12, 10, 6, 'peach');
+    // Lot at (64, 80) is reserved for the Relocated School Academic Campus with clear, open landscaped plaza
 
     // --- SECTOR 4: NORTH DISTRICT & ARTERIAL BOULEVARDS ---
     // 22. Secondary School Academic Annex & Library (West of School)
@@ -2452,6 +2616,191 @@ buildExpandedDistrictsBatch();
 window.__cityBuildings = cityBuildings;
 
 // ==========================================
+// AIRPORT DISTRICT (Far North Z = 380)
+// Runway 27/09, ATC Radar Tower & 38m Jetliner
+// Styled per Technical Orthographic Model Sheet
+// ==========================================
+let atcRadarDish = null;
+
+function buildAirportDistrict() {
+    const airport = new THREE.Group();
+
+    // 1. Runway 27/09 (Asphalt Strip: 240m L x 28m W, X = -120 to +120, Z = 380)
+    const runwayMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.85 });
+    const lineMat = new THREE.MeshBasicMaterial({ color: 0xf8fafc });
+    const greenMat = new THREE.MeshBasicMaterial({ color: 0x22c55e });
+
+    const runwayMesh = new THREE.Mesh(new THREE.BoxGeometry(240, 0.1, 28), runwayMat);
+    runwayMesh.position.set(0, 0.05, 380);
+    runwayMesh.receiveShadow = true;
+    airport.add(runwayMesh);
+
+    // Runway Markings (Threshold Piano Keys & Centerline)
+    const markGeoms = [];
+    // West Threshold (09) Keys
+    for (let k = -10; k <= 10; k += 2.2) {
+        const bar = new THREE.PlaneGeometry(10, 1.2);
+        bar.rotateX(-Math.PI / 2);
+        bar.translate(-112, 0.12, 380 + k);
+        markGeoms.push(bar);
+    }
+    // East Threshold (27) Keys
+    for (let k = -10; k <= 10; k += 2.2) {
+        const bar = new THREE.PlaneGeometry(10, 1.2);
+        bar.rotateX(-Math.PI / 2);
+        bar.translate(112, 0.12, 380 + k);
+        markGeoms.push(bar);
+    }
+    // Dashed Centerline
+    for (let cx = -95; cx <= 95; cx += 16) {
+        const dash = new THREE.PlaneGeometry(8, 1.0);
+        dash.rotateX(-Math.PI / 2);
+        dash.translate(cx, 0.12, 380);
+        markGeoms.push(dash);
+    }
+    const marksMesh = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(markGeoms), lineMat);
+    airport.add(marksMesh);
+
+    // Green Threshold Lights
+    const lightGeoms = [];
+    [-118, 118].forEach(lx => {
+        for (let lz = 368; lz <= 392; lz += 3) {
+            const bulb = new THREE.SphereGeometry(0.2, 6, 6);
+            bulb.translate(lx, 0.25, lz);
+            lightGeoms.push(bulb);
+        }
+    });
+    airport.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(lightGeoms), greenMat));
+
+    // 2. ATC Radar Tower (X = -70, Z = 360, Height = 34m)
+    const towerMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.6 });
+    const cabGlassMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.1, transparent: true, opacity: 0.8 });
+    const towerGeoms = [];
+
+    // Cylindrical Shaft
+    const shaft = new THREE.CylinderGeometry(3.5, 4.5, 28, 12);
+    shaft.translate(-70, 14, 360);
+    towerGeoms.push(shaft);
+
+    // Upper Flared Platform
+    const platform = new THREE.CylinderGeometry(6.2, 4.2, 3.0, 12);
+    platform.translate(-70, 29.5, 360);
+    towerGeoms.push(platform);
+
+    // Cab Roof
+    const roof = new THREE.ConeGeometry(6.5, 2.5, 12);
+    roof.translate(-70, 34.5, 360);
+    towerGeoms.push(roof);
+
+    airport.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(towerGeoms), towerMat));
+
+    // Observation Glass Cab
+    const cab = new THREE.Mesh(new THREE.CylinderGeometry(5.8, 5.8, 3.2, 12, 1, true), cabGlassMat);
+    cab.position.set(-70, 31.8, 360);
+    airport.add(cab);
+
+    // Rotating Radar Dish at Top (Y = 36.5m)
+    const dishGroup = new THREE.Group();
+    dishGroup.position.set(-70, 36.5, 360);
+    const dishMesh = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 0.4, 0.4, 12), new THREE.MeshStandardMaterial({ color: 0xf97316 }));
+    dishMesh.rotation.x = Math.PI / 3;
+    dishGroup.add(dishMesh);
+    airport.add(dishGroup);
+    atcRadarDish = dishGroup;
+
+    // Obstruction Warning Light
+    const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 8), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+    beacon.position.set(-70, 36.0, 360);
+    airport.add(beacon);
+
+    // 3. 38m Commercial Twin-Engine Jetliner (Parked at X = 45, Z = 376)
+    const jetGroup = new THREE.Group();
+    jetGroup.position.set(45, 0, 376);
+    jetGroup.rotation.y = -Math.PI / 6;
+
+    const jetWhiteMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.3, metalness: 0.2 });
+    const jetEngineMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5, metalness: 0.7 });
+    const jetTricolorMat = new THREE.MeshStandardMaterial({ color: 0xea580c, roughness: 0.4 });
+
+    // Fuselage, Wings, Tail Fin, Engines & Gear merged into single batched mesh
+    const jetGeoms = [];
+    const fuselage = applyVertexColor(new THREE.CylinderGeometry(1.6, 1.6, 32, 14), 0xf8fafc);
+    fuselage.rotateX(Math.PI / 2);
+    fuselage.translate(0, 3.5, 0);
+    jetGeoms.push(fuselage);
+
+    // Aerodynamic Nose Cone
+    const nose = applyVertexColor(new THREE.ConeGeometry(1.6, 6.0, 14), 0xf8fafc);
+    nose.rotateX(Math.PI / 2);
+    nose.translate(0, 3.5, 19.0);
+    jetGeoms.push(nose);
+
+    // Main Swept Wings (36m Span)
+    const wingL = applyVertexColor(new THREE.BoxGeometry(16, 0.25, 4.2), 0xf8fafc);
+    wingL.rotateY(-0.35);
+    wingL.translate(-9.5, 3.2, -1.0);
+    jetGeoms.push(wingL);
+
+    const wingR = applyVertexColor(new THREE.BoxGeometry(16, 0.25, 4.2), 0xf8fafc);
+    wingR.rotateY(0.35);
+    wingR.translate(9.5, 3.2, -1.0);
+    jetGeoms.push(wingR);
+
+    // Horizontal Stabilizers at Tail
+    const hStabL = applyVertexColor(new THREE.BoxGeometry(5.5, 0.18, 1.8), 0xf8fafc);
+    hStabL.rotateY(-0.3);
+    hStabL.translate(-3.2, 5.0, -15.0);
+    jetGeoms.push(hStabL);
+
+    const hStabR = applyVertexColor(new THREE.BoxGeometry(5.5, 0.18, 1.8), 0xf8fafc);
+    hStabR.rotateY(0.3);
+    hStabR.translate(3.2, 5.0, -15.0);
+    jetGeoms.push(hStabR);
+
+    // Vertical Stabilizer / Tail Fin (Tricolor Orange)
+    const vFinGeom = applyVertexColor(new THREE.BoxGeometry(0.24, 5.5, 3.6), 0xea580c);
+    vFinGeom.translate(0, 6.5, -14.5);
+    jetGeoms.push(vFinGeom);
+
+    // Twin Turbofan Jet Engines on underwing pylons
+    [-6.5, 6.5].forEach(ex => {
+        const nacelle = applyVertexColor(new THREE.CylinderGeometry(0.9, 0.9, 4.2, 12), 0x1e293b);
+        nacelle.rotateX(Math.PI / 2);
+        nacelle.translate(ex, 2.3, 0.5);
+        jetGeoms.push(nacelle);
+
+        const spinner = applyVertexColor(new THREE.ConeGeometry(0.4, 1.2, 10), 0x94a3b8);
+        spinner.rotateX(Math.PI / 2);
+        spinner.translate(ex, 2.3, 2.7);
+        jetGeoms.push(spinner);
+    });
+
+    // Tricycle Landing Gear
+    const nWheel = applyVertexColor(new THREE.CylinderGeometry(0.45, 0.45, 0.35, 8), 0x020617);
+    nWheel.rotateZ(Math.PI / 2);
+    nWheel.translate(0, 0.45, 14.0);
+    jetGeoms.push(nWheel);
+
+    [-4.5, 4.5].forEach(gx => {
+        const mW = applyVertexColor(new THREE.CylinderGeometry(0.65, 0.65, 0.45, 8), 0x020617);
+        mW.rotateZ(Math.PI / 2);
+        mW.translate(gx, 0.65, -1.0);
+        jetGeoms.push(mW);
+    });
+
+    const jetMesh = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(jetGeoms), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.4 }));
+    jetMesh.castShadow = false;
+    jetGroup.add(jetMesh);
+    airport.add(jetGroup);
+
+    registerBoxCollider(-76, -64, 354, 366, 'ATCRadarTower');
+    registerBoxCollider(28, 62, 360, 392, 'JetlinerApron');
+
+    scene.add(airport);
+}
+buildAirportDistrict();
+
+// ==========================================
 // DISTRICT 1: HOME HQ (STARK SKYSCRAPER)
 // (X = 0, Z = 140, Height = 180m)
 // Home = Stark Tower (Devarshi's Superhero Skyscraper & Residence)
@@ -2481,11 +2830,12 @@ function createWallPoster(parent, text, bg, textCol, x, y, z) {
 
 // ==========================================
 // DISTRICT 2: SCHOOL
-// (X = 0, Z = 88)
+// (East Academic Sector: X = 64, Z = 80)
 // Strictly Non-Interactive Architectural Landmark
 // Styled per Stitch Design Blueprint ARCH-3D-012
 // ==========================================
-let poiSchool = { x: 0, z: 88, radius: 14 };
+let poiSchool = { x: 64, z: 80, radius: 14 };
+window.__poiSchool = poiSchool;
 function buildSchoolDistrict() {
     registerBoxCollider(poiSchool.x - 18, poiSchool.x + 18, poiSchool.z - 9, poiSchool.z + 8, 'SchoolBuilding', -5, 24);
     registerBoxCollider(poiSchool.x - 19, poiSchool.x - 13, poiSchool.z - 6, poiSchool.z + 4, 'SchoolBus', -5, 4.0);
@@ -2518,7 +2868,7 @@ function buildSchoolDistrict() {
 
     const mergedFacade = BufferGeometryUtils.mergeGeometries(facadeGeoms);
     const fMesh = new THREE.Mesh(mergedFacade, facadeMat);
-    fMesh.castShadow = true;
+    fMesh.castShadow = false;
     fMesh.receiveShadow = true;
     school.add(fMesh);
 
@@ -2737,54 +3087,54 @@ function buildLandmarkIntegrationPlazasAndSignage() {
     });
 
     // ----------------------------------------------------
-    // 3. HIGH SCHOOL CAMPUS ENTRANCE & GATES
-    // (Z = 88 to 97, X = -20 to +20)
+    // 3. SCHOOL CAMPUS ENTRANCE & GATES
+    // (Relocated to East Academic Sector: X = poiSchool.x, Z = poiSchool.z)
     // ----------------------------------------------------
-    // Paved courtyard forecourt slab
-    const schoolPlazaSlab = new THREE.BoxGeometry(40, 0.22, 9);
-    schoolPlazaSlab.translate(0, -0.09, 92.5);
+    // Paved courtyard forecourt slab at new School site
+    const schoolPlazaSlab = new THREE.BoxGeometry(40, 0.22, 12);
+    schoolPlazaSlab.translate(poiSchool.x, -0.09, poiSchool.z - 4);
     batchedPlazaPaving.push(schoolPlazaSlab);
 
-    // Twin Brick Grand Gate Pillars flanking North Avenue (X = -6.5 and +6.5, Z = 89.5)
-    [-6.5, 6.5].forEach(gx => {
+    // Twin Brick Grand Gate Pillars flanking School campus entrance
+    [-10, 10].forEach(gx => {
         const pillar = new THREE.BoxGeometry(1.6, 7.8, 1.6);
-        pillar.translate(gx, 3.9, 89.5);
+        pillar.translate(poiSchool.x + gx, 3.9, poiSchool.z - 8);
         batchedPlazaStone.push(pillar);
 
         const cap = new THREE.BoxGeometry(2.0, 0.6, 2.0);
-        cap.translate(gx, 8.0, 89.5);
+        cap.translate(poiSchool.x + gx, 8.0, poiSchool.z - 8);
         batchedPlazaStone.push(cap);
 
         const sphere = new THREE.SphereGeometry(0.6, 8, 8);
-        sphere.translate(gx, 8.7, 89.5);
+        sphere.translate(poiSchool.x + gx, 8.7, poiSchool.z - 8);
         batchedPlazaStone.push(sphere);
     });
 
-    // Wrought Iron Grand Campus Arch spanning across the entrance
-    const gateBeam = new THREE.BoxGeometry(13.2, 0.4, 0.4);
-    gateBeam.translate(0, 7.5, 89.5);
+    // Wrought Iron Grand Campus Arch spanning across the School entrance
+    const gateBeam = new THREE.BoxGeometry(20.4, 0.4, 0.4);
+    gateBeam.translate(poiSchool.x, 7.5, poiSchool.z - 8);
     batchedPlazaMetal.push(gateBeam);
 
-    const gateArchCrest = new THREE.TorusGeometry(5.8, 0.15, 6, 16, Math.PI);
-    gateArchCrest.translate(0, 7.5, 89.5);
+    const gateArchCrest = new THREE.TorusGeometry(8.0, 0.15, 6, 16, Math.PI);
+    gateArchCrest.translate(poiSchool.x, 7.5, poiSchool.z - 8);
     batchedPlazaMetal.push(gateArchCrest);
 
-    // School Boundary Walls & Wrought Iron Railings (X from -20 to -6.5 and +6.5 to +20)
-    [-13.5, 13.5].forEach(bx => {
-        const wallBase = new THREE.BoxGeometry(12.4, 1.4, 0.5);
-        wallBase.translate(bx, 0.7, 89.5);
+    // School Boundary Walls & Wrought Iron Railings
+    [-16, 16].forEach(bx => {
+        const wallBase = new THREE.BoxGeometry(10.0, 1.4, 0.5);
+        wallBase.translate(poiSchool.x + bx, 0.7, poiSchool.z - 8);
         batchedPlazaStone.push(wallBase);
 
-        const wallRail = new THREE.BoxGeometry(12.4, 1.2, 0.1);
-        wallRail.translate(bx, 1.9, 89.5);
+        const wallRail = new THREE.BoxGeometry(10.0, 1.2, 0.1);
+        wallRail.translate(poiSchool.x + bx, 1.9, poiSchool.z - 8);
         batchedPlazaMetal.push(wallRail);
     });
-    registerBoxCollider(-20.5, -6.5, 89.0, 90.2, 'SchoolBoundaryL');
-    registerBoxCollider(6.5, 20.5, 89.0, 90.2, 'SchoolBoundaryR');
+    registerBoxCollider(poiSchool.x - 22, poiSchool.x - 11, poiSchool.z - 8.5, poiSchool.z - 7.5, 'SchoolBoundaryL');
+    registerBoxCollider(poiSchool.x + 11, poiSchool.x + 22, poiSchool.z - 8.5, poiSchool.z - 7.5, 'SchoolBoundaryR');
 
-    // School Bus Parking Stall painted outline (X = -16, Z = 105)
+    // School Bus Parking Stall painted outline
     const busStallMark = new THREE.BoxGeometry(4.8, 0.05, 10.5);
-    busStallMark.translate(-16, 0.02, 105);
+    busStallMark.translate(poiSchool.x - 16, 0.02, poiSchool.z - 2);
     batchedPlazaPaving.push(busStallMark);
 
     // ----------------------------------------------------
@@ -2829,10 +3179,10 @@ function buildLandmarkIntegrationPlazasAndSignage() {
     sCtx.fillRect(0, 0, 512, 512);
 
     const wayfindingLabels = [
-        "↑ HIGH SCHOOL CAMPUS",
+        "↑ HOME HQ / STARK TOWER",
         "↓ GATEWAY OF INDIA / SEA",
         "← DEVARSHI'S CYBER HQ",
-        "DMCE ENGG COLLEGE →",
+        "SCHOOL & DMCE COLLEGE →",
         "↑ NORTH AVENUE / CAMPUS",
         "↓ MARINE DRIVE PROMENADE",
         "← CHAWL RESIDENCES / MARKET",
@@ -3424,13 +3774,19 @@ function buildCyberCar() {
     const darkMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.6 });
     const glassMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, transparent: true, opacity: 0.65 });
     const tireMat = new THREE.MeshStandardMaterial({ color: 0x020617, roughness: 0.9 });
-    const rimMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.95, roughness: 0.1 });
+    // Styled per Vehicle Concept Sheet: Cyber Sports Car with Glowing Cyan Rims
+    const rimMat = new THREE.MeshStandardMaterial({ color: 0x06b6d4, emissive: 0x06b6d4, emissiveIntensity: 0.8, metalness: 0.9, roughness: 0.1 });
 
     // Lower Body
     const lowerBody = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.8, 5.2), carMat);
     lowerBody.position.y = 0.7;
     lowerBody.castShadow = true;
     carGroup.add(lowerBody);
+
+    // Glowing Cyan Underglow Neon
+    const underglow = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.04, 4.6), new THREE.MeshBasicMaterial({ color: 0x06b6d4, transparent: true, opacity: 0.75 }));
+    underglow.position.y = 0.2;
+    carGroup.add(underglow);
 
     // Cabin & Windshield
     const cabin = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.75, 2.6), glassMat);
@@ -3446,7 +3802,7 @@ function buildCyberCar() {
     spoiler.position.set(0, 1.5, -2.4);
     carGroup.add(spoiler);
 
-    // 4 Wheels
+    // 4 Wheels with Cyan Rims
     [-1.3, 1.3].forEach(wx => {
         [-1.6, 1.6].forEach(wz => {
             const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.4, 16), tireMat);
@@ -3455,7 +3811,7 @@ function buildCyberCar() {
             wheel.castShadow = false;
             carGroup.add(wheel);
 
-            const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.42, 8), rimMat);
+            const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.42, 8), rimMat);
             rim.rotation.z = Math.PI / 2;
             rim.position.set(wx, 0.55, wz);
             carGroup.add(rim);
@@ -3490,8 +3846,165 @@ function buildCyberCar() {
 }
 buildCyberCar();
 
+// ==========================================
+// VEHICLE 2B: BAJAJ RE KAALI-PEELI 3-WHEEL AUTO-RICKSHAW
+// Styled per Mumbai Vehicle Concept Sheet & Engineering CAD
+// ==========================================
+let rickshawVehicle = {
+    type: 'rickshaw',
+    mesh: null,
+    x: 8.5,
+    z: 22,
+    rotation: 0,
+    speed: 0,
+    maxSpeed: 32, // 32 km/h authentic Mumbai auto cruising speed
+    wheels: [],
+    light: null
+};
+
+function buildAutoRickshaw() {
+    const rickGroup = new THREE.Group();
+    const kaaliBlackMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.35, metalness: 0.4 });
+    const peeliYellowMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.4, metalness: 0.1 });
+    const metalMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.85, roughness: 0.25 });
+    const glassMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.65 });
+    const tireMat = new THREE.MeshStandardMaterial({ color: 0x020617, roughness: 0.9 });
+    const seatMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.8 }); // Rexine brown
+
+    // 1. Lower Black Body Chassis (Kaali)
+    const bodyGeoms = [];
+    const floor = new THREE.BoxGeometry(1.6, 0.25, 2.7);
+    floor.translate(0, 0.45, 0);
+    bodyGeoms.push(floor);
+
+    // Front Nose / Cowl (Tapered front)
+    const nose = new THREE.BoxGeometry(1.1, 0.75, 0.9);
+    nose.translate(0, 0.85, 1.0);
+    bodyGeoms.push(nose);
+
+    // Rear Cabin Enclosure Walls
+    const rearBack = new THREE.BoxGeometry(1.6, 0.8, 0.15);
+    rearBack.translate(0, 0.9, -1.3);
+    bodyGeoms.push(rearBack);
+
+    const mergedBody = BufferGeometryUtils.mergeGeometries(bodyGeoms);
+    const bodyMesh = new THREE.Mesh(mergedBody, kaaliBlackMat);
+    bodyMesh.castShadow = true;
+    rickGroup.add(bodyMesh);
+
+    // 2. Yellow Canopy Roof (Peeli)
+    const roofGeoms = [];
+    const canopyTop = new THREE.BoxGeometry(1.65, 0.12, 2.2);
+    canopyTop.translate(0, 1.95, -0.2);
+    roofGeoms.push(canopyTop);
+
+    // Canopy Sloped Front Lip
+    const canopyLip = new THREE.BoxGeometry(1.4, 0.1, 0.6);
+    canopyLip.rotateX(-0.35);
+    canopyLip.translate(0, 1.85, 0.9);
+    roofGeoms.push(canopyLip);
+
+    // Rear Canopy Wall
+    const canopyRear = new THREE.BoxGeometry(1.65, 0.65, 0.1);
+    canopyRear.translate(0, 1.55, -1.3);
+    roofGeoms.push(canopyRear);
+
+    const mergedRoof = BufferGeometryUtils.mergeGeometries(roofGeoms);
+    const roofMesh = new THREE.Mesh(mergedRoof, peeliYellowMat);
+    rickGroup.add(roofMesh);
+
+    // 3. Canopy Support Pillars & Handlebars (Chrome Metal)
+    const poleGeoms = [];
+    [-0.78, 0.78].forEach(px => {
+        [-1.25, 0.35].forEach(pz => {
+            const pole = new THREE.CylinderGeometry(0.025, 0.025, 1.1, 6);
+            pole.translate(px, 1.4, pz);
+            poleGeoms.push(pole);
+        });
+    });
+    // Front Windshield Frame Pillars
+    [-0.55, 0.55].forEach(fx => {
+        const fPole = new THREE.CylinderGeometry(0.025, 0.025, 0.95, 6);
+        fPole.translate(fx, 1.4, 0.85);
+        poleGeoms.push(fPole);
+    });
+    // Chrome Handlebars & Steering Column
+    const column = new THREE.CylinderGeometry(0.035, 0.035, 0.7, 6);
+    column.rotateX(0.25);
+    column.translate(0, 1.05, 0.7);
+    poleGeoms.push(column);
+    const hBar = new THREE.BoxGeometry(0.8, 0.05, 0.05);
+    hBar.translate(0, 1.35, 0.62);
+    poleGeoms.push(hBar);
+
+    const mergedPoles = BufferGeometryUtils.mergeGeometries(poleGeoms);
+    rickGroup.add(new THREE.Mesh(mergedPoles, metalMat));
+
+    // 4. Windshield Glass
+    const windshield = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.75), glassMat);
+    windshield.position.set(0, 1.45, 0.88);
+    rickGroup.add(windshield);
+
+    // 5. Driver & Passenger Seats (Rexine Brown)
+    const dGeom = new THREE.BoxGeometry(0.65, 0.25, 0.45);
+    dGeom.translate(0, 0.8, 0.2);
+    const pGeom = new THREE.BoxGeometry(1.5, 0.28, 0.65);
+    pGeom.translate(0, 0.75, -0.85);
+    const seatMesh = new THREE.Mesh(BufferGeometryUtils.mergeGeometries([dGeom, pGeom]), seatMat);
+    rickGroup.add(seatMesh);
+
+    // 6. Three Wheels (1 Front Steerable, 2 Rear Drive Wheels)
+    const fWheel = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.22, 14), tireMat);
+    fWheel.rotation.z = Math.PI / 2;
+    fWheel.position.set(0, 0.38, 1.15);
+    rickGroup.add(fWheel);
+    rickshawVehicle.wheels.push(fWheel);
+
+    [-0.72, 0.72].forEach(rx => {
+        const rWheel = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.22, 14), tireMat);
+        rWheel.rotation.z = Math.PI / 2;
+        rWheel.position.set(rx, 0.38, -0.65);
+        rickGroup.add(rWheel);
+        rickshawVehicle.wheels.push(rWheel);
+    });
+
+    // 7. Authentic Front Round Headlamp & Spotlight
+    const hlGeom = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.12, 12), new THREE.MeshBasicMaterial({ color: 0xfffbeb }));
+    hlGeom.rotation.x = Math.PI / 2;
+    hlGeom.position.set(0, 0.88, 1.48);
+    rickGroup.add(hlGeom);
+
+    const rickSpot = new THREE.SpotLight(0xfffae6, 3.8, 38, Math.PI / 3.5, 0.4);
+    rickSpot.position.set(0, 0.88, 1.55);
+    rickSpot.target.position.set(0, 0, 18);
+    rickGroup.add(rickSpot);
+    rickGroup.add(rickSpot.target);
+
+    // 8. Mumbai Registration Plate: "MH 01 EA 4021"
+    const plateCanvas = document.createElement('canvas');
+    plateCanvas.width = 128; plateCanvas.height = 48;
+    const pCtx = plateCanvas.getContext('2d');
+    pCtx.fillStyle = '#facc15'; pCtx.fillRect(0, 0, 128, 48);
+    pCtx.strokeStyle = '#0f172a'; pCtx.lineWidth = 3; pCtx.strokeRect(2, 2, 124, 44);
+    pCtx.fillStyle = '#0f172a'; pCtx.font = 'bold 15px monospace'; pCtx.textAlign = 'center';
+    pCtx.fillText("MH 01 EA 4021", 64, 30);
+    const plateMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.65, 0.24), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(plateCanvas) }));
+    plateMesh.position.set(0, 0.52, -1.38);
+    plateMesh.rotation.y = Math.PI;
+    rickGroup.add(plateMesh);
+
+    // Position at Auto Stand on Marine Ave
+    rickGroup.position.set(rickshawVehicle.x, 0, rickshawVehicle.z);
+    scene.add(rickGroup);
+
+    rickshawVehicle.mesh = rickGroup;
+    rickshawVehicle.light = rickSpot;
+}
+buildAutoRickshaw();
+window.__rickshawVehicle = rickshawVehicle;
+
 // Active Vehicle State
-let activeVehicle = null; // null | bikeVehicle | carVehicle | 'train'
+let activeVehicle = null; // null | bikeVehicle | carVehicle | rickshawVehicle | 'train'
 
 // ==========================================
 // VEHICLE 3: MUMBAI SUBURBAN LOCAL TRAIN & BROAD GAUGE RAILWAY
@@ -3815,6 +4328,32 @@ function buildRailwaySystem() {
     canopyMesh.castShadow = false;
     scene.add(canopyMesh);
 
+    // 7b. Station Overbridge Stairs & ATVM Ticket Booth at Gateway Station (X = -32, Z = 16)
+    const ticketMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.6 });
+    const ticketGeoms = [];
+    const boothBody = new THREE.BoxGeometry(3.6, 2.8, 3.0);
+    boothBody.translate(-32.5, 1.4, 16);
+    ticketGeoms.push(boothBody);
+    const winCutout = new THREE.BoxGeometry(0.3, 1.0, 1.8);
+    winCutout.translate(-30.6, 1.5, 16);
+    ticketGeoms.push(winCutout);
+    for (let st = 0; st < 10; st++) {
+        const step = new THREE.BoxGeometry(2.2, 0.35, 0.65);
+        step.translate(-31.2, st * 0.35 + 0.175, 20 + st * 0.65);
+        ticketGeoms.push(step);
+    }
+    const ticketMesh = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(ticketGeoms), ticketMat);
+    scene.add(ticketMesh);
+
+    const ticketSignTex = createBilingualSignboardTexture("अनारक्षित तिकीट खिडकी", "UNRESERVED TICKETS / ATVM");
+    const ticketSign = new THREE.Mesh(
+        new THREE.PlaneGeometry(3.2, 0.8),
+        new THREE.MeshBasicMaterial({ map: ticketSignTex, side: THREE.DoubleSide })
+    );
+    ticketSign.position.set(-30.5, 2.5, 16);
+    ticketSign.rotation.y = Math.PI / 2;
+    scene.add(ticketSign);
+
     // 8. Articulated 3-Car Mumbai Suburban EMU Rake
     const emuWhiteMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.25, metalness: 0.2 });
     const emuPurpleMat = new THREE.MeshStandardMaterial({ color: 0x581c87, roughness: 0.35, metalness: 0.25 });
@@ -3941,7 +4480,35 @@ function buildRailwaySystem() {
 
         // 7. Specialized Lead / Motor / Trail Features
         if (type === 'lead') {
-            const yellowFront = new THREE.Mesh(new THREE.BoxGeometry(3.08, 2.2, 0.4), emuYellowMat);
+            const hazardCanvas = document.createElement('canvas');
+            hazardCanvas.width = 256; hazardCanvas.height = 128;
+            const hzCtx = hazardCanvas.getContext('2d');
+            hzCtx.fillStyle = '#facc15';
+            hzCtx.fillRect(0, 0, 256, 128);
+            // Angled black chevron hazard stripes across lower cab
+            hzCtx.fillStyle = '#0f172a';
+            for (let x = -60; x < 320; x += 36) {
+                hzCtx.beginPath();
+                hzCtx.moveTo(x, 128);
+                hzCtx.lineTo(x + 16, 128);
+                hzCtx.lineTo(x + 38, 52);
+                hzCtx.lineTo(x + 22, 52);
+                hzCtx.closePath();
+                hzCtx.fill();
+            }
+            // Central Railway red emblem circle
+            hzCtx.fillStyle = '#dc2626';
+            hzCtx.beginPath();
+            hzCtx.arc(128, 28, 12, 0, Math.PI * 2);
+            hzCtx.fill();
+            hzCtx.fillStyle = '#ffffff';
+            hzCtx.font = 'bold 10px sans-serif';
+            hzCtx.textAlign = 'center';
+            hzCtx.fillText("CR", 128, 32);
+
+            const hazardTex = new THREE.CanvasTexture(hazardCanvas);
+            const emuLeadFrontMat = new THREE.MeshStandardMaterial({ map: hazardTex, roughness: 0.35, metalness: 0.2 });
+            const yellowFront = new THREE.Mesh(new THREE.BoxGeometry(3.08, 2.2, 0.4), emuLeadFrontMat);
             yellowFront.position.set(0, 1.9, 3.1);
             coach.add(yellowFront);
 
@@ -4047,56 +4614,57 @@ const redArmorMat = new THREE.MeshStandardMaterial({ color: 0xb91c1c, metalness:
 const goldArmorMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.9, roughness: 0.2 });
 const arcReactorMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
 
-// Helmet
-const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.68, 16, 16), redArmorMat);
-helmet.position.y = 1.95;
-ironManSuit.add(helmet);
-
-const faceplate = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.62, 0.35), goldArmorMat);
-faceplate.position.set(0, 1.9, 0.45);
-ironManSuit.add(faceplate);
-
-// Glowing Eyes
-[-0.16, 0.16].forEach(ex => {
-    const eye = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.05, 0.1), arcReactorMat);
-    eye.position.set(ex, 1.96, 0.63);
-    ironManSuit.add(eye);
-});
-
-// Chestplate + Arc Reactor
-const chest = new THREE.Mesh(new THREE.BoxGeometry(0.95, 1.0, 0.65), redArmorMat);
-chest.position.y = 1.1;
-ironManSuit.add(chest);
-
-const arcReactor = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.1, 16), arcReactorMat);
-arcReactor.rotation.x = Math.PI / 2;
-arcReactor.position.set(0, 1.25, 0.35);
-ironManSuit.add(arcReactor);
-
-// Gold Shoulder Pads
-[-0.65, 0.65].forEach(sx => {
-    const pad = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 8), goldArmorMat);
-    pad.position.set(sx, 1.45, 0);
-    ironManSuit.add(pad);
-});
-
-// Legs & Repulsor Boots
+// Helmet, Chest & Legs (Red Armor)
+const redGeoms = [];
+const hGeom = new THREE.SphereGeometry(0.68, 14, 14);
+hGeom.translate(0, 1.95, 0);
+redGeoms.push(hGeom);
+const cGeom = new THREE.BoxGeometry(0.95, 1.0, 0.65);
+cGeom.translate(0, 1.1, 0);
+redGeoms.push(cGeom);
 [-0.26, 0.26].forEach(lx => {
-    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.22, 0.9, 8), redArmorMat);
-    leg.position.set(lx, 0.45, 0);
-    ironManSuit.add(leg);
-
-    const boot = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.22, 0.55), goldArmorMat);
-    boot.position.set(lx, 0.11, 0.06);
-    ironManSuit.add(boot);
+    const lGeom = new THREE.CylinderGeometry(0.2, 0.22, 0.9, 8);
+    lGeom.translate(lx, 0.45, 0);
+    redGeoms.push(lGeom);
 });
+ironManSuit.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(redGeoms), redArmorMat));
+
+// Faceplate, Shoulder Pads & Boots (Gold Armor)
+const goldGeoms = [];
+const fpGeom = new THREE.BoxGeometry(0.58, 0.62, 0.35);
+fpGeom.translate(0, 1.9, 0.45);
+goldGeoms.push(fpGeom);
+[-0.65, 0.65].forEach(sx => {
+    const pGeom = new THREE.SphereGeometry(0.28, 8, 8);
+    pGeom.translate(sx, 1.45, 0);
+    goldGeoms.push(pGeom);
+});
+[-0.26, 0.26].forEach(lx => {
+    const bGeom = new THREE.BoxGeometry(0.32, 0.22, 0.55);
+    bGeom.translate(lx, 0.11, 0.06);
+    goldGeoms.push(bGeom);
+});
+ironManSuit.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(goldGeoms), goldArmorMat));
+
+// Glowing Eyes & Arc Reactor (Cyan Energy)
+const cyanGeoms = [];
+[-0.16, 0.16].forEach(ex => {
+    const eyeGeom = new THREE.BoxGeometry(0.14, 0.05, 0.1);
+    eyeGeom.translate(ex, 1.96, 0.63);
+    cyanGeoms.push(eyeGeom);
+});
+const arGeom = new THREE.CylinderGeometry(0.18, 0.18, 0.1, 14);
+arGeom.rotateX(Math.PI / 2);
+arGeom.translate(0, 1.25, 0.35);
+cyanGeoms.push(arGeom);
+ironManSuit.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(cyanGeoms), arcReactorMat));
 
 characterGroup.add(ironManSuit);
 
-// Repulsor Jet Thrust Lights & Particle Sparks
+// Repulsor Jet Thrust Lights & Particle Sparks (Optimized Batched Instances)
 const jetParticles = [];
 const jetMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
-for (let i = 0; i < 24; i++) {
+for (let i = 0; i < 6; i++) {
     const p = new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 6), jetMat);
     characterGroup.add(p);
     jetParticles.push({ mesh: p, offset: (i % 2 === 0 ? 0.26 : -0.26) });
@@ -4383,7 +4951,7 @@ function teleportTo(targetX, targetZ, label, targetY = 0) {
 
 document.getElementById('btn-tp-gateway').addEventListener('click', () => teleportTo(0, -6, 'Gateway', 0));
 document.getElementById('btn-tp-home').addEventListener('click', () => teleportTo(0, 122, 'Home HQ', 0));
-document.getElementById('btn-tp-school').addEventListener('click', () => teleportTo(0, 68, 'School', 0));
+document.getElementById('btn-tp-school').addEventListener('click', () => teleportTo(poiSchool.x, poiSchool.z - 16, 'School', 0));
 document.getElementById('btn-tp-college').addEventListener('click', () => teleportTo(48, 34, 'DMCE College', 0));
 const btnTpStark = document.getElementById('btn-tp-stark');
 if (btnTpStark) btnTpStark.addEventListener('click', () => teleportTo(0, 122, 'Home HQ', 0));
@@ -4466,6 +5034,15 @@ function toggleVehicleMount() {
             return;
         }
 
+        // Proximity check for Kaali-Peeli Auto-Rickshaw
+        if (rickshawVehicle && rickshawVehicle.mesh) {
+            const dRick = characterGroup.position.distanceTo(rickshawVehicle.mesh.position);
+            if (dRick < 4.8) {
+                mountVehicle(rickshawVehicle);
+                return;
+            }
+        }
+
         // Proximity check for Train
         if (trainState.coach1) {
             const p = characterGroup.position;
@@ -4483,19 +5060,26 @@ function toggleVehicleMount() {
 function mountVehicle(v) {
     activeVehicle = v;
     speedoCard.style.display = 'flex';
-    speedoMode.textContent = v.type === 'bike' ? '🏍️ CYBER BIKE' : '🚗 CYBER CAR';
-    playSound('engine');
     if (v.type === 'bike') {
+        speedoMode.textContent = '🏍️ CYBER BIKE';
         characterGroup.visible = true;
         characterGroup.position.set(0, 0.45, -0.2);
         characterGroup.rotation.set(0, 0, 0);
         v.mesh.add(characterGroup);
+    } else if (v.type === 'rickshaw') {
+        speedoMode.textContent = '🛺 KAALI-PEELI AUTO';
+        characterGroup.visible = true;
+        characterGroup.position.set(0, 0.42, 0.15);
+        characterGroup.rotation.set(0, 0, 0);
+        v.mesh.add(characterGroup);
     } else {
+        speedoMode.textContent = '🚗 CYBER CAR';
         characterGroup.visible = true;
         characterGroup.position.set(0.4, 0.4, -0.3);
         characterGroup.rotation.set(0, 0, 0);
         v.mesh.add(characterGroup);
     }
+    playSound('engine');
 }
 
 function mountTrain() {
@@ -4629,7 +5213,8 @@ function updateMiniMap(playerX, playerZ, playerRot) {
         { name: "City Train Station", x: trainState.x, z: 16 },
         { name: "West Residential District", x: -240, z: 90 },
         { name: "East Commercial Bazaar", x: 240, z: 90 },
-        { name: "North Tech Academia", x: 0, z: 340 }
+        { name: "North Tech Academia", x: 0, z: 340 },
+        { name: "Airport District", x: 0, z: 380 }
     ];
 
     let nearest = waypoints[0];
@@ -4761,7 +5346,7 @@ function updateMiniMap(playerX, playerZ, playerRot) {
 
     // School (Purple)
     mapCtx.fillStyle = '#9333ea';
-    mapCtx.fillRect(toMapX(poiSchool.x - 18), toMapY(poiSchool.z + 1), 36 * scale, 14 * scale);
+    mapCtx.fillRect(toMapX(poiSchool.x - 18), toMapY(poiSchool.z + 7), 36 * scale, 14 * scale);
 
     // DMCE College (Emerald)
     mapCtx.fillStyle = '#059669';
@@ -4791,6 +5376,13 @@ function updateMiniMap(playerX, playerZ, playerRot) {
     mapCtx.beginPath();
     mapCtx.arc(toMapX(bikeVehicle.mesh.position.x), toMapY(bikeVehicle.mesh.position.z), 3.5, 0, Math.PI * 2);
     mapCtx.fill();
+
+    if (rickshawVehicle && rickshawVehicle.mesh) {
+        mapCtx.fillStyle = '#facc15';
+        mapCtx.beginPath();
+        mapCtx.arc(toMapX(rickshawVehicle.mesh.position.x), toMapY(rickshawVehicle.mesh.position.z), 3.5, 0, Math.PI * 2);
+        mapCtx.fill();
+    }
 
     // 8. Landmark Waypoint Blips (In-radar vs Clamped to Rim)
     waypoints.forEach(wp => {
@@ -5215,10 +5807,11 @@ function animate() {
             updateMiniMap(trainState.coach1.position.x, trainState.coach1.position.z, trainState.coach1.rotation.y);
             checkTrainProximity();
         } else if (activeVehicle) {
-            // Bike or Sports Car Physics
+            // Bike, Auto-Rickshaw, or Sports Car Physics
             const v = activeVehicle;
             const isCar = (v.type === 'car');
-            const turnSpeed = isCar ? 1.8 : 2.5;
+            const isRickshaw = (v.type === 'rickshaw');
+            const turnSpeed = isCar ? 1.8 : (isRickshaw ? 2.2 : 2.5);
 
             // Acceleration & Braking
             if (keys.w) v.speed = THREE.MathUtils.lerp(v.speed, v.maxSpeed, 0.04);
@@ -5233,19 +5826,19 @@ function animate() {
             v.mesh.position.z += Math.cos(v.rotation) * v.speed * delta;
             v.mesh.rotation.y = v.rotation;
 
-            // Tilt & Drift roll
-            if (!isCar) {
+            // Tilt & Drift roll for single-track motorbike
+            if (v.type === 'bike') {
                 const targetRoll = keys.d ? -0.25 : (keys.a ? 0.25 : 0);
                 v.mesh.rotation.z = THREE.MathUtils.lerp(v.mesh.rotation.z, targetRoll, 0.2);
             }
 
-            // Spin car wheels
-            if (isCar) {
-                carVehicle.wheels.forEach(w => w.rotation.x += v.speed * delta * 2.0);
+            // Spin vehicle wheels
+            if (v.wheels && v.wheels.length > 0) {
+                v.wheels.forEach(w => w.rotation.x += v.speed * delta * 2.0);
             }
 
             // Resolve vehicle collisions against world obstacles
-            resolveCollision(v.mesh.position, isCar ? 1.6 : 0.85);
+            resolveCollision(v.mesh.position, isCar ? 1.6 : (isRickshaw ? 1.25 : 0.85));
 
             // Speedometer update
             speedoVal.textContent = Math.round(Math.abs(v.speed * 3.6));
@@ -5342,6 +5935,13 @@ function animate() {
         }
     }
 
+    if (atcRadarDish) atcRadarDish.rotation.y += delta * 1.8;
+    maritimeFerryBoats.forEach(b => {
+        b.group.position.y = -0.4 + Math.sin(time * 1.4 + b.phase) * 0.12;
+        b.group.rotation.z = Math.sin(time * 1.1 + b.phase) * 0.04;
+        b.group.rotation.x = Math.cos(time * 0.9 + b.phase) * 0.03;
+    });
+
     if (cameraMode === 'orbit') orbitControls.update();
 
     updateSpeechBubble();
@@ -5398,6 +5998,12 @@ function checkProximity() {
         return;
     }
 
+    // 6b. Check Kaali-Peeli Auto-Rickshaw
+    if (rickshawVehicle && rickshawVehicle.mesh && p.distanceTo(rickshawVehicle.mesh.position) < 4.8) {
+        showPrompt('F', 'Drive Kaali-Peeli Auto 🛺');
+        return;
+    }
+
     // 7. Check Mumbai Local EMU Train
     if (trainState.coach1) {
         const d1 = p.distanceTo(trainState.coach1.position);
@@ -5435,7 +6041,8 @@ function checkProximity() {
 }
 
 function checkVehicleProximity(v) {
-    showPrompt('F', `Dismount ${v.type === 'bike' ? 'Bike' : 'Car'} ⏹️`);
+    const vName = v.type === 'bike' ? 'Bike' : (v.type === 'rickshaw' ? 'Auto 🛺' : 'Car');
+    showPrompt('F', `Dismount ${vName} ⏹️`);
 }
 
 function checkTrainProximity() {
@@ -5494,6 +6101,11 @@ window.__flightRoll = () => flightRoll;
 window.__flightHeading = () => flightHeading;
 window.__keys = keys;
 window.__updateMiniMap = updateMiniMap;
+window.__poiSchool = poiSchool;
+window.__rickshawVehicle = rickshawVehicle;
+window.__maritimeFerryBoats = maritimeFerryBoats;
+window.__atcRadarDish = atcRadarDish;
+window.__worldColliders = worldColliders;
 
 // Responsive Resize
 window.addEventListener('resize', () => {
