@@ -735,6 +735,27 @@ function getSurfaceElevationAt(x, z) {
     if (Math.hypot(x - 0, z - 140) < 22) {
         return 120;
     }
+    // Haji Ali Coastal Causeway Walkway (X in [-184, -176], Z in [-142, -20])
+    if (x >= -184 && x <= -176 && z >= -142 && z <= -20) {
+        return 0.6;
+    }
+    // Haji Ali Dargah Islet Platform & Sanctuary
+    if (x >= -205 && x <= -155 && z >= -185 && z <= -135) {
+        if (x >= -192 && x <= -168 && z >= -172 && z <= -152) {
+            return 8.7; // Sanctuary Roof
+        }
+        return 1.0; // Courtyard Platform
+    }
+    // Asiatic Library Grand Classical Steps & Terrace
+    if (x >= 82 && x <= 118) {
+        if (z >= 95.2 && z <= 105.8) {
+            const stepIdx = Math.floor((z - 95.2) / 1.3);
+            return Math.min(3.6, Math.max(0.45, (stepIdx + 1) * 0.45));
+        }
+        if (z > 105.8 && z <= 110) {
+            return 3.9; // Portico Deck
+        }
+    }
     // Check all building and platform colliders
     for (let i = 0; i < worldColliders.length; i++) {
         const c = worldColliders[i];
@@ -774,7 +795,7 @@ function resolveCollision(pos, radius = 0.5) {
         const col = worldColliders[i];
         if (col.minY !== undefined && col.maxY !== undefined) {
             const topElevation = (col.roofY !== undefined) ? col.roofY : col.maxY;
-            if (pos.y < col.minY || pos.y >= topElevation - 0.25) continue;
+            if (pos.y < col.minY || pos.y >= topElevation - 0.08) continue;
         }
 
         if (col.type === 'box') {
@@ -1296,8 +1317,8 @@ function buildHajiAliDargah() {
     scene.add(hajiAliGroup);
 
     // Register Box Colliders for Walking & Rooftop Superhero Landing
-    registerBoxCollider(-183.5, -176.5, -142, -22, 'HajiAliCauseway', -2, 1.4, 0.6);
-    registerBoxCollider(-201, -159, -179, -141, 'HajiAliIslet', -2, 2.0, 0.9);
+    registerBoxCollider(-184.0, -176.0, -142, -20, 'HajiAliCauseway', -2, 0.6, 0.6);
+    registerBoxCollider(-204, -156, -182, -138, 'HajiAliIslet', -2, 1.0, 1.0);
     registerBoxCollider(-192, -168, -172, -152, 'HajiAliSanctuary', -2, 17.0, 8.7);
     registerBoxCollider(-170.5, -165.5, -150.5, -145.5, 'HajiAliMinaret', -2, 28.0, 26.0);
 }
@@ -1757,8 +1778,8 @@ function buildAmbientCitizens() {
         addStandingCitizen(p[0], p[1], p[2], p[3], 0x8d5524, 0xf8fafc, 0x475569, 0x0f172a);
     });
 
-    // 5. Readers & Citizens sitting on the Grand Steps of Asiatic Library (X = 100, Z = 100 to 104)
-    [[94, 1.35, 101, 0], [106, 1.8, 102, 0], [97, 2.25, 103, 0], [103, 2.7, 104, 0]].forEach(p => {
+    // 5. Readers & Citizens sitting on the Grand Steps of Asiatic Library (Facing North toward plaza)
+    [[94, 1.35, 99.9, Math.PI], [106, 1.80, 101.2, Math.PI], [97, 2.25, 102.5, Math.PI], [103, 2.70, 103.8, Math.PI]].forEach(p => {
         addSeatedCitizen(p[0], p[1], p[2], p[3], 0xc68642, 0xea580c, 0x1e293b, 0x0f172a);
     });
 
@@ -2255,16 +2276,18 @@ if (allZebraGeoms.length > 0) {
     scene.add(zebraMesh);
 }
 
-// Streetlights & Avenue Trees
+// Streetlights & Avenue Trees (Positioned cleanly on sidewalks, clear of roadways and building facades)
 [-60, -30, 30, 60].forEach(rx => {
-    addStreetLamp(rx, 24);
-    addTree(rx, 26, 'city');
+    addStreetLamp(rx, 18.5);
+    addTree(rx, 18.5, 'city');
 });
-[30, 54, 70].forEach(rz => {
-    addStreetLamp(8, rz);
-    addStreetLamp(-8, rz);
-    addTree(-10, rz, 'city');
-    addTree(10, rz, 'city');
+[22, 46, 68].forEach(rz => {
+    addStreetLamp(5.8, rz);
+    addStreetLamp(-5.8, rz);
+});
+[14, 38, 60, 78].forEach(rz => {
+    addTree(-6.2, rz, 'city');
+    addTree(6.2, rz, 'city');
 });
 
 function finalizeBatchedVegetationAndLamps() {
@@ -2332,26 +2355,45 @@ function createChawlBuilding(x, z, width = 16, depth = 10, storeys = 3, rotY = 0
     const railingGeoms = [];
     const decorGeoms = [];
 
-    for (let s = 1; s < storeys; s++) {
+    for (let s = 0; s < storeys; s++) {
         const floorY = s * storeyH;
-        const slab = new THREE.BoxGeometry(width + 0.3, 0.32, corridorDepth);
-        slab.translate(0, floorY, depth / 2 + corridorDepth / 2);
-        concreteGeoms.push(slab);
+        if (s === 0) {
+            // Ground floor plinth, entrance doorways and grilled windows
+            const plinth = new THREE.BoxGeometry(width + 0.3, 0.35, corridorDepth);
+            plinth.translate(0, 0.175, depth / 2 + corridorDepth / 2);
+            concreteGeoms.push(plinth);
 
-        const railTop = new THREE.BoxGeometry(width + 0.3, 0.1, 0.1);
-        railTop.translate(0, floorY + 1.05, depth / 2 + corridorDepth);
-        railingGeoms.push(railTop);
+            for (let dx = -width / 2 + 2.2; dx <= width / 2 - 2.2; dx += 3.8) {
+                const door = new THREE.BoxGeometry(1.2, 2.2, 0.1);
+                door.translate(dx, 1.1, depth / 2 + 0.06);
+                decorGeoms.push(door);
 
-        for (let rx = -width / 2 + 1; rx <= width / 2 - 1; rx += 2.0) {
-            const picket = new THREE.BoxGeometry(0.08, 1.05, 0.08);
-            picket.translate(rx, floorY + 0.52, depth / 2 + corridorDepth);
-            railingGeoms.push(picket);
-        }
+                [-0.85, 0.85].forEach(wx => {
+                    const win = new THREE.BoxGeometry(0.7, 0.9, 0.08);
+                    win.translate(dx + wx, 1.35, depth / 2 + 0.06);
+                    decorGeoms.push(win);
+                });
+            }
+        } else {
+            const slab = new THREE.BoxGeometry(width + 0.3, 0.32, corridorDepth);
+            slab.translate(0, floorY, depth / 2 + corridorDepth / 2);
+            concreteGeoms.push(slab);
 
-        for (let dx = -width / 2 + 2.2; dx <= width / 2 - 2.2; dx += 3.8) {
-            const door = new THREE.BoxGeometry(1.2, 2.1, 0.1);
-            door.translate(dx, floorY + 1.05, depth / 2 + 0.06);
-            decorGeoms.push(door);
+            const railTop = new THREE.BoxGeometry(width + 0.3, 0.1, 0.1);
+            railTop.translate(0, floorY + 1.05, depth / 2 + corridorDepth);
+            railingGeoms.push(railTop);
+
+            for (let rx = -width / 2 + 1; rx <= width / 2 - 1; rx += 2.0) {
+                const picket = new THREE.BoxGeometry(0.08, 1.05, 0.08);
+                picket.translate(rx, floorY + 0.52, depth / 2 + corridorDepth);
+                railingGeoms.push(picket);
+            }
+
+            for (let dx = -width / 2 + 2.2; dx <= width / 2 - 2.2; dx += 3.8) {
+                const door = new THREE.BoxGeometry(1.2, 2.1, 0.1);
+                door.translate(dx, floorY + 1.05, depth / 2 + 0.06);
+                decorGeoms.push(door);
+            }
         }
     }
 
@@ -2428,6 +2470,27 @@ function createApartmentBuilding(x, z, width = 12, depth = 10, storeys = 5, colo
     const parapet = new THREE.BoxGeometry(width + 0.2, 0.9, depth + 0.2);
     parapet.translate(0, totalH + 0.45, 0);
     concreteGeoms.push(parapet);
+
+    // Ground floor entrance portico & lobby double doors
+    const portico = new THREE.BoxGeometry(width * 0.42, 0.35, 2.0);
+    portico.translate(0, 3.2, depth / 2 + 1.0);
+    concreteGeoms.push(portico);
+
+    [-width * 0.18, width * 0.18].forEach(px => {
+        const col = new THREE.BoxGeometry(0.3, 3.2, 0.3);
+        col.translate(px, 1.6, depth / 2 + 1.8);
+        concreteGeoms.push(col);
+    });
+
+    const lobbyDoor = new THREE.BoxGeometry(2.4, 2.6, 0.12);
+    lobbyDoor.translate(0, 1.3, depth / 2 + 0.06);
+    metalGeoms.push(lobbyDoor);
+
+    [-width * 0.34, width * 0.34].forEach(wx => {
+        const win = new THREE.BoxGeometry(1.6, 1.4, 0.1);
+        win.translate(wx, 1.6, depth / 2 + 0.06);
+        metalGeoms.push(win);
+    });
 
     for (let s = 1; s < storeys; s++) {
         const floorY = s * storeyH;
@@ -2686,15 +2749,15 @@ function buildMumbaiUrbanGrid() {
     createApartmentBuilding(32, 54, 12, 10, 5, 'mint');
     // 17. Corporate Tower T4 (Tech Innovation Labs)
     createCorporateTower(32, 70, 12, 10, 8, 0x0f766e);
-    // 18. Corporate Tower T5 (Cyber City High-Rise)
-    createCorporateTower(64, 30, 14, 10, 8, 0x1d4ed8);
+    // 18. Corporate Tower T5 (Cyber City High-Rise East Lot)
+    createCorporateTower(90, 30, 12, 10, 8, 0x1d4ed8);
     // Lot at (64, 80) is reserved for the Relocated School Academic Campus with clear, open landscaped plaza
 
     // --- SECTOR 4: NORTH DISTRICT & ARTERIAL BOULEVARDS ---
-    // 22. Secondary School Academic Annex & Library (West of School)
-    createCorporateTower(-24, 84, 12, 10, 5, 0x475569);
-    // 23. Youth Sports & Cultural Pavilion (East of School)
-    createCommercialBuilding(24, 84, 12, 10, 3, "युवा क्रीडा आणि सांस्कृतिक केंद्र", "YOUTH SPORTS & CULTURAL CENTRE", 0x15803d, 0x16a34a);
+    // 22. Secondary School Academic Annex & Library (West of School, spacious 10m avenue clearance)
+    createCorporateTower(-34, 84, 12, 10, 5, 0x475569);
+    // 23. Youth Sports & Cultural Pavilion (East of School, spacious 10m avenue clearance)
+    createCommercialBuilding(34, 84, 12, 10, 3, "युवा क्रीडा आणि सांस्कृतिक केंद्र", "YOUTH SPORTS & CULTURAL CENTRE", 0x15803d, 0x16a34a);
     // 24. Chawl 4 (Central Railway Staff Colony)
     createChawlBuilding(-48, 82, 14, 10, 3);
 }
@@ -2732,6 +2795,13 @@ function buildExpandedDistrictsBatch() {
         const totalH = storeys * storeyH;
         // Main plaster structural block
         addBox(batchedWallsPlaster, x, totalH / 2, z, w, totalH, d, rotY);
+        // Ground floor plinth, entrance doorways and grilled windows
+        addBox(batchedConcreteTrim, x, 0.175, z + d / 2 + 0.65, w + 0.4, 0.35, 1.3, rotY);
+        for (let dx = -w / 2 + 2.2; dx <= w / 2 - 2.2; dx += 3.8) {
+            addBox(batchedRoofs, x + dx, 1.1, z + d / 2 + 0.06, 1.2, 2.2, 0.1, rotY);
+            addBox(batchedMetal, x + dx - 0.9, 1.4, z + d / 2 + 0.06, 0.7, 0.9, 0.08, rotY);
+            addBox(batchedMetal, x + dx + 0.9, 1.4, z + d / 2 + 0.06, 0.7, 0.9, 0.08, rotY);
+        }
         // Cantilevered gallery slabs
         for (let s = 1; s < storeys; s++) {
             const fy = s * storeyH;
@@ -2761,6 +2831,13 @@ function buildExpandedDistrictsBatch() {
         addBox(batchedWallsApartments, x, totalH / 2, z, w, totalH, d);
         // Parapet
         addBox(batchedConcreteTrim, x, totalH + 0.45, z, w + 0.3, 0.9, d + 0.3);
+        // Ground floor entrance lobby portico & double doors
+        addBox(batchedConcreteTrim, x, 3.2, z + d / 2 + 1.0, w * 0.4, 0.35, 2.0);
+        addBox(batchedConcreteTrim, x - w * 0.16, 1.6, z + d / 2 + 1.8, 0.3, 3.2, 0.3);
+        addBox(batchedConcreteTrim, x + w * 0.16, 1.6, z + d / 2 + 1.8, 0.3, 3.2, 0.3);
+        addBox(batchedMetal, x, 1.25, z + d / 2 + 0.06, 2.4, 2.5, 0.12);
+        addBox(batchedGlass, x - w * 0.32, 1.6, z + d / 2 + 0.06, 1.6, 1.4, 0.1);
+        addBox(batchedGlass, x + w * 0.32, 1.6, z + d / 2 + 0.06, 1.6, 1.4, 0.1);
         // Balconies
         for (let s = 1; s < storeys; s++) {
             const fy = s * storeyH;
@@ -2801,14 +2878,29 @@ function buildExpandedDistrictsBatch() {
         cityBuildings.push({ minX, maxX, minZ, maxZ, type: 'commercial' });
     }
 
-    // Helper: Build a batched High-Rise Corporate Tower
+    // Helper: Build a batched High-Rise Corporate Tower (Realistic Curtain Wall, Spandrel Bands & Mullions)
     function buildBatchedCorporate(x, z, w, d, storeys) {
         const storeyH = 3.8;
         const totalH = storeys * storeyH;
-        // Podium base
+        // Podium base with lobby entrance
         addBox(batchedConcreteTrim, x, 4.0, z, w + 1.0, 8.0, d + 1.0);
+        addBox(batchedGlass, x, 2.4, z + (d + 1.0) / 2 + 0.05, w * 0.6, 3.6, 0.1);
+
         // Glass tower shaft
         addBox(batchedGlass, x, (totalH + 8) / 2, z, w, totalH - 8, d);
+
+        // Horizontal floor spandrels & architectural sunshade louvers on every storey
+        for (let s = 2; s <= storeys; s++) {
+            const fy = s * storeyH;
+            addBox(batchedConcreteTrim, x, fy, z, w + 0.3, 0.45, d + 0.3);
+            addBox(batchedMetal, x, fy + 0.3, z + d / 2 + 0.25, w * 0.92, 0.15, 0.4);
+        }
+
+        // Vertical corner structural mullions running full height
+        [[-w/2, -d/2], [w/2, -d/2], [-w/2, d/2], [w/2, d/2]].forEach(([cx, cz]) => {
+            addBox(batchedMetal, x + cx, totalH / 2, z + cz, 0.5, totalH, 0.5);
+        });
+
         // Architectural crown / mechanical penthouse
         addBox(batchedConcreteTrim, x, totalH + 1.5, z, w * 0.75, 3.0, d * 0.75);
         // Rooftop communications antenna
@@ -2897,12 +2989,12 @@ function buildExpandedDistrictsBatch() {
     buildBatchedCorporate(45, 210, 16, 14, 12);
 
     // ====================================================
-    // SECTOR 4: TECH ACADEMIA & CAMPUS WINGS (12 Buildings)
+    // SECTOR 4: TECH ACADEMIA & CAMPUS WINGS (12 Buildings, clear of Airport at Z = 340)
     // ====================================================
+    buildBatchedAcademia(60, 240, 22, 16, 5);
     buildBatchedAcademia(60, 290, 22, 16, 5);
-    buildBatchedAcademia(60, 340, 22, 16, 5);
+    buildBatchedAcademia(120, 240, 22, 16, 4);
     buildBatchedAcademia(120, 290, 22, 16, 4);
-    buildBatchedAcademia(120, 340, 22, 16, 4);
     buildBatchedAcademia(180, 315, 24, 18, 4);
     buildBatchedAcademia(-60, 290, 22, 16, 4);
     buildBatchedAcademia(-60, 340, 22, 16, 4);
@@ -2925,11 +3017,21 @@ function buildExpandedDistrictsBatch() {
     // Primary structural masses cast building shadows
     mergeAndAdd(batchedWallsPlaster, chawlPlasterMat, true);
     mergeAndAdd(batchedWallsApartments, aptMatPeach, true);
-    mergeAndAdd(batchedWallsCorporate, new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.6 }), true);
+    mergeAndAdd(batchedWallsCorporate, new THREE.MeshStandardMaterial({
+        map: modernFacadeTex,
+        color: 0x94a3b8,
+        roughness: 0.5,
+        metalness: 0.3
+    }), true);
 
     // Architectural trims, windows, metal, and roofs (no shadow pass needed)
     mergeAndAdd(batchedConcreteTrim, concreteTrimMat, false);
-    mergeAndAdd(batchedGlass, new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.85, roughness: 0.15 }), false);
+    mergeAndAdd(batchedGlass, new THREE.MeshStandardMaterial({
+        map: corporateGlassTex,
+        color: 0x38bdf8,
+        metalness: 0.85,
+        roughness: 0.15
+    }), false);
     mergeAndAdd(batchedMetal, metalRailingMat, false);
     mergeAndAdd(batchedRoofs, corrugatedRoofMat, false);
 }
@@ -3119,47 +3221,47 @@ function buildAirportDistrict() {
     const termSolidGeoms = [];
     const termGlassGeoms = [];
 
-    // Main Terminal Concourse Hall (72m W x 14m H x 26m D at X = 95, Z = 356)
-    const termHall = applyVertexColor(new THREE.BoxGeometry(72, 14, 26), 0x94a3b8);
-    termHall.translate(95, 7, 356);
+    // Main Terminal Concourse Hall (72m W x 14m H x 22m D at X = 95, Z = 348, dedicated buffer from runway)
+    const termHall = applyVertexColor(new THREE.BoxGeometry(72, 14, 22), 0x94a3b8);
+    termHall.translate(95, 7, 348);
     termSolidGeoms.push(termHall);
 
     // Structural Perimeter Columns
     for (let cx = 62; cx <= 128; cx += 11) {
         const col = applyVertexColor(new THREE.CylinderGeometry(0.7, 0.9, 15, 8), 0x64748b);
-        col.translate(cx, 7.5, 342);
+        col.translate(cx, 7.5, 337);
         termSolidGeoms.push(col);
     }
 
-    // Aerodynamic Modern Roof with Cantilevered Overhang (78m W x 32m D)
-    const roofBase = applyVertexColor(new THREE.BoxGeometry(78, 1.2, 32), 0xe2e8f0);
-    roofBase.translate(95, 14.6, 356);
+    // Aerodynamic Modern Roof with Cantilevered Overhang (78m W x 26m D)
+    const roofBase = applyVertexColor(new THREE.BoxGeometry(78, 1.2, 26), 0xe2e8f0);
+    roofBase.translate(95, 14.6, 348);
     termSolidGeoms.push(roofBase);
-    const roofCap = applyVertexColor(new THREE.BoxGeometry(72, 1.2, 28), 0xf1f5f9);
-    roofCap.translate(95, 15.8, 356);
+    const roofCap = applyVertexColor(new THREE.BoxGeometry(72, 1.2, 22), 0xf1f5f9);
+    roofCap.translate(95, 15.8, 348);
     termSolidGeoms.push(roofCap);
 
     // Terminal Curtain Glass Facade (facing Runway/Apron - South)
     const glassFacade = new THREE.PlaneGeometry(68, 11);
-    glassFacade.translate(95, 6.5, 369.1);
+    glassFacade.translate(95, 6.5, 359.1);
     termGlassGeoms.push(glassFacade);
 
-    // Articulated Telescoping Jetway Aerobridge (connecting Terminal Concourse to Jetliner Fuselage at 45, 376)
+    // Articulated Telescoping Jetway Aerobridge (connecting Terminal Concourse to Jetliner Fuselage at 45, 372)
     const jetwayTunnel = applyVertexColor(new THREE.BoxGeometry(16, 3.2, 3.4), 0x64748b);
     jetwayTunnel.rotateY(-0.62);
-    jetwayTunnel.translate(52, 4.8, 371);
+    jetwayTunnel.translate(52, 4.8, 365);
     termSolidGeoms.push(jetwayTunnel);
 
     // Jetway Support Gantry Stilt Legs
     [-1.2, 1.2].forEach(ox => {
         const stilt = applyVertexColor(new THREE.CylinderGeometry(0.25, 0.3, 4.6, 6), 0x475569);
-        stilt.translate(52 + ox, 2.3, 371);
+        stilt.translate(52 + ox, 2.3, 365);
         termSolidGeoms.push(stilt);
     });
 
     // Illuminated Terminal Signboard
     const signBoard = applyVertexColor(new THREE.BoxGeometry(32, 2.2, 0.4), 0xf97316);
-    signBoard.translate(95, 14.5, 369.2);
+    signBoard.translate(95, 14.5, 359.2);
     termSolidGeoms.push(signBoard);
 
     terminalGroup.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(termSolidGeoms, false), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.15 })));
@@ -3167,12 +3269,10 @@ function buildAirportDistrict() {
 
     airport.add(terminalGroup);
 
-    airport.add(terminalGroup);
-
     registerBoxCollider(-76, -64, 354, 366, 'ATCRadarTower');
     registerBoxCollider(28, 62, 360, 392, 'JetlinerApron');
-    registerBoxCollider(59, 131, 343, 369, 'AirportTerminalBuilding', -5, 18, 16.0);
-    registerBoxCollider(43, 61, 364, 378, 'AirportJetway', -5, 8.5, 5.8);
+    registerBoxCollider(59, 131, 337, 359, 'AirportTerminalBuilding', -5, 18, 16.0);
+    registerBoxCollider(43, 61, 358, 372, 'AirportJetway', -5, 8.5, 5.8);
 
     scene.add(airport);
 }
@@ -3777,30 +3877,30 @@ function buildLandmarkIntegrationPlazasAndSignage() {
         return geom;
     }
 
-    // 4 Key Junction Wayfinding Locations
+    // 4 Key Junction Wayfinding Locations (Firmly on Sidewalk Curbs, Clear of Roadways)
     const signpostLocations = [
-        // Junction 1: Marine Ave & North Ave
-        { x: 3.5, z: 13.5, arms: [
+        // Junction 1: Marine Ave & North Ave (West Sidewalk Curb)
+        { x: -5.8, z: 14.0, arms: [
             { idx: 0, rotY: 0, dy: 3.8 },               // North: High School Campus
             { idx: 1, rotY: Math.PI, dy: 3.4 },         // South: Gateway of India
             { idx: 2, rotY: Math.PI / 2, dy: 3.0 },     // West: Devarshi's HQ
             { idx: 3, rotY: -Math.PI / 2, dy: 2.6 }     // East: DMCE College
         ]},
-        // Junction 2: Market St & North Ave
-        { x: 3.5, z: 39.5, arms: [
+        // Junction 2: Market St & North Ave (East Sidewalk Curb)
+        { x: 5.8, z: 42.0, arms: [
             { idx: 4, rotY: 0, dy: 3.8 },               // North: North Ave / Campus
             { idx: 5, rotY: Math.PI, dy: 3.4 },         // South: Marine Drive
             { idx: 6, rotY: Math.PI / 2, dy: 3.0 },     // West: Chawls / Market
             { idx: 7, rotY: -Math.PI / 2, dy: 2.6 }     // East: Central Train Station
         ]},
-        // Junction 3: West Blvd & Market St
-        { x: -44.5, z: 39.5, arms: [
+        // Junction 3: West Blvd & Market St (Sidewalk Corner)
+        { x: -42.0, z: 42.0, arms: [
             { idx: 2, rotY: 0, dy: 3.6 },               // North: Devarshi's Cyber HQ
             { idx: 5, rotY: Math.PI, dy: 3.2 },         // South: Marine Drive
             { idx: 7, rotY: -Math.PI / 2, dy: 2.8 }     // East: Central Train Station
         ]},
-        // Junction 4: East Blvd & Market St
-        { x: 44.5, z: 39.5, arms: [
+        // Junction 4: East Blvd & Market St (Sidewalk Corner)
+        { x: 42.0, z: 42.0, arms: [
             { idx: 3, rotY: 0, dy: 3.6 },               // North: DMCE College
             { idx: 5, rotY: Math.PI, dy: 3.2 },         // South: Marine Drive
             { idx: 6, rotY: Math.PI / 2, dy: 2.8 }      // West: Market Street
@@ -4156,15 +4256,22 @@ function buildStarkTower() {
     registerBoxCollider(tX - deckWidth / 2, tX + deckWidth / 2, deckCenterZ + deckLength / 2 - 0.8, deckCenterZ + deckLength / 2 + 0.5, 'StarkL4BalustradeN', 118, 135);
     registerBoxCollider(tX - 4.0, tX + 4.0, tZ + 4.5, tZ + 9.0, 'StarkL4Vestibule', 118, 135);
 
+    // Exterior perimeter wall colliders for the full 180m skyscraper shaft (eliminates character clipping)
+    registerBoxCollider(tX - 16.5, tX - 14.5, tZ - 16.5, tZ + 16.5, 'StarkTowerShaftW', 14, 120);
+    registerBoxCollider(tX + 14.5, tX + 16.5, tZ - 16.5, tZ + 16.5, 'StarkTowerShaftE', 14, 120);
+    registerBoxCollider(tX - 16.5, tX + 16.5, tZ - 16.5, tZ - 14.5, 'StarkTowerShaftS', 14, 120);
+    registerBoxCollider(tX - 16.5, tX + 16.5, tZ + 14.5, tZ + 16.5, 'StarkTowerShaftN', 14, 120);
+
     // ----------------------------------------------------
     // 3. UNIFIED GEOMETRY MERGE & MESH CREATION (Only 6 Draw Calls!)
     // ----------------------------------------------------
     const starkGlassMat = new THREE.MeshStandardMaterial({
+        map: corporateGlassTex,
         color: 0x0284c7,
-        roughness: 0.1,
-        metalness: 0.9,
-        transparent: true,
-        opacity: 0.65
+        roughness: 0.12,
+        metalness: 0.88,
+        transparent: false,
+        opacity: 1.0
     });
 
     const starkMetalMat = new THREE.MeshStandardMaterial({
@@ -4571,7 +4678,7 @@ let activeVehicle = null; // null | bikeVehicle | carVehicle | rickshawVehicle |
 // Continuous Indian Standard Broad Gauge (1,676mm) Spline Loop
 // Dual Tracks: Up Line (X = -22, Northbound), Down Line (X = -26, Southbound)
 // ==========================================
-const trainStationZ = [16, 50, 84]; // Gateway Station, Home West Station, Academia North Terminal
+const trainStationZ = [16, 50, 84, 160, 230]; // Gateway Station, Home West, Academia North, Mindspace Tech Park, North Terminal
 let trainSpline = null;
 let stationSchedule = []; // Array of { name, s, z, platX }
 
@@ -4618,28 +4725,34 @@ function createTrainDestinationTexture(mrText, enText) {
 function buildRailwaySystem() {
     // 1. Define Continuous Broad Gauge Closed Spline Loop
     // Dual parallel tracks: Up Line (X = -22) and Down Line (X = -26)
-    // Smooth continuous curved turnaround loops at North Terminal (Z ~ 96) and South Gateway (Z ~ 0.5)
+    // Smooth continuous curved turnaround loops at North Terminal (Z ~ 240) and South Gateway (Z ~ 0.5)
     const railwayLoopPoints = [
         new THREE.Vector3(-22, 0.25, 8),
-        new THREE.Vector3(-22, 0.25, 16), // Gateway Up
+        new THREE.Vector3(-22, 0.25, 16),  // Gateway Up
         new THREE.Vector3(-22, 0.25, 30),
-        new THREE.Vector3(-22, 0.25, 42), // Market St Crossing
-        new THREE.Vector3(-22, 0.25, 50), // Home West Up
+        new THREE.Vector3(-22, 0.25, 42),  // Market St Crossing
+        new THREE.Vector3(-22, 0.25, 50),  // Home West Up
         new THREE.Vector3(-22, 0.25, 70),
-        new THREE.Vector3(-22, 0.25, 84), // Academia North Up
-        new THREE.Vector3(-22, 0.25, 88),
-        new THREE.Vector3(-22.3, 0.25, 92),
-        new THREE.Vector3(-23.1, 0.25, 95),
-        new THREE.Vector3(-24.0, 0.25, 96), // North Turn Apex
-        new THREE.Vector3(-24.9, 0.25, 95),
-        new THREE.Vector3(-25.7, 0.25, 92),
-        new THREE.Vector3(-26.0, 0.25, 88),
-        new THREE.Vector3(-26.0, 0.25, 84), // Academia North Down
+        new THREE.Vector3(-22, 0.25, 84),  // Academia North Up
+        new THREE.Vector3(-22, 0.25, 120),
+        new THREE.Vector3(-22, 0.25, 160), // Mindspace Up
+        new THREE.Vector3(-22, 0.25, 200),
+        new THREE.Vector3(-22, 0.25, 230), // North Terminal Up
+        new THREE.Vector3(-22.3, 0.25, 236),
+        new THREE.Vector3(-23.1, 0.25, 239),
+        new THREE.Vector3(-24.0, 0.25, 240), // North Turn Apex
+        new THREE.Vector3(-24.9, 0.25, 239),
+        new THREE.Vector3(-25.7, 0.25, 236),
+        new THREE.Vector3(-26.0, 0.25, 230), // North Terminal Down
+        new THREE.Vector3(-26.0, 0.25, 200),
+        new THREE.Vector3(-26.0, 0.25, 160), // Mindspace Down
+        new THREE.Vector3(-26.0, 0.25, 120),
+        new THREE.Vector3(-26.0, 0.25, 84),  // Academia North Down
         new THREE.Vector3(-26.0, 0.25, 70),
-        new THREE.Vector3(-26.0, 0.25, 50), // Home West Down
-        new THREE.Vector3(-26.0, 0.25, 42), // Market St Crossing
+        new THREE.Vector3(-26.0, 0.25, 50),  // Home West Down
+        new THREE.Vector3(-26.0, 0.25, 42),  // Market St Crossing
         new THREE.Vector3(-26.0, 0.25, 30),
-        new THREE.Vector3(-26.0, 0.25, 16), // Gateway Down
+        new THREE.Vector3(-26.0, 0.25, 16),  // Gateway Down
         new THREE.Vector3(-26.0, 0.25, 8),
         new THREE.Vector3(-25.7, 0.25, 4.5),
         new THREE.Vector3(-24.9, 0.25, 1.5),
@@ -4658,6 +4771,10 @@ function buildRailwaySystem() {
         { name: "Gateway (Up)", target: new THREE.Vector3(-22, 0.25, 16), z: 16, platX: -24 },
         { name: "Home West (Up)", target: new THREE.Vector3(-22, 0.25, 50), z: 50, platX: -24 },
         { name: "Academia North (Up)", target: new THREE.Vector3(-22, 0.25, 84), z: 84, platX: -24 },
+        { name: "Mindspace Tech (Up)", target: new THREE.Vector3(-22, 0.25, 160), z: 160, platX: -24 },
+        { name: "North Terminal (Up)", target: new THREE.Vector3(-22, 0.25, 230), z: 230, platX: -24 },
+        { name: "North Terminal (Down)", target: new THREE.Vector3(-26, 0.25, 230), z: 230, platX: -28.6 },
+        { name: "Mindspace Tech (Down)", target: new THREE.Vector3(-26, 0.25, 160), z: 160, platX: -28.6 },
         { name: "Academia North (Down)", target: new THREE.Vector3(-26, 0.25, 84), z: 84, platX: -28.6 },
         { name: "Home West (Down)", target: new THREE.Vector3(-26, 0.25, 50), z: 50, platX: -28.6 },
         { name: "Gateway (Down)", target: new THREE.Vector3(-26, 0.25, 16), z: 16, platX: -28.6 }
@@ -4685,7 +4802,7 @@ function buildRailwaySystem() {
     // 2. Physical Indian Standard Broad Gauge (1,676mm) Steel Rails
     const leftRailPts = [];
     const rightRailPts = [];
-    const RAIL_SAMPLES = 280;
+    const RAIL_SAMPLES = 420;
     const UP = new THREE.Vector3(0, 1, 0);
 
     for (let i = 0; i < RAIL_SAMPLES; i++) {
@@ -4701,8 +4818,8 @@ function buildRailwaySystem() {
     const leftRailCurve = new THREE.CatmullRomCurve3(leftRailPts, true, 'centripetal');
     const rightRailCurve = new THREE.CatmullRomCurve3(rightRailPts, true, 'centripetal');
 
-    const leftRailGeom = new THREE.TubeGeometry(leftRailCurve, 260, 0.05, 6, true);
-    const rightRailGeom = new THREE.TubeGeometry(rightRailCurve, 260, 0.05, 6, true);
+    const leftRailGeom = new THREE.TubeGeometry(leftRailCurve, 360, 0.05, 6, true);
+    const rightRailGeom = new THREE.TubeGeometry(rightRailCurve, 360, 0.05, 6, true);
     const mergedRails = BufferGeometryUtils.mergeGeometries([leftRailGeom, rightRailGeom]);
 
     const steelRailMat = new THREE.MeshStandardMaterial({
@@ -4716,7 +4833,7 @@ function buildRailwaySystem() {
 
     // 3. Batched Concrete Sleepers (Ties) along track
     const sleeperGeoms = [];
-    const SLEEPER_COUNT = 190;
+    const SLEEPER_COUNT = 360;
     for (let k = 0; k < SLEEPER_COUNT; k++) {
         const t = k / SLEEPER_COUNT;
         const pt = trainSpline.getPointAt(t);
@@ -4733,18 +4850,18 @@ function buildRailwaySystem() {
     sleeperMesh.receiveShadow = true;
     scene.add(sleeperMesh);
 
-    // 4. Crushed Granite Stone Ballast Bed
+    // 4. Crushed Granite Stone Ballast Bed (Spanning full corridor from Z = 0 to 240)
     const ballastGeoms = [];
-    const straightBallast = new THREE.BoxGeometry(8.4, 0.22, 84);
-    straightBallast.translate(-24, 0.01, 47);
+    const straightBallast = new THREE.BoxGeometry(8.4, 0.22, 232);
+    straightBallast.translate(-24, 0.01, 120);
     ballastGeoms.push(straightBallast);
 
-    const northBallast = new THREE.BoxGeometry(8.4, 0.22, 10);
-    northBallast.translate(-24, 0.01, 91);
+    const northBallast = new THREE.BoxGeometry(8.4, 0.22, 12);
+    northBallast.translate(-24, 0.01, 237);
     ballastGeoms.push(northBallast);
 
-    const southBallast = new THREE.BoxGeometry(8.4, 0.22, 9);
-    southBallast.translate(-24, 0.01, 4.5);
+    const southBallast = new THREE.BoxGeometry(8.4, 0.22, 10);
+    southBallast.translate(-24, 0.01, 4.0);
     ballastGeoms.push(southBallast);
 
     const mergedBallast = BufferGeometryUtils.mergeGeometries(ballastGeoms);
@@ -4754,7 +4871,7 @@ function buildRailwaySystem() {
 
     // 5. Overhead 25 kV AC Catenary Masts (Portal Gantries) & Contact Wire
     const gantryGeoms = [];
-    const gantryZ = [8, 24, 40, 56, 72, 88, 96];
+    const gantryZ = [8, 28, 48, 68, 88, 108, 128, 148, 168, 188, 208, 228, 238];
     gantryZ.forEach(gz => {
         // Left Column (X = -27.8)
         const colL = new THREE.BoxGeometry(0.25, 6.2, 0.25);
@@ -4788,12 +4905,12 @@ function buildRailwaySystem() {
 
     // Continuous 25 kV AC Copper Contact Wire at Y = 5.2m
     const wirePts = [];
-    for (let i = 0; i < 180; i++) {
-        const pt = trainSpline.getPointAt(i / 180);
+    for (let i = 0; i < 240; i++) {
+        const pt = trainSpline.getPointAt(i / 240);
         wirePts.push(new THREE.Vector3(pt.x, 5.2, pt.z));
     }
     const wireCurve = new THREE.CatmullRomCurve3(wirePts, true, 'centripetal');
-    const wireGeom = new THREE.TubeGeometry(wireCurve, 180, 0.016, 4, true);
+    const wireGeom = new THREE.TubeGeometry(wireCurve, 240, 0.016, 4, true);
     const wireMesh = new THREE.Mesh(wireGeom, new THREE.MeshStandardMaterial({
         color: 0xb45309,
         metalness: 0.85,
@@ -4823,13 +4940,11 @@ function buildRailwaySystem() {
         scene.add(light);
     });
 
-    // 7. Passenger Stations (Gateway, Home West, Academia North)
-    registerBoxCollider(-31.0, -26.5, 5, 27, 'PlatformGateway');
-    registerBoxCollider(-31.0, -26.5, 39, 61, 'PlatformHome');
-    registerBoxCollider(-31.0, -26.5, 73, 95, 'PlatformAcademia');
-    registerBoxCollider(-24.8, -23.2, 5, 27, 'IslandPlatformGateway');
-    registerBoxCollider(-24.8, -23.2, 39, 61, 'IslandPlatformHome');
-    registerBoxCollider(-24.8, -23.2, 73, 95, 'IslandPlatformAcademia');
+    // 7. Passenger Stations along Extended Suburban Line
+    trainStationZ.forEach((sz, idx) => {
+        registerBoxCollider(-31.0, -26.5, sz - 11, sz + 11, 'Platform_' + idx);
+        registerBoxCollider(-24.8, -23.2, sz - 11, sz + 11, 'IslandPlatform_' + idx);
+    });
 
     const platGeoms = [];
     const canopyGeoms = [];
@@ -4837,7 +4952,9 @@ function buildRailwaySystem() {
     const stationNames = [
         { mr: "गेटवे ऑफ इंडिया", en: "GATEWAY TERMINAL" },
         { mr: "होम वेस्ट (देव मुख्यालय)", en: "HOME WEST (DEV HQ)" },
-        { mr: "अकॅडेमिया नॉर्थ (महाविद्यालय)", en: "ACADEMIA NORTH (COLLEGE)" }
+        { mr: "अकॅडेमिया नॉर्थ (महाविद्यालय)", en: "ACADEMIA NORTH (COLLEGE)" },
+        { mr: "माइंडस्पेस टेक पार्क", en: "MINDSPACE TECH PARK" },
+        { mr: "नॉर्थ टर्मिनल हब", en: "NORTH TERMINAL HUB" }
     ];
 
     trainStationZ.forEach((sz, idx) => {
@@ -5400,12 +5517,14 @@ function exitFlightMode(superheroLanding = true) {
     camera.fov = 52;
     camera.updateProjectionMatrix();
 
-    // Dynamic Surface Elevation Check (Helipad, Building Rooftops, or Ground)
+    // Dynamic Surface Elevation Check (Helipad, Building Rooftops, Platforms, or Ground)
     const surfaceY = getSurfaceElevationAt(characterGroup.position.x, characterGroup.position.z);
-    if (surfaceY > 0 && characterGroup.position.y >= surfaceY - 2.5) {
+    if (surfaceY > 0) {
         currentFloorElevation = surfaceY;
-    } else {
+    } else if (characterGroup.position.z >= -20) {
         currentFloorElevation = 0;
+    } else {
+        currentFloorElevation = 0.1;
     }
     window.__currentFloorElevation = currentFloorElevation;
 
@@ -6305,12 +6424,14 @@ function animate() {
             // 11. Audio Modulation
             updateFlightAudio(flightSpeed, isBoosting);
 
-            // 12. Touchdown / Landing Detection (Helipad, Any Building Rooftop, or Ground)
+            // 12. Touchdown / Landing Detection (Helipad, Any Building Rooftop, Platforms, or Ground)
             const surfaceY = getSurfaceElevationAt(characterGroup.position.x, characterGroup.position.z);
-            if (surfaceY > 0 && characterGroup.position.y >= surfaceY - 1.8) {
+            if (surfaceY > 0) {
                 currentFloorElevation = surfaceY;
-            } else {
+            } else if (characterGroup.position.z >= -20) {
                 currentFloorElevation = 0;
+            } else {
+                currentFloorElevation = 0.1;
             }
             window.__currentFloorElevation = currentFloorElevation;
 
@@ -6465,13 +6586,18 @@ function animate() {
                 characterGroup.position.y = THREE.MathUtils.lerp(characterGroup.position.y, currentFloorElevation, 0.2);
             }
 
-            // Rooftop Edge-Drop / Vertical Gravity Step Detection
-            if (currentFloorElevation > 0) {
-                const surfaceY = getSurfaceElevationAt(characterGroup.position.x, characterGroup.position.z);
-                if (surfaceY < currentFloorElevation - 0.8) {
-                    currentFloorElevation = surfaceY;
-                }
+            // Dynamic Surface Elevation & Step/Drop Detection (Rooftops, Steps, Platforms, Causeway)
+            const targetSurfaceY = getSurfaceElevationAt(characterGroup.position.x, characterGroup.position.z);
+            if (targetSurfaceY > 0) {
+                currentFloorElevation = targetSurfaceY;
+            } else if (characterGroup.position.z >= -20) {
+                // On mainland ground
+                currentFloorElevation = 0;
+            } else {
+                // Buoyant water surface when over sea without a platform
+                currentFloorElevation = 0.1;
             }
+            window.__currentFloorElevation = currentFloorElevation;
 
             // Spacebar Thruster Hover Boost
             if (keys.space) {
