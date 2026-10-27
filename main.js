@@ -6147,6 +6147,127 @@ function updateMiniMap(playerX, playerZ, playerRot) {
 }
 
 // ==========================================
+// VEHICLE DYNAMICS & PHYSICS ENGINE
+// Tuned per threejs-gameplay-systems: game-feel & physics-engine-selection
+// ==========================================
+function updateVehiclePhysics(v, delta) {
+    if (!v || !v.mesh) return;
+
+    const isCar = (v.type === 'car');
+    const isRickshaw = (v.type === 'rickshaw');
+    const isBike = (v.type === 'bike');
+
+    // Dynamic Kinematic Tuning per Vehicle Class
+    const maxSpeed = isCar ? 32.0 : (isRickshaw ? 18.0 : 26.0);
+    const maxReverse = isCar ? -8.0 : (isRickshaw ? -5.0 : -6.5);
+    const accelRate = isCar ? 0.045 : (isRickshaw ? 0.035 : 0.060);
+    const brakeRate = isCar ? 0.080 : (isRickshaw ? 0.070 : 0.090);
+    const naturalDrag = isCar ? 0.035 : (isRickshaw ? 0.045 : 0.040);
+    const baseTurnSpeed = isCar ? 1.85 : (isRickshaw ? 2.35 : 2.55);
+    const colRadius = isCar ? 1.6 : (isRickshaw ? 1.25 : 0.85);
+    const wheelRadius = isCar ? 0.45 : (isRickshaw ? 0.35 : 0.40);
+
+    // 1. Progressive Throttle, Hydraulic Braking & Natural Drag
+    if (keys.w) {
+        v.speed = THREE.MathUtils.lerp(v.speed, maxSpeed, accelRate);
+    } else if (keys.s) {
+        if (v.speed > 0.4) {
+            // Hydraulic Braking while moving forward
+            v.speed = THREE.MathUtils.lerp(v.speed, 0, brakeRate);
+        } else {
+            // Reverse Gear
+            v.speed = THREE.MathUtils.lerp(v.speed, maxReverse, accelRate * 0.8);
+        }
+    } else {
+        // Natural Rolling Friction & Aerodynamic Drag
+        v.speed = THREE.MathUtils.lerp(v.speed, 0, naturalDrag);
+        if (Math.abs(v.speed) < 0.05) v.speed = 0;
+    }
+
+    // 2. Speed-Dependent Steering with Damping (Prevents Spinouts at Top Speed)
+    let steerInput = 0;
+    if (keys.d) steerInput += 1;
+    if (keys.a) steerInput -= 1;
+
+    const speedRatio = Math.min(1, Math.abs(v.speed) / maxSpeed);
+    const minAuthority = isBike ? 0.35 : (isRickshaw ? 0.30 : 0.12);
+    const steerAuthority = Math.min(1, minAuthority + (Math.abs(v.speed) / 3.5) * (1 - minAuthority));
+    const steerDamping = 1 / (1 + speedRatio * 0.72);
+    const effectiveTurn = baseTurnSpeed * steerAuthority * steerDamping;
+
+    // Steering direction inverts when reversing
+    const steerDir = (v.speed >= 0 ? 1 : -1);
+    v.rotation += steerInput * effectiveTurn * steerDir * delta;
+
+    // 3. Coordinate Position Integration
+    const prevX = v.mesh.position.x;
+    const prevZ = v.mesh.position.z;
+    v.mesh.position.x += Math.sin(v.rotation) * v.speed * delta;
+    v.mesh.position.z += Math.cos(v.rotation) * v.speed * delta;
+    v.mesh.rotation.y = v.rotation;
+
+    // 4. Vehicle Class-Specific Suspension, Roll & Pitch Feel
+    if (isBike) {
+        // Motorcycle counter-steer banking lean into turns
+        const targetRoll = -steerInput * 0.32 * (0.35 + speedRatio * 0.65);
+        v.mesh.rotation.z = THREE.MathUtils.lerp(v.mesh.rotation.z, targetRoll, 0.22);
+        const targetPitch = (keys.w && v.speed > 2) ? 0.015 : 0;
+        v.mesh.rotation.x = THREE.MathUtils.lerp(v.mesh.rotation.x, targetPitch, 0.1);
+        v.mesh.position.y = 0;
+    } else if (isRickshaw) {
+        // Mumbai Auto-Rickshaw: 3-wheel chassis lean
+        const targetRoll = -steerInput * (0.05 + speedRatio * 0.08);
+        v.mesh.rotation.z = THREE.MathUtils.lerp(v.mesh.rotation.z, targetRoll, 0.16);
+
+        // Quintessential Mumbai 2-stroke idle rumble when stopped
+        if (Math.abs(v.speed) < 0.6) {
+            const rumbleTime = performance.now() * 0.032;
+            v.mesh.position.y = Math.sin(rumbleTime) * 0.012;
+            v.mesh.rotation.x = THREE.MathUtils.lerp(v.mesh.rotation.x, Math.sin(rumbleTime * 1.3) * 0.007, 0.2);
+        } else {
+            v.mesh.position.y = 0;
+            v.mesh.rotation.x = THREE.MathUtils.lerp(v.mesh.rotation.x, 0, 0.15);
+        }
+    } else if (isCar) {
+        // Cyber Sports Car: Lateral body roll outwards when cornering
+        const targetRoll = -steerInput * speedRatio * 0.05;
+        v.mesh.rotation.z = THREE.MathUtils.lerp(v.mesh.rotation.z, targetRoll, 0.14);
+
+        // Pitch dive on hard braking / squat on acceleration
+        let targetPitch = 0;
+        if (keys.s && v.speed > 1.2) targetPitch = -0.024; // nose dive
+        else if (keys.w && v.speed < maxSpeed * 0.85) targetPitch = 0.014; // rear squat
+        v.mesh.rotation.x = THREE.MathUtils.lerp(v.mesh.rotation.x, targetPitch, 0.12);
+        v.mesh.position.y = 0;
+    }
+
+    // 5. Wheel Angular Velocity Rotation
+    if (!v.wheels && isBike && v.mesh) {
+        v.wheels = [];
+        v.mesh.children.forEach(child => {
+            if (child.isMesh && child.geometry && child.geometry.type === 'CylinderGeometry' && Math.abs(child.rotation.z - Math.PI / 2) < 0.1) {
+                v.wheels.push(child);
+            }
+        });
+    }
+    if (v.wheels && v.wheels.length > 0) {
+        const angularDelta = (v.speed / wheelRadius) * delta;
+        for (let i = 0; i < v.wheels.length; i++) {
+            v.wheels[i].rotation.x += angularDelta;
+        }
+    }
+
+    // 6. Bounding Collision Resolution & Elastic Damping
+    resolveCollision(v.mesh.position, colRadius);
+    const movedDist = Math.hypot(v.mesh.position.x - prevX, v.mesh.position.z - prevZ);
+    const expectedDist = Math.abs(v.speed * delta);
+    if (expectedDist > 0.06 && movedDist < expectedDist * 0.3) {
+        v.speed *= 0.5; // absorb kinetic energy on obstacle collision
+    }
+}
+window.__updateVehiclePhysics = updateVehiclePhysics;
+
+// ==========================================
 // MAIN GAME LOOP & PHYSICS UPDATE
 // ==========================================
 const clock = new THREE.Clock();
@@ -6489,54 +6610,24 @@ function animate() {
             updateMiniMap(trainState.coach1.position.x, trainState.coach1.position.z, trainState.coach1.rotation.y);
             checkTrainProximity();
         } else if (activeVehicle) {
-            // Bike, Auto-Rickshaw, or Sports Car Physics
-            const v = activeVehicle;
-            const isCar = (v.type === 'car');
-            const isRickshaw = (v.type === 'rickshaw');
-            const turnSpeed = isCar ? 1.8 : (isRickshaw ? 2.2 : 2.5);
-
-            // Acceleration & Braking
-            if (keys.w) v.speed = THREE.MathUtils.lerp(v.speed, v.maxSpeed, 0.04);
-            else if (keys.s) v.speed = THREE.MathUtils.lerp(v.speed, -10, 0.05);
-            else v.speed = THREE.MathUtils.lerp(v.speed, 0, 0.06);
-
-            // Steering: 'D' steers Right (clockwise / positive X offset), 'A' steers Left (counter-clockwise)
-            if (keys.d) v.rotation += turnSpeed * delta * (v.speed >= 0 ? 1 : -1);
-            if (keys.a) v.rotation -= turnSpeed * delta * (v.speed >= 0 ? 1 : -1);
-
-            v.mesh.position.x += Math.sin(v.rotation) * v.speed * delta;
-            v.mesh.position.z += Math.cos(v.rotation) * v.speed * delta;
-            v.mesh.rotation.y = v.rotation;
-
-            // Tilt & Drift roll for single-track motorbike
-            if (v.type === 'bike') {
-                const targetRoll = keys.d ? -0.25 : (keys.a ? 0.25 : 0);
-                v.mesh.rotation.z = THREE.MathUtils.lerp(v.mesh.rotation.z, targetRoll, 0.2);
-            }
-
-            // Spin vehicle wheels
-            if (v.wheels && v.wheels.length > 0) {
-                v.wheels.forEach(w => w.rotation.x += v.speed * delta * 2.0);
-            }
-
-            // Resolve vehicle collisions against world obstacles
-            resolveCollision(v.mesh.position, isCar ? 1.6 : (isRickshaw ? 1.25 : 0.85));
+            updateVehiclePhysics(activeVehicle, delta);
 
             // Speedometer update
-            speedoVal.textContent = Math.round(Math.abs(v.speed * 3.6));
+            speedoVal.textContent = Math.round(Math.abs(activeVehicle.speed * 3.6));
 
             // Camera follow vehicle
             if (cameraMode === 'chase' || cameraMode === 'cinematic') {
+                const isCar = (activeVehicle.type === 'car');
                 const followDist = isCar ? 14 : 11;
                 const camElevation = isCar ? 6.2 : 5.5;
-                camera.position.x = THREE.MathUtils.lerp(camera.position.x, v.mesh.position.x - Math.sin(v.rotation) * followDist, 0.1);
-                camera.position.z = THREE.MathUtils.lerp(camera.position.z, v.mesh.position.z - Math.cos(v.rotation) * followDist, 0.1);
+                camera.position.x = THREE.MathUtils.lerp(camera.position.x, activeVehicle.mesh.position.x - Math.sin(activeVehicle.rotation) * followDist, 0.1);
+                camera.position.z = THREE.MathUtils.lerp(camera.position.z, activeVehicle.mesh.position.z - Math.cos(activeVehicle.rotation) * followDist, 0.1);
                 camera.position.y = THREE.MathUtils.lerp(camera.position.y, camElevation, 0.1);
-                camera.lookAt(v.mesh.position.x, 1.8, v.mesh.position.z + Math.cos(v.rotation) * 4);
+                camera.lookAt(activeVehicle.mesh.position.x, 1.8, activeVehicle.mesh.position.z + Math.cos(activeVehicle.rotation) * 4);
             }
 
-            updateMiniMap(v.mesh.position.x, v.mesh.position.z, v.rotation);
-            checkVehicleProximity(v);
+            updateMiniMap(activeVehicle.mesh.position.x, activeVehicle.mesh.position.z, activeVehicle.rotation);
+            checkVehicleProximity(activeVehicle);
         } else {
             // Free On-Foot Character Movement (Camera-Relative)
             const isSprinting = keys.shift;
