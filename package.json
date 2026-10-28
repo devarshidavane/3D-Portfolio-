@@ -1,5 +1,9 @@
 {
-  "dependencies": {
-    "puppeteer-core": "^25.14.0"
+  "name": "3d-portfolio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Interactive 3D Open World Portfolio by Devarshi Davane",
+  "scripts": {
+    "start": "npx serve . -p 8000"
   }
 }

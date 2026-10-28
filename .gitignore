@@ -1,7 +1,36 @@
+# Dependencies
 node_modules/
+bun.lock
+
+# Local Three.js library clone
 three.js/
+
+# External tools & skills
 threejs-skills/
 img2threejs/
+graphify-out/
+
+# Documentation & Markdown
+*.md
+
+# Testing & Scratch Scripts
+*.mjs
+inspect_glb.js
+take_screenshot.mjs
+scratch_*.json
+scratch_*.mjs
 *.log
+
+# Screenshots & Scratch Images
+screenshots/
+*.png
+
+# Backups & Prototype archives
+*.glb.backup
+*_backup.glb
+Assets/
+public/models/portfolio-assets/
+
+# OS artifacts
 .DS_Store
 Thumbs.db
