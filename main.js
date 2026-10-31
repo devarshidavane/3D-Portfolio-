@@ -6702,15 +6702,15 @@ function animate(now = performance.now()) {
             // ==========================================
             const isBoosting = keys.shift;
 
-            // 1. Yaw & Steering Control
+            // 1. Yaw & Steering Control (A turns Left, D turns Right)
             const turnRate = (isBoosting ? 1.6 : 2.4);
-            if (keys.a) flightHeading += turnRate * delta;
-            if (keys.d) flightHeading -= turnRate * delta;
+            if (keys.a) flightHeading -= turnRate * delta;
+            if (keys.d) flightHeading += turnRate * delta;
 
-            // 2. Roll Banking (into turns)
+            // 2. Roll Banking (into turns: banking left on A, right on D)
             let targetRoll = 0;
-            if (keys.a) targetRoll = isBoosting ? 0.65 : 0.45;
-            if (keys.d) targetRoll = isBoosting ? -0.65 : -0.45;
+            if (keys.a) targetRoll = isBoosting ? -0.65 : -0.45;
+            if (keys.d) targetRoll = isBoosting ? 0.65 : 0.45;
             flightRoll = THREE.MathUtils.lerp(flightRoll, targetRoll, 0.12);
 
             // 3. Thrust & Speed
@@ -6866,15 +6866,13 @@ function animate(now = performance.now()) {
             const moveSpeed = isSprinting ? 16.0 : 9.0;
 
             // Extract canonical horizontal camera vectors (screen-space relative)
-            const camRight = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
-            camRight.y = 0;
-            if (camRight.lengthSq() < 0.001) camRight.set(1, 0, 0);
-            else camRight.normalize();
-
             const camForward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
             camForward.y = 0;
             if (camForward.lengthSq() < 0.001) camForward.set(0, 0, 1);
             else camForward.normalize();
+
+            // Screen-space right on ground plane is Up x Forward
+            const camRight = new THREE.Vector3(0, 1, 0).cross(camForward).normalize();
 
             // Synthesize camera-relative input vector
             const inputVec = new THREE.Vector3();
