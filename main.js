@@ -15,9 +15,12 @@ const camera = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerH
 // Initial position behind the character landing spot, looking forward into the open world city
 camera.position.set(0, 7.5, -18);
 
+const isMobileDevice = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent) || (window.innerWidth <= 768);
+const getOptimalPixelRatio = () => isMobileDevice ? Math.min(window.devicePixelRatio, 1.25) : Math.min(window.devicePixelRatio, 1.5);
+
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(getOptimalPixelRatio());
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -893,13 +896,24 @@ function addTree(x, z, type = 'palm') {
 
 // 1. Arabian Sea (Z = -10 to -630, X = -600 to +600)
 const waterGeom = new THREE.PlaneGeometry(1200, 620, 64, 32);
+const waterUniforms = { uTime: { value: 0 } };
 const waterMat = new THREE.MeshStandardMaterial({ color: 0x0e4466, roughness: 0.15, metalness: 0.8, flatShading: true });
+waterMat.onBeforeCompile = (shader) => {
+    shader.uniforms.uTime = waterUniforms.uTime;
+    shader.vertexShader = `uniform float uTime;\n` + shader.vertexShader;
+    shader.vertexShader = shader.vertexShader.replace(
+        '#include <begin_vertex>',
+        `#include <begin_vertex>
+        transformed.z += sin(position.x * 0.04 + uTime * 2.2) * 0.45
+                       + cos(position.y * 0.05 + uTime * 1.8) * 0.35
+                       + sin((position.x + position.y) * 0.025 + uTime * 1.2) * 0.22;`
+    );
+};
 const seaMesh = new THREE.Mesh(waterGeom, waterMat);
 seaMesh.rotation.x = -Math.PI / 2;
 seaMesh.position.set(0, -0.6, -320);
 seaMesh.receiveShadow = false;
 scene.add(seaMesh);
-const waterBasePositions = Float32Array.from(waterGeom.attributes.position.array);
 
 // 2. Main Ground Turf (Lush Green Grass spanning north of Marine Drive waterfront: Z = -20 to 560)
 const mainGround = new THREE.Mesh(
@@ -5484,6 +5498,14 @@ gltfLoader.load(
         setTimeout(() => document.getElementById('loading-screen').style.display = 'none', 600);
     }
 );
+// Safety fallback for mobile networks to ensure loading screen never hangs
+setTimeout(() => {
+    const ls = document.getElementById('loading-screen');
+    if (ls && ls.style.display !== 'none') {
+        ls.style.opacity = '0';
+        setTimeout(() => ls.style.display = 'none', 600);
+    }
+}, 7000);
 
 // Spawn state: Iron Man flies in high above Gateway waterfront
 characterGroup.position.set(0, 32, -4);
@@ -5541,6 +5563,111 @@ window.addEventListener('keyup', (e) => {
     if (e.key === 'Control') keys.ctrl = false;
     if (k === 'c') keys.c = false;
 });
+
+// ==========================================
+// MOBILE TOUCH JOYSTICK & CONTROLS
+// ==========================================
+const joystickBase = document.getElementById('joystick-base');
+const joystickThumb = document.getElementById('joystick-thumb');
+
+if (joystickBase && joystickThumb) {
+    let joystickActive = false;
+    let touchId = null;
+    let baseRect = null;
+    const maxRadius = 38;
+
+    const onTouchStart = (e) => {
+        if (joystickActive) return;
+        const touch = e.changedTouches[0];
+        touchId = touch.identifier;
+        joystickActive = true;
+        baseRect = joystickBase.getBoundingClientRect();
+        updateJoystickPos(touch.clientX, touch.clientY);
+        e.preventDefault();
+    };
+
+    const updateJoystickPos = (clientX, clientY) => {
+        const centerX = baseRect.left + baseRect.width / 2;
+        const centerY = baseRect.top + baseRect.height / 2;
+        let dx = clientX - centerX;
+        let dy = clientY - centerY;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist > maxRadius) {
+            dx = (dx / dist) * maxRadius;
+            dy = (dy / dist) * maxRadius;
+        }
+
+        joystickThumb.style.transform = `translate(${dx}px, ${dy}px)`;
+
+        const normX = dx / maxRadius;
+        const normY = dy / maxRadius;
+        const deadzone = 0.25;
+
+        keys.w = normY < -deadzone;
+        keys.s = normY > deadzone;
+        keys.a = normX < -deadzone;
+        keys.d = normX > deadzone;
+    };
+
+    const onTouchMove = (e) => {
+        if (!joystickActive) return;
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            if (e.changedTouches[i].identifier === touchId) {
+                updateJoystickPos(e.changedTouches[i].clientX, e.changedTouches[i].clientY);
+                e.preventDefault();
+                break;
+            }
+        }
+    };
+
+    const onTouchEnd = (e) => {
+        if (!joystickActive) return;
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            if (e.changedTouches[i].identifier === touchId) {
+                joystickActive = false;
+                touchId = null;
+                joystickThumb.style.transform = 'translate(0px, 0px)';
+                keys.w = false;
+                keys.s = false;
+                keys.a = false;
+                keys.d = false;
+                e.preventDefault();
+                break;
+            }
+        }
+    };
+
+    joystickBase.addEventListener('touchstart', onTouchStart, { passive: false });
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
+    window.addEventListener('touchend', onTouchEnd, { passive: false });
+    window.addEventListener('touchcancel', onTouchEnd, { passive: false });
+}
+
+// Touch Action Buttons
+const bindTouchBtn = (id, onDown, onUp) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        onDown();
+    }, { passive: false });
+    if (onUp) {
+        el.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            onUp();
+        }, { passive: false });
+        el.addEventListener('touchcancel', (e) => {
+            e.preventDefault();
+            onUp();
+        }, { passive: false });
+    }
+};
+
+bindTouchBtn('touch-btn-jump', () => { keys.space = true; }, () => { keys.space = false; });
+bindTouchBtn('touch-btn-action', () => handleInteraction());
+bindTouchBtn('touch-btn-ride', () => toggleVehicleMount());
+bindTouchBtn('touch-btn-fly', () => toggleFlightMode());
 
 function toggleCameraMode() {
     const modes = ['chase', 'cinematic', 'orbit'];
@@ -6370,23 +6497,22 @@ const clock = new THREE.Clock();
 let walkCycle = 0;
 let thunderTimer = 0;
 
-function animate() {
+let lastFrameTime = performance.now();
+const TARGET_FPS = 60;
+const FRAME_INTERVAL = 1000 / TARGET_FPS;
+
+function animate(now = performance.now()) {
     requestAnimationFrame(animate);
+    if (document.hidden) return; // Pause updates when tab inactive
+    const elapsed = now - lastFrameTime;
+    if (elapsed < FRAME_INTERVAL - 1) return; // Cap at 60 FPS to prevent thermal strain
+    lastFrameTime = now - (elapsed % FRAME_INTERVAL);
+
     const delta = Math.min(clock.getDelta(), 0.1);
     const time = clock.getElapsedTime();
 
-    // 1. Arabian Sea Multi-Harmonic Flowing Waves
-    const wPos = waterGeom.attributes.position.array;
-    for (let i = 2; i < wPos.length; i += 3) {
-        const vx = waterBasePositions[i - 2];
-        const vy = waterBasePositions[i - 1];
-        wPos[i] = waterBasePositions[i]
-            + Math.sin(vx * 0.04 + time * 2.2) * 0.45
-            + Math.cos(vy * 0.05 + time * 1.8) * 0.35
-            + Math.sin((vx + vy) * 0.025 + time * 1.2) * 0.22;
-    }
-    waterGeom.attributes.position.needsUpdate = true;
-    waterGeom.computeVertexNormals();
+    // 1. Arabian Sea Multi-Harmonic Flowing Waves (GPU Vertex Shader)
+    waterUniforms.uTime.value = time;
 
     // 2. Weather Rain & Thunder Simulation
     if (weatherMode === 'rain' || weatherMode === 'storm') {
@@ -7039,5 +7165,5 @@ window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(getOptimalPixelRatio());
 });

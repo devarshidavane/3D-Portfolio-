@@ -919,6 +919,114 @@
             letter-spacing: 1.5px;
             font-family: 'JetBrains Mono', monospace;
         }
+
+        /* Mobile Virtual Touch Controls */
+        #mobile-touch-controls {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            padding: 0 16px;
+            pointer-events: none;
+            z-index: 1000;
+            justify-content: space-between;
+            align-items: flex-end;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        @media (hover: none) and (pointer: coarse), (max-width: 900px) {
+            #mobile-touch-controls {
+                display: flex;
+            }
+            .controls-card {
+                display: none !important;
+            }
+            .minimap-container {
+                transform: scale(0.82);
+                transform-origin: bottom right;
+                bottom: 12px;
+                right: 12px;
+            }
+        }
+
+        #joystick-zone {
+            width: 130px;
+            height: 130px;
+            pointer-events: auto;
+            touch-action: none;
+        }
+
+        #joystick-base {
+            width: 110px;
+            height: 110px;
+            background: rgba(15, 23, 42, 0.65);
+            border: 2px solid rgba(56, 189, 248, 0.45);
+            border-radius: 50%;
+            position: relative;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), inset 0 0 15px rgba(56, 189, 248, 0.15);
+        }
+
+        #joystick-thumb {
+            width: 44px;
+            height: 44px;
+            background: radial-gradient(circle, #38bdf8 0%, #0284c7 100%);
+            border: 2px solid #e0f2fe;
+            border-radius: 50%;
+            position: absolute;
+            top: calc(50% - 22px);
+            left: calc(50% - 22px);
+            box-shadow: 0 0 14px rgba(56, 189, 248, 0.8);
+            pointer-events: none;
+            will-change: transform;
+        }
+
+        #touch-action-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 54px);
+            gap: 10px;
+            pointer-events: auto;
+            touch-action: none;
+            margin-bottom: 6px;
+        }
+
+        .touch-btn {
+            width: 54px;
+            height: 54px;
+            border-radius: 50%;
+            background: rgba(15, 23, 42, 0.75);
+            border: 2px solid rgba(56, 189, 248, 0.4);
+            color: #f8fafc;
+            font-size: 10px;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            cursor: pointer;
+        }
+
+        .touch-btn:active {
+            background: rgba(56, 189, 248, 0.4);
+            border-color: #38bdf8;
+            transform: scale(0.92);
+        }
+
+        .touch-btn.primary {
+            background: rgba(2, 132, 199, 0.65);
+            border-color: #38bdf8;
+            box-shadow: 0 0 16px rgba(56, 189, 248, 0.45);
+        }
     </style>
 
     <!-- Three.js + Addons Import Map (High-Speed CDN) -->
@@ -1162,6 +1270,21 @@
                     <div class="legend-item"><span class="legend-dot" style="background:#10b981;"></span> DMCE College</div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Mobile Virtual Touch Controls -->
+    <div id="mobile-touch-controls">
+        <div id="joystick-zone">
+            <div id="joystick-base">
+                <div id="joystick-thumb"></div>
+            </div>
+        </div>
+        <div id="touch-action-buttons">
+            <button class="touch-btn" id="touch-btn-fly" title="Fly [G]">⚡ FLY</button>
+            <button class="touch-btn" id="touch-btn-ride" title="Ride [F]">🏍️ RIDE</button>
+            <button class="touch-btn" id="touch-btn-action" title="Interact [E]">💬 ACT</button>
+            <button class="touch-btn primary" id="touch-btn-jump" title="Jump [SPACE]">⬆️ JUMP</button>
         </div>
     </div>
 
