@@ -40,6 +40,37 @@ orbitControls.maxDistance = 120;
 orbitControls.enabled = false;
 
 // ==========================================
+// LEVEL OF DETAIL (LOD) & DISTANCE CULLING SYSTEM
+// ==========================================
+const lodRegistry = [];
+
+function registerLODItem(meshOrGroup, nearDist = 0, farDist = 200) {
+    if (!meshOrGroup) return;
+    lodRegistry.push({
+        target: meshOrGroup,
+        nearDist,
+        farDist,
+        isVisible: true
+    });
+}
+
+function updateLevelOfDetail(camPos) {
+    if (!camPos) return;
+    for (let i = 0; i < lodRegistry.length; i++) {
+        const item = lodRegistry[i];
+        const obj = item.target;
+        if (!obj) continue;
+        const dist = camPos.distanceTo(obj.position);
+        const shouldBeVisible = (dist >= item.nearDist && dist <= item.farDist);
+        if (obj.visible !== shouldBeVisible) {
+            obj.visible = shouldBeVisible;
+        }
+    }
+}
+window.__lodRegistry = lodRegistry;
+window.__registerLODItem = registerLODItem;
+
+// ==========================================
 // WEB AUDIO SYNTHESIZER
 // ==========================================
 let audioEnabled = true;
@@ -691,7 +722,8 @@ function cycleWeather() {
     const next = modes[(modes.indexOf(weatherMode) + 1) % modes.length];
     setWeatherMode(next);
 }
-document.getElementById('btn-toggle-weather').addEventListener('click', cycleWeather);
+const btnWeather = document.getElementById('btn-toggle-weather');
+if (btnWeather) btnWeather.addEventListener('click', cycleWeather);
 
 // ==========================================
 // SINGLE SOURCE OF TRUTH: WORLD ARCHITECTURE (Phase B: 800m x 800m Footprint)
@@ -1874,6 +1906,7 @@ function buildAmbientCitizens() {
         ambientMesh.castShadow = false;
         ambientMesh.receiveShadow = true;
         scene.add(ambientMesh);
+        registerLODItem(ambientMesh, 0, 160);
     }
 }
 buildAmbientCitizens();
@@ -2231,16 +2264,16 @@ arcRingMesh.rotation.x = Math.PI / 2;
 arcRingMesh.position.set(0, 1.25, 140);
 scene.add(arcRingMesh);
 
-// Grand Entrance Canopy Sign at Stark Plaza
+// Grand Entrance Canopy Sign at Home HQ Plaza
 const starkSignCanvas = document.createElement('canvas');
 starkSignCanvas.width = 512; starkSignCanvas.height = 128;
 const stCtx = starkSignCanvas.getContext('2d');
 stCtx.fillStyle = '#090d16'; stCtx.fillRect(0, 0, 512, 128);
-stCtx.fillStyle = '#38bdf8'; stCtx.font = 'bold 24px sans-serif';
+stCtx.fillStyle = '#38bdf8'; stCtx.font = 'bold 28px sans-serif';
 stCtx.textAlign = 'center';
-stCtx.fillText("HOME HQ — DEVARSHI DAVANE", 256, 48);
+stCtx.fillText("HOME HQ PLAZA — DEVARSHI DAVANE", 256, 48);
 stCtx.fillStyle = '#94a3b8'; stCtx.font = '16px sans-serif';
-stCtx.fillText("RESIDENCE • CYBER LAB & FLIGHT DECK", 256, 88);
+stCtx.fillText("HEADQUARTERS • CYBER LAB & FLIGHT DECK", 256, 88);
 const starkSign = new THREE.Mesh(new THREE.PlaneGeometry(16, 4), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(starkSignCanvas) }));
 starkSign.position.set(0, 5.5, 122);
 scene.add(starkSign);
@@ -3921,7 +3954,7 @@ function buildLandmarkIntegrationPlazasAndSignage() {
     sCtx.fillRect(0, 0, 512, 512);
 
     const wayfindingLabels = [
-        "↑ HOME HQ / STARK TOWER",
+        "↑ HOME HQ PLAZA",
         "↓ GATEWAY OF INDIA / SEA",
         "← DEVARSHI'S CYBER HQ",
         "SCHOOL & DMCE COLLEGE →",
@@ -4211,6 +4244,29 @@ function buildStarkTower() {
     addBox(glowGeoms, tX - 0.5, 138.4, tZ - 4.5, 6.2, 1.8, 0.9);
     addCyl(glowGeoms, tX + 2.6, 145, tZ - 4.5, 6.5, 6.5, 0.9, 16, Math.PI / 2);
 
+    // F. Glowing Horizontal Collar Ring Sign: "HOME HQ" (Matching Reference Image)
+    const collarCanvas = document.createElement('canvas');
+    collarCanvas.width = 1024;
+    collarCanvas.height = 256;
+    const colCtx = collarCanvas.getContext('2d');
+    colCtx.fillStyle = '#0a0f1d';
+    colCtx.fillRect(0, 0, 1024, 256);
+    colCtx.strokeStyle = '#06b6d4';
+    colCtx.lineWidth = 6;
+    colCtx.strokeRect(10, 10, 1004, 236);
+    colCtx.fillStyle = '#ffffff';
+    colCtx.font = 'bold 96px "JetBrains Mono", sans-serif';
+    colCtx.textAlign = 'center';
+    colCtx.textBaseline = 'middle';
+    colCtx.shadowColor = '#38bdf8';
+    colCtx.shadowBlur = 24;
+    colCtx.fillText('HOME HQ', 512, 128);
+    const collarTex = new THREE.CanvasTexture(collarCanvas);
+    const collarMat = new THREE.MeshBasicMaterial({ map: collarTex, side: THREE.DoubleSide });
+    const collarSign = new THREE.Mesh(new THREE.CylinderGeometry(11.2, 11.2, 5.2, 32, 1, true, Math.PI * 0.72, Math.PI * 0.56), collarMat);
+    collarSign.position.set(tX, 134, tZ);
+    towerGroup.add(collarSign);
+
     // ----------------------------------------------------
     // 2. COMPLETE WALKABLE INTERIORS & 4 LEVEL ARCHITECTURE
     // ----------------------------------------------------
@@ -4417,6 +4473,7 @@ function buildStarkTower() {
         const wallMesh = new THREE.Mesh(mergedWalls, starkMetalMat);
         wallMesh.receiveShadow = true;
         towerGroup.add(wallMesh);
+        registerLODItem(wallMesh, 0, 170);
     }
 
     if (furnitureGeoms.length > 0) {
@@ -4425,6 +4482,7 @@ function buildStarkTower() {
         furnMesh.castShadow = false;
         furnMesh.receiveShadow = true;
         towerGroup.add(furnMesh);
+        registerLODItem(furnMesh, 0, 130);
     }
 
     scene.add(towerGroup);
@@ -4519,12 +4577,12 @@ let carVehicle = {
 
 function buildCyberCar() {
     const carGroup = new THREE.Group();
-    const carMat = new THREE.MeshStandardMaterial({ color: 0x06b6d4, metalness: 0.9, roughness: 0.15 });
-    const darkMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.6 });
-    const glassMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, transparent: true, opacity: 0.65 });
+    // Styled per Reference Image: Metallic Silver/Titanium Sports Coupe
+    const carMat = new THREE.MeshStandardMaterial({ color: 0xd4d4d8, metalness: 0.88, roughness: 0.18 });
+    const darkMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.5 });
+    const glassMat = new THREE.MeshStandardMaterial({ color: 0x090d16, roughness: 0.1, transparent: true, opacity: 0.82 });
     const tireMat = new THREE.MeshStandardMaterial({ color: 0x020617, roughness: 0.9 });
-    // Styled per Vehicle Concept Sheet: Cyber Sports Car with Glowing Cyan Rims
-    const rimMat = new THREE.MeshStandardMaterial({ color: 0x06b6d4, emissive: 0x06b6d4, emissiveIntensity: 0.8, metalness: 0.9, roughness: 0.1 });
+    const rimMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 0.6, metalness: 0.9, roughness: 0.1 });
 
     // Lower Body
     const lowerBody = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.8, 5.2), carMat);
@@ -4571,19 +4629,19 @@ function buildCyberCar() {
 
     // Twin Headlight Spots
     [-0.8, 0.8].forEach(hx => {
-        const hl = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.2, 0.2), new THREE.MeshBasicMaterial({ color: 0x38bdf8 }));
+        const hl = new THREE.Mesh(new THREE.BoxGeometry(0.40, 0.18, 0.2), new THREE.MeshBasicMaterial({ color: 0xffffff }));
         hl.position.set(hx, 0.8, 2.6);
         carGroup.add(hl);
     });
 
-    const carSpot = new THREE.SpotLight(0x38bdf8, 4.5, 45, Math.PI / 3, 0.4);
+    const carSpot = new THREE.SpotLight(0xffffff, 7.5, 65, Math.PI / 4, 0.35);
     carSpot.position.set(0, 0.9, 2.7);
-    carSpot.target.position.set(0, 0, 20);
+    carSpot.target.position.set(0, 0, 25);
     carGroup.add(carSpot);
     carGroup.add(carSpot.target);
 
     // Red LED Tail Light Bar
-    const tailLight = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.18, 0.15), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+    const tailLight = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.16, 0.15), new THREE.MeshBasicMaterial({ color: 0xff2222 }));
     tailLight.position.set(0, 0.9, -2.62);
     carGroup.add(tailLight);
 
@@ -5463,49 +5521,119 @@ shockRing.rotation.x = -Math.PI / 2;
 shockRing.position.y = 0.05;
 scene.add(shockRing);
 
-// Casual Techwear GLB Model (Loaded in background, swapped after suit landing)
-let casualMeshRoot = null;
-const gltfLoader = new GLTFLoader();
-gltfLoader.load(
-    './public/models/devarshi_chibi_character.glb',
-    (gltf) => {
-        casualMeshRoot = gltf.scene;
-        // Correcting GLTF orientation (exported Z-up to Three.js Y-up)
-        casualMeshRoot.rotation.x = -Math.PI / 2;
-        casualMeshRoot.rotation.z = Math.PI;
+// Procedural Articulated Developer Character (Realistic Locomotion & Proportions)
+function createArticulatedDeveloper() {
+    const group = new THREE.Group();
+    group.name = "ArticulatedDeveloper";
 
-        const box = new THREE.Box3().setFromObject(casualMeshRoot);
-        const size = new THREE.Vector3();
-        box.getSize(size);
-        const targetHeight = 1.75;
-        const scale = targetHeight / Math.max(size.x, size.y, size.z);
-        casualMeshRoot.scale.set(scale, scale, scale);
+    const skinColor = 0xc68652;
+    const shirtColor = 0x18181b; // Charcoal black modern tee
+    const pantsColor = 0x1e293b; // Dark navy / indigo denim
+    const shoeColor = 0x09090b;  // Dark sneaker body
+    const soleColor = 0xf8fafc;  // Crisp white sneaker sole
+    const hairColor = 0x171717;  // Natural styled black hair
 
-        box.setFromObject(casualMeshRoot);
-        casualMeshRoot.position.y = -box.min.y;
-        casualMeshRoot.position.x = -(box.min.x + box.max.x) / 2;
-        casualMeshRoot.position.z = -(box.min.z + box.max.z) / 2;
+    const devMat = new THREE.MeshStandardMaterial({ roughness: 0.65, vertexColors: true });
 
-        casualMeshRoot.visible = false;
-        characterGroup.add(casualMeshRoot);
+    // 1. Torso + Head + Neck + Hair
+    const bodyGeoms = [];
+    const torso = applyVertexColor(new THREE.BoxGeometry(0.48, 0.65, 0.26), shirtColor);
+    torso.translate(0, 1.25, 0);
+    bodyGeoms.push(torso);
 
-        document.getElementById('loading-screen').style.opacity = '0';
-        setTimeout(() => document.getElementById('loading-screen').style.display = 'none', 600);
-    },
-    undefined,
-    () => {
-        document.getElementById('loading-screen').style.opacity = '0';
-        setTimeout(() => document.getElementById('loading-screen').style.display = 'none', 600);
-    }
-);
-// Safety fallback for mobile networks to ensure loading screen never hangs
-setTimeout(() => {
-    const ls = document.getElementById('loading-screen');
-    if (ls && ls.style.display !== 'none') {
-        ls.style.opacity = '0';
-        setTimeout(() => ls.style.display = 'none', 600);
-    }
-}, 7000);
+    const neck = applyVertexColor(new THREE.CylinderGeometry(0.08, 0.09, 0.12, 10), skinColor);
+    neck.translate(0, 1.62, 0);
+    bodyGeoms.push(neck);
+
+    const head = applyVertexColor(new THREE.SphereGeometry(0.18, 12, 12), skinColor);
+    head.translate(0, 1.76, 0);
+    bodyGeoms.push(head);
+
+    const hairTop = applyVertexColor(new THREE.SphereGeometry(0.19, 12, 12, 0, Math.PI * 2, 0, Math.PI * 0.58), hairColor);
+    hairTop.rotateX(-0.15);
+    hairTop.translate(0, 1.80, 0);
+    bodyGeoms.push(hairTop);
+
+    const mergedBody = BufferGeometryUtils.mergeGeometries(bodyGeoms, false);
+    const bodyMesh = new THREE.Mesh(mergedBody, devMat);
+    group.add(bodyMesh);
+
+    // 2. Articulated Left Arm (Shoulder Pivot at -0.30, 1.50, 0)
+    const armL = new THREE.Group();
+    armL.position.set(-0.30, 1.50, 0);
+    const sleeveL = applyVertexColor(new THREE.CylinderGeometry(0.075, 0.07, 0.24, 10), shirtColor);
+    sleeveL.translate(0, -0.12, 0);
+    const forearmL = applyVertexColor(new THREE.CylinderGeometry(0.06, 0.052, 0.32, 10), skinColor);
+    forearmL.translate(0, -0.38, 0);
+    const handL = applyVertexColor(new THREE.SphereGeometry(0.054, 8, 8), skinColor);
+    handL.translate(0, -0.56, 0);
+    const watchL = applyVertexColor(new THREE.TorusGeometry(0.065, 0.016, 6, 12), 0x06b6d4);
+    watchL.rotateX(Math.PI / 2);
+    watchL.translate(0, -0.48, 0);
+    const mergedArmL = BufferGeometryUtils.mergeGeometries([sleeveL, forearmL, handL, watchL], false);
+    armL.add(new THREE.Mesh(mergedArmL, devMat));
+    group.add(armL);
+
+    // 3. Articulated Right Arm (Shoulder Pivot at 0.30, 1.50, 0)
+    const armR = new THREE.Group();
+    armR.position.set(0.30, 1.50, 0);
+    const sleeveR = applyVertexColor(new THREE.CylinderGeometry(0.075, 0.07, 0.24, 10), shirtColor);
+    sleeveR.translate(0, -0.12, 0);
+    const forearmR = applyVertexColor(new THREE.CylinderGeometry(0.06, 0.052, 0.32, 10), skinColor);
+    forearmR.translate(0, -0.38, 0);
+    const handR = applyVertexColor(new THREE.SphereGeometry(0.054, 8, 8), skinColor);
+    handR.translate(0, -0.56, 0);
+    const mergedArmR = BufferGeometryUtils.mergeGeometries([sleeveR, forearmR, handR], false);
+    armR.add(new THREE.Mesh(mergedArmR, devMat));
+    group.add(armR);
+
+    // 4. Articulated Left Leg (Hip Pivot at -0.13, 0.90, 0)
+    const legL = new THREE.Group();
+    legL.position.set(-0.13, 0.90, 0);
+    const pantsL = applyVertexColor(new THREE.BoxGeometry(0.18, 0.76, 0.20), pantsColor);
+    pantsL.translate(0, -0.38, 0);
+    const shoeL = applyVertexColor(new THREE.BoxGeometry(0.16, 0.10, 0.26), shoeColor);
+    shoeL.translate(0, -0.76, 0.03);
+    const soleL = applyVertexColor(new THREE.BoxGeometry(0.165, 0.03, 0.27), soleColor);
+    soleL.translate(0, -0.81, 0.03);
+    const mergedLegL = BufferGeometryUtils.mergeGeometries([pantsL, shoeL, soleL], false);
+    legL.add(new THREE.Mesh(mergedLegL, devMat));
+    group.add(legL);
+
+    // 5. Articulated Right Leg (Hip Pivot at 0.13, 0.90, 0)
+    const legR = new THREE.Group();
+    legR.position.set(0.13, 0.90, 0);
+    const pantsR = applyVertexColor(new THREE.BoxGeometry(0.18, 0.76, 0.20), pantsColor);
+    pantsR.translate(0, -0.38, 0);
+    const shoeR = applyVertexColor(new THREE.BoxGeometry(0.16, 0.10, 0.26), shoeColor);
+    shoeR.translate(0, -0.76, 0.03);
+    const soleR = applyVertexColor(new THREE.BoxGeometry(0.165, 0.03, 0.27), soleColor);
+    soleR.translate(0, -0.81, 0.03);
+    const mergedLegR = BufferGeometryUtils.mergeGeometries([pantsR, shoeR, soleR], false);
+    legR.add(new THREE.Mesh(mergedLegR, devMat));
+    group.add(legR);
+
+    return { group, armL, armR, legL, legR, bodyMesh };
+}
+
+const devChar = createArticulatedDeveloper();
+let casualMeshRoot = devChar.group;
+characterGroup.add(devChar.group);
+devChar.group.visible = false;
+
+// Precompile WebGL shader pipelines upfront (PSO cache pattern) to eliminate runtime stutter
+try {
+    renderer.compile(scene, camera);
+} catch (e) {
+    console.warn("Pipeline pre-compile notice:", e);
+}
+
+// Instantly dismiss loading screen once 3D world is ready
+const ls = document.getElementById('loading-screen');
+if (ls) {
+    ls.style.opacity = '0';
+    setTimeout(() => ls.style.display = 'none', 600);
+}
 
 // Spawn state: Iron Man flies in high above Gateway waterfront
 characterGroup.position.set(0, 32, -4);
@@ -5542,6 +5670,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'e') handleInteraction();
     if (k === 't') cycleTimeOfDay();
     if (k === 'v') toggleCameraMode();
+    if (k === 'p' || k === 'm') toggleCyberPhone();
     if (k === 'c') {
         if (isFlightMode) keys.c = true;
         else toggleCameraMode();
@@ -5549,6 +5678,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape') {
         closeModal();
         closeLandmarkModal();
+        closeCyberPhone();
     }
 });
 
@@ -5668,6 +5798,7 @@ bindTouchBtn('touch-btn-jump', () => { keys.space = true; }, () => { keys.space 
 bindTouchBtn('touch-btn-action', () => handleInteraction());
 bindTouchBtn('touch-btn-ride', () => toggleVehicleMount());
 bindTouchBtn('touch-btn-fly', () => toggleFlightMode());
+bindTouchBtn('touch-btn-cam', () => toggleCameraMode());
 
 function toggleCameraMode() {
     const modes = ['chase', 'cinematic', 'orbit'];
@@ -5756,6 +5887,8 @@ function exitFlightMode(superheroLanding = true) {
 
     jetParticles.forEach(p => p.mesh.visible = false);
     repulsorLight.intensity = 0.2;
+    ironManSuit.visible = false;
+    if (casualMeshRoot) casualMeshRoot.visible = true;
 
     if (flightHudEl) flightHudEl.classList.remove('active');
     if (btnToggleFlight) {
@@ -5826,29 +5959,190 @@ if (landmarkCloseBtn) landmarkCloseBtn.addEventListener('click', closeLandmarkMo
 if (landmarkBackdropEl) landmarkBackdropEl.addEventListener('click', closeLandmarkModal);
 if (btnLandmarkPreview) btnLandmarkPreview.addEventListener('click', openLandmarkModal);
 
-// Fast Travel Teleport System
+// Fast Travel Teleport System (with Mumbai City Express Subway Cutaway Vignette)
 function teleportTo(targetX, targetZ, label, targetY = 0) {
     if (isFlightMode) exitFlightMode(false);
     if (activeVehicle) dismountVehicle();
+
+    const vignette = document.getElementById('subway-vignette');
+    const destTitle = document.getElementById('subway-dest-title');
     const fade = document.getElementById('fade-overlay');
-    fade.style.opacity = '1';
-    playSound('chime');
+
+    if (destTitle && label) {
+        destTitle.textContent = `NEXT STOP: ${label.toUpperCase()}`;
+    }
+
+    if (vignette) {
+        vignette.classList.add('active');
+        playSound('chime');
+    } else if (fade) {
+        fade.style.opacity = '1';
+        playSound('chime');
+    }
 
     setTimeout(() => {
         currentFloorElevation = targetY;
         window.__currentFloorElevation = currentFloorElevation;
         characterGroup.position.set(targetX, targetY, targetZ);
-        characterGroup.rotation.y = 0;
+        characterGroup.rotation.y = Math.PI; // Face South into the open city
         camera.position.set(targetX, targetY + 7.5, targetZ - 14);
         camera.lookAt(targetX, targetY + 2, targetZ + 4);
-        fade.style.opacity = '0';
-    }, 400);
+
+        setTimeout(() => {
+            if (vignette) vignette.classList.remove('active');
+            if (fade) fade.style.opacity = '0';
+        }, 380);
+    }, 620);
 }
 
-document.getElementById('btn-tp-gateway').addEventListener('click', () => teleportTo(0, -6, 'Gateway', 0));
-document.getElementById('btn-tp-home').addEventListener('click', () => teleportTo(0, 122, 'Home HQ', 0));
-document.getElementById('btn-tp-school').addEventListener('click', () => teleportTo(poiSchool.x, poiSchool.z - 16, 'School', 0));
-document.getElementById('btn-tp-college').addEventListener('click', () => teleportTo(48, 34, 'DMCE College', 0));
+// ==========================================
+// CYBER-SMARTPHONE DRAWER CONTROLLER ("FNSM App" Style)
+// ==========================================
+const phoneOverlay = document.getElementById('cyber-phone-overlay');
+const btnMobileOptions = document.getElementById('btn-mobile-options');
+const btnPhoneClose = document.getElementById('btn-phone-close');
+const phoneTabs = document.querySelectorAll('.phone-tab-btn');
+const phoneTabContents = document.querySelectorAll('.phone-tab-content');
+const phoneClock = document.getElementById('phone-clock');
+const phoneCurLoc = document.getElementById('phone-cur-loc');
+
+function openCyberPhone() {
+    if (phoneOverlay) phoneOverlay.classList.add('open');
+    if (phoneClock) {
+        const d = new Date();
+        phoneClock.textContent = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    }
+    const currentDistrictEl = document.getElementById('gta-district-name');
+    if (phoneCurLoc && currentDistrictEl) {
+        phoneCurLoc.textContent = currentDistrictEl.textContent;
+    }
+    playSound('chime');
+}
+
+function closeCyberPhone() {
+    if (phoneOverlay) phoneOverlay.classList.remove('open');
+}
+
+function toggleCyberPhone() {
+    if (!phoneOverlay) return;
+    if (phoneOverlay.classList.contains('open')) closeCyberPhone();
+    else openCyberPhone();
+}
+
+if (btnMobileOptions) btnMobileOptions.addEventListener('click', toggleCyberPhone);
+if (btnPhoneClose) btnPhoneClose.addEventListener('click', closeCyberPhone);
+if (phoneOverlay) {
+    phoneOverlay.addEventListener('click', (e) => {
+        if (e.target === phoneOverlay) closeCyberPhone();
+    });
+}
+
+phoneTabs.forEach(btn => {
+    btn.addEventListener('click', () => {
+        phoneTabs.forEach(b => b.classList.remove('active'));
+        phoneTabContents.forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        const targetId = btn.getAttribute('data-tab');
+        const targetContent = document.getElementById(targetId);
+        if (targetContent) targetContent.classList.add('active');
+        playSound('click');
+    });
+});
+
+// Fast Travel transit cards inside Cyber-Phone
+document.querySelectorAll('.transit-card').forEach(card => {
+    card.addEventListener('click', () => {
+        const x = parseFloat(card.getAttribute('data-x'));
+        const z = parseFloat(card.getAttribute('data-z'));
+        const y = parseFloat(card.getAttribute('data-y') || 0);
+        const name = card.getAttribute('data-name');
+        closeCyberPhone();
+        teleportTo(x, z, name, y);
+    });
+});
+
+// Environment buttons inside Cyber-Phone
+const phoneBtnTime = document.getElementById('phone-btn-time');
+if (phoneBtnTime) phoneBtnTime.addEventListener('click', () => { cycleTimeOfDay(); playSound('click'); });
+const phoneBtnWeather = document.getElementById('phone-btn-weather');
+if (phoneBtnWeather) phoneBtnWeather.addEventListener('click', () => { cycleWeather(); playSound('click'); });
+const phoneBtnCam = document.getElementById('phone-btn-cam');
+if (phoneBtnCam) phoneBtnCam.addEventListener('click', () => { toggleCameraMode(); playSound('click'); });
+const phoneBtnAudio = document.getElementById('phone-btn-audio');
+if (phoneBtnAudio) phoneBtnAudio.addEventListener('click', () => { toggleAudio(); playSound('click'); });
+
+// ==========================================
+// 3D SPATIAL WORLD WAYPOINTS
+// ==========================================
+const WORLD_WAYPOINTS = [
+    { id: 'wp-home', name: 'Home HQ', icon: '🏠', pos: new THREE.Vector3(0, 18, 140) },
+    { id: 'wp-gateway', name: 'Gateway', icon: '🏛️', pos: new THREE.Vector3(0, 14, 0) },
+    { id: 'wp-school', name: "School", icon: '🏫', pos: new THREE.Vector3(240, 16, 60) },
+    { id: 'wp-college', name: 'DMCE College', icon: '🎓', pos: new THREE.Vector3(-260, 20, 220) },
+    { id: 'wp-airport', name: 'Airport', icon: '✈️', pos: new THREE.Vector3(-300, 16, -180) }
+];
+
+const waypointsContainer = document.getElementById('world-waypoints-container');
+const waypointEls = new Map();
+
+if (waypointsContainer) {
+    WORLD_WAYPOINTS.forEach(wp => {
+        const pin = document.createElement('div');
+        pin.className = 'world-waypoint-pin';
+        pin.innerHTML = `<span>${wp.icon}</span> <span>${wp.name}</span> <span class="wp-dist-badge">0m</span>`;
+        pin.addEventListener('click', () => {
+            teleportTo(wp.pos.x, wp.pos.z, wp.name, 0);
+        });
+        waypointsContainer.appendChild(pin);
+        waypointEls.set(wp.id, pin);
+    });
+}
+
+function updateWorldWaypoints() {
+    if (!waypointsContainer || waypointEls.size === 0) return;
+    const playerPos = characterGroup.position;
+    const halfW = window.innerWidth / 2;
+    const halfH = window.innerHeight / 2;
+
+    WORLD_WAYPOINTS.forEach(wp => {
+        const pin = waypointEls.get(wp.id);
+        if (!pin) return;
+
+        const dist = Math.round(playerPos.distanceTo(wp.pos));
+        const distBadge = pin.querySelector('.wp-dist-badge');
+        if (distBadge) distBadge.textContent = `${dist}m`;
+
+        // Hide pin if player is directly within landmark zone (< 10m)
+        if (dist < 10) {
+            pin.style.display = 'none';
+            return;
+        }
+
+        // Project 3D world pos to 2D screen NDC
+        const screenPos = wp.pos.clone().project(camera);
+
+        // Check if point is behind camera (z > 1) or out of viewport bounds
+        if (screenPos.z > 1.0 || screenPos.x < -0.92 || screenPos.x > 0.92 || screenPos.y < -0.92 || screenPos.y > 0.92) {
+            pin.style.display = 'none';
+            return;
+        }
+
+        pin.style.display = 'flex';
+        const screenX = (screenPos.x * halfW) + halfW;
+        const screenY = -(screenPos.y * halfH) + halfH;
+        pin.style.left = `${screenX}px`;
+        pin.style.top = `${screenY}px`;
+    });
+}
+
+const btnTpGw = document.getElementById('btn-tp-gateway');
+if (btnTpGw) btnTpGw.addEventListener('click', () => teleportTo(0, -6, 'Gateway', 0));
+const btnTpHm = document.getElementById('btn-tp-home');
+if (btnTpHm) btnTpHm.addEventListener('click', () => teleportTo(0, 122, 'Home HQ', 0));
+const btnTpSc = document.getElementById('btn-tp-school');
+if (btnTpSc) btnTpSc.addEventListener('click', () => teleportTo(poiSchool.x, poiSchool.z - 16, 'School', 0));
+const btnTpCl = document.getElementById('btn-tp-college');
+if (btnTpCl) btnTpCl.addEventListener('click', () => teleportTo(48, 34, 'DMCE College', 0));
 const btnTpStark = document.getElementById('btn-tp-stark');
 if (btnTpStark) btnTpStark.addEventListener('click', () => teleportTo(0, 122, 'Home HQ', 0));
 
@@ -5906,10 +6200,99 @@ document.querySelectorAll('.floor-btn').forEach(btn => {
     });
 });
 
-// Vehicle Speedometer HUD
+// GTA Style Tachometer & Radar HUD Controllers
 const speedoCard = document.getElementById('speedo-card');
 const speedoMode = document.getElementById('speedo-mode');
 const speedoVal = document.getElementById('speedo-val');
+
+const tachoCard = document.getElementById('tachometer-card');
+const tachoSpeedVal = document.getElementById('tacho-speed-value');
+const tachoGearBadge = document.getElementById('tacho-gear-badge');
+const tachoNeedlePivot = document.getElementById('tacho-needle-pivot');
+const tachoActiveArc = document.getElementById('tacho-active-arc');
+const tachoModeLabel = document.getElementById('tacho-mode-label');
+
+function getDistrictName(x, z) {
+    if (z < -10) {
+        if (Math.abs(x) < 25) return "GATEWAY ESPLANADE | COLABA HARBOR";
+        return "HAJI ALI CAUSEWAY | WORLI SHORELINE";
+    }
+    if (z >= -10 && z < 70) {
+        if (x < -20 && z < 35) return "CENTRAL RAILWAY TERMINUS | VT LINE";
+        return "MARINE DRIVE PROMENADE | SOUTH MUMBAI";
+    }
+    if (z >= 70 && z < 190) {
+        if (x < -100) return "WEST RESIDENTIAL | ST. XAVIER'S ENCLAVE";
+        if (x > 100) return "EAST COMMERCIAL | DMCE METRO PLAZA";
+        return "MIDTOWN AVENUE | HOME HQ PLAZA";
+    }
+    if (z >= 190 && z < 300) {
+        if (x > 100) return "DATTA MEGHE CAMPUS | ACADEMIC BOULEVARD";
+        return "MIDTOWN NORTH | ACADEMIA COMMONS";
+    }
+    return "NORTH EXPRESSWAY | BKC TECH CORRIDOR";
+}
+
+function updateTachometerHUD(speedMps, isReverse = false) {
+    const speedKmh = Math.round(Math.abs(speedMps) * 3.6);
+    if (tachoSpeedVal) tachoSpeedVal.textContent = speedKmh;
+    if (speedoVal) speedoVal.textContent = speedKmh;
+
+    const ratio = Math.min(1, speedKmh / 140);
+    const needleDeg = -125 + ratio * 250;
+    if (tachoNeedlePivot) {
+        tachoNeedlePivot.style.transform = `rotate(${needleDeg}deg)`;
+    }
+
+    if (tachoActiveArc) {
+        const offset = 356 - (ratio * 250 / 360) * 356;
+        tachoActiveArc.style.strokeDashoffset = offset;
+    }
+
+    if (tachoGearBadge) {
+        if (isReverse) {
+            tachoGearBadge.textContent = "REVERSE";
+        } else if (speedKmh === 0) {
+            tachoGearBadge.textContent = activeVehicle ? "1ST GEAR" : "PARK";
+        } else if (speedKmh < 24) {
+            tachoGearBadge.textContent = "1ST GEAR";
+        } else if (speedKmh < 48) {
+            tachoGearBadge.textContent = "2ND GEAR";
+        } else if (speedKmh < 75) {
+            tachoGearBadge.textContent = "3RD GEAR";
+        } else if (speedKmh < 98) {
+            tachoGearBadge.textContent = "4TH GEAR";
+        } else if (speedKmh < 122) {
+            tachoGearBadge.textContent = "5TH GEAR";
+        } else {
+            tachoGearBadge.textContent = "6TH GEAR";
+        }
+    }
+
+    if (tachoModeLabel) {
+        if (activeVehicle) {
+            tachoModeLabel.textContent = (activeVehicle.type === 'car') ? "SPEED | SPORT MODE" : (activeVehicle.type === 'bike' ? "BIKE | TURBO MODE" : "AUTO | TRANSIT MODE");
+        } else if (isFlightMode) {
+            tachoModeLabel.textContent = "FLIGHT | THRUST ON";
+        } else {
+            tachoModeLabel.textContent = "SPEED | SPORT MODE";
+        }
+    }
+}
+
+// Collapsible Controls Toggle
+const controlsToggleBtn = document.getElementById('controls-toggle-btn');
+const controlsCardEl = document.getElementById('controls-card');
+if (controlsToggleBtn && controlsCardEl) {
+    controlsToggleBtn.addEventListener('click', () => {
+        controlsCardEl.style.display = (controlsCardEl.style.display === 'none') ? 'flex' : 'none';
+    });
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'h' || e.key === 'H') {
+            controlsCardEl.style.display = (controlsCardEl.style.display === 'none') ? 'flex' : 'none';
+        }
+    });
+}
 
 function toggleVehicleMount() {
     if (isFlightMode) exitFlightMode(false);
@@ -5955,7 +6338,8 @@ function toggleVehicleMount() {
 
 function mountVehicle(v) {
     activeVehicle = v;
-    speedoCard.style.display = 'flex';
+    if (speedoCard) speedoCard.style.display = 'none';
+    if (speechBubbleEl) speechBubbleEl.classList.remove('visible');
     if (v.type === 'bike') {
         speedoMode.textContent = '🏍️ CYBER BIKE';
         characterGroup.visible = true;
@@ -5972,11 +6356,8 @@ function mountVehicle(v) {
         v.mesh.add(characterGroup);
     } else {
         speedoMode.textContent = '🚗 CYBER CAR';
-        characterGroup.visible = true;
-        // Seated driver scale & position, head safely under the roof inside cabin
-        characterGroup.scale.set(0.52, 0.52, 0.52);
-        characterGroup.position.set(0.35, 0.30, -0.2);
-        characterGroup.rotation.set(0, 0, 0);
+        // Enclosed sports coupe with tinted glass - driver safely inside
+        characterGroup.visible = false;
         v.mesh.add(characterGroup);
     }
     playSound('engine');
@@ -5996,6 +6377,7 @@ function mountTrain() {
 
 function dismountVehicle() {
     characterGroup.scale.set(1, 1, 1);
+    characterGroup.visible = true;
     if (activeVehicle === 'train') {
         activeVehicle = null;
         scene.add(characterGroup);
@@ -6007,7 +6389,7 @@ function dismountVehicle() {
         activeVehicle = null;
         scene.add(characterGroup);
         characterGroup.position.set(v.mesh.position.x - 2.5, 0, v.mesh.position.z);
-        characterGroup.rotation.set(0, v.rotation, 0);
+        characterGroup.rotation.set(0, v.rotation + Math.PI, 0);
     }
     speedoCard.style.display = 'none';
     playSound('chime');
@@ -6104,7 +6486,7 @@ const waypointTrackerEl = document.getElementById('waypoint-tracker');
 let radarAngle = 0;
 
 function updateMiniMap(playerX, playerZ, playerRot) {
-    gpsCoordsEl.textContent = `X: ${Math.round(playerX)} | Z: ${Math.round(playerZ)}`;
+    if (gpsCoordsEl) gpsCoordsEl.textContent = `X: ${Math.round(playerX)} | Z: ${Math.round(playerZ)}`;
 
     // Nearest waypoint calculation across all expanded districts
     const waypoints = [
@@ -6125,27 +6507,29 @@ function updateMiniMap(playerX, playerZ, playerRot) {
         const d = Math.hypot(wp.x - playerX, wp.z - playerZ);
         if (d < minDist) { minDist = d; nearest = wp; }
     });
-    waypointTrackerEl.textContent = `🎯 Nearest: ${nearest.name} (${Math.round(minDist)}m)`;
+    if (waypointTrackerEl) waypointTrackerEl.textContent = `🎯 Nearest: ${nearest.name} (${Math.round(minDist)}m)`;
 
-    mapCtx.clearRect(0, 0, 190, 190);
+    // Update dynamic district text across GTA HUD
+    const currentDistrict = getDistrictName(playerX, playerZ);
+    const radarBanner = document.getElementById('radar-district-banner');
+    if (radarBanner) radarBanner.textContent = currentDistrict;
+    const districtNameEl = document.getElementById('gta-district-name');
+    if (districtNameEl) districtNameEl.textContent = currentDistrict;
 
-    // Player-Centric Scrolling GTA Radar
-    const cx = 95;
-    const cy = 95;
-    const radarRadius = 88;
-    const scale = 0.65; // ~290m visual diameter around player
+    mapCtx.clearRect(0, 0, 220, 140);
+
+    // Player-Centric Scrolling Rectangular GTA Radar
+    const cx = 110;
+    const cy = 70;
+    const radarRadius = 66;
+    const scale = 0.65; // ~340m visual diameter around player
 
     function toMapX(wx) { return cx + (wx - playerX) * scale; }
     function toMapY(wz) { return cy - (wz - playerZ) * scale; }
 
-    mapCtx.save();
-    mapCtx.beginPath();
-    mapCtx.arc(cx, cy, radarRadius, 0, Math.PI * 2);
-    mapCtx.clip();
-
     // 1. Dark radar background
     mapCtx.fillStyle = '#090d16';
-    mapCtx.fillRect(0, 0, 190, 190);
+    mapCtx.fillRect(0, 0, 220, 140);
 
     // 2. Arabian Sea Water (South of Z = -22)
     const seaScreenY = toMapY(-22);
@@ -6310,51 +6694,37 @@ function updateMiniMap(playerX, playerZ, playerRot) {
         }
     });
 
-    mapCtx.restore();
-
-    // 9. Radar Outer Ring, Gridlines & Sweeper Arm
-    mapCtx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
-    mapCtx.lineWidth = 2.0;
-    mapCtx.beginPath();
-    mapCtx.arc(cx, cy, radarRadius, 0, Math.PI * 2);
-    mapCtx.stroke();
-
-    // Range rings
-    mapCtx.strokeStyle = 'rgba(148, 163, 184, 0.2)';
+    // 9. Authentic GTA Radar Reticle Overlay & Rings
+    mapCtx.strokeStyle = 'rgba(34, 197, 94, 0.28)';
     mapCtx.lineWidth = 1;
     mapCtx.beginPath();
-    mapCtx.arc(cx, cy, 40, 0, Math.PI * 2);
-    mapCtx.arc(cx, cy, 70, 0, Math.PI * 2);
+    mapCtx.arc(cx, cy, 32, 0, Math.PI * 2);
+    mapCtx.arc(cx, cy, 58, 0, Math.PI * 2);
+    mapCtx.moveTo(cx - 65, cy); mapCtx.lineTo(cx + 65, cy);
+    mapCtx.moveTo(cx, cy - 65); mapCtx.lineTo(cx, cy + 65);
     mapCtx.stroke();
 
     // Rotating Radar Sweeper
     radarAngle += 0.04;
     mapCtx.save();
     mapCtx.translate(cx, cy);
-    mapCtx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
+    mapCtx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
     mapCtx.lineWidth = 1.5;
     mapCtx.beginPath();
     mapCtx.moveTo(0, 0);
-    mapCtx.lineTo(Math.cos(radarAngle) * (radarRadius - 2), Math.sin(radarAngle) * (radarRadius - 2));
+    mapCtx.lineTo(Math.cos(radarAngle) * 58, Math.sin(radarAngle) * 58);
     mapCtx.stroke();
     mapCtx.restore();
 
     // 10. Player Center Navigation Marker & Heading Arrow
     mapCtx.save();
     mapCtx.translate(cx, cy);
-    const heading = (!isFlightMode && !activeVehicle) ? (playerRot - Math.PI) : playerRot;
+    const isPlayerOnFoot = (!isFlightMode && !activeVehicle);
+    const heading = isPlayerOnFoot ? (playerRot - Math.PI) : playerRot;
     mapCtx.rotate(heading);
 
-    // Pulsing GPS signal
-    const pulse = (Date.now() % 1000) / 1000;
-    mapCtx.strokeStyle = `rgba(239, 68, 68, ${1 - pulse})`;
-    mapCtx.lineWidth = 1.5;
-    mapCtx.beginPath();
-    mapCtx.arc(0, 0, 6 + pulse * 10, 0, Math.PI * 2);
-    mapCtx.stroke();
-
-    // Sharp Navigation Arrowhead
-    mapCtx.fillStyle = '#ef4444';
+    // Sharp White/Cyan Navigation Arrowhead (GTA Style)
+    mapCtx.fillStyle = '#ffffff';
     mapCtx.beginPath();
     mapCtx.moveTo(0, -9);
     mapCtx.lineTo(6, 6);
@@ -6363,7 +6733,7 @@ function updateMiniMap(playerX, playerZ, playerRot) {
     mapCtx.closePath();
     mapCtx.fill();
 
-    mapCtx.strokeStyle = '#ffffff';
+    mapCtx.strokeStyle = '#38bdf8';
     mapCtx.lineWidth = 1.5;
     mapCtx.stroke();
     mapCtx.restore();
@@ -6495,6 +6865,7 @@ window.__updateVehiclePhysics = updateVehiclePhysics;
 // ==========================================
 const clock = new THREE.Clock();
 let walkCycle = 0;
+let idleTimer = 0;
 let thunderTimer = 0;
 
 let lastFrameTime = performance.now();
@@ -6662,7 +7033,7 @@ function animate(now = performance.now()) {
         if (characterGroup.position.y <= 0) {
             characterGroup.position.y = 0;
             characterGroup.position.z = -6;
-            characterGroup.rotation.y = 0;
+            characterGroup.rotation.y = Math.PI; // Face South into the open city
             isFlyingIn = false;
 
             // Landing thud & shockwave
@@ -6679,9 +7050,11 @@ function animate(now = performance.now()) {
                 jetParticles.forEach(p => p.mesh.visible = false);
                 repulsorLight.intensity = 0.2;
 
-                // Speech greeting popup
-                speechBubbleEl.classList.add('visible');
-                setTimeout(() => speechBubbleEl.classList.remove('visible'), 7000);
+                // Speech greeting popup (only when on foot)
+                if (!activeVehicle && !isFlightMode) {
+                    speechBubbleEl.classList.add('visible');
+                    setTimeout(() => speechBubbleEl.classList.remove('visible'), 5000);
+                }
             }, 800);
         }
     } else {
@@ -6804,6 +7177,8 @@ function animate(now = performance.now()) {
                 camera.position.z = THREE.MathUtils.lerp(camera.position.z, camTargetZ, 0.12);
                 camera.position.y = THREE.MathUtils.lerp(camera.position.y, camTargetY, 0.12);
                 camera.lookAt(characterGroup.position.x + fwdX * 16, characterGroup.position.y + (cameraMode === 'cinematic' ? 2.5 : 0), characterGroup.position.z + fwdZ * 16);
+                // Aerodynamic banking: tilt camera into roll (Insomniac traversal feel)
+                camera.rotation.z += flightRoll * 0.18;
 
                 camera.fov = THREE.MathUtils.lerp(camera.fov, isBoosting ? 66 : 52, 0.08);
                 camera.updateProjectionMatrix();
@@ -6844,18 +7219,30 @@ function animate(now = performance.now()) {
         } else if (activeVehicle) {
             updateVehiclePhysics(activeVehicle, delta);
 
-            // Speedometer update
-            speedoVal.textContent = Math.round(Math.abs(activeVehicle.speed * 3.6));
+            // Tachometer & Speedometer update
+            updateTachometerHUD(activeVehicle.speed, activeVehicle.speed < -0.2);
 
             // Camera follow vehicle
             if (cameraMode === 'chase' || cameraMode === 'cinematic') {
                 const isCar = (activeVehicle.type === 'car');
-                const followDist = isCar ? 14 : 11;
-                const camElevation = isCar ? 6.2 : 5.5;
-                camera.position.x = THREE.MathUtils.lerp(camera.position.x, activeVehicle.mesh.position.x - Math.sin(activeVehicle.rotation) * followDist, 0.1);
-                camera.position.z = THREE.MathUtils.lerp(camera.position.z, activeVehicle.mesh.position.z - Math.cos(activeVehicle.rotation) * followDist, 0.1);
-                camera.position.y = THREE.MathUtils.lerp(camera.position.y, camElevation, 0.1);
-                camera.lookAt(activeVehicle.mesh.position.x, 1.8, activeVehicle.mesh.position.z + Math.cos(activeVehicle.rotation) * 4);
+                const followDist = isCar ? 7.8 : 9.5;
+                const camElevation = isCar ? 2.5 : 3.6;
+                camera.position.x = THREE.MathUtils.lerp(camera.position.x, activeVehicle.mesh.position.x - Math.sin(activeVehicle.rotation) * followDist, 0.14);
+                camera.position.z = THREE.MathUtils.lerp(camera.position.z, activeVehicle.mesh.position.z - Math.cos(activeVehicle.rotation) * followDist, 0.14);
+                camera.position.y = THREE.MathUtils.lerp(camera.position.y, camElevation, 0.14);
+                const lookX = activeVehicle.mesh.position.x + Math.sin(activeVehicle.rotation) * 8;
+                const lookZ = activeVehicle.mesh.position.z + Math.cos(activeVehicle.rotation) * 8;
+                camera.lookAt(lookX, 1.4, lookZ);
+                // Cornering camera tilt (Dutch angle on hard steering)
+                if (keys.a || keys.d || keys.arrowleft || keys.arrowright) {
+                    const steerDir = (keys.a || keys.arrowleft) ? 1 : -1;
+                    const speedFactor = Math.min(1, Math.abs(activeVehicle.speed) / 20);
+                    camera.rotation.z += steerDir * 0.032 * speedFactor;
+                }
+
+                const speedRatio = Math.min(1, Math.abs(activeVehicle.speed) / 32);
+                camera.fov = THREE.MathUtils.lerp(camera.fov, 50 + speedRatio * 14, 0.08);
+                camera.updateProjectionMatrix();
             }
 
             updateMiniMap(activeVehicle.mesh.position.x, activeVehicle.mesh.position.z, activeVehicle.rotation);
@@ -6871,8 +7258,8 @@ function animate(now = performance.now()) {
             if (camForward.lengthSq() < 0.001) camForward.set(0, 0, 1);
             else camForward.normalize();
 
-            // Screen-space right on ground plane is Up x Forward
-            const camRight = new THREE.Vector3(0, 1, 0).cross(camForward).normalize();
+            // Screen-space right on ground plane (Forward x Up)
+            const camRight = camForward.clone().cross(new THREE.Vector3(0, 1, 0)).normalize();
 
             // Synthesize camera-relative input vector
             const inputVec = new THREE.Vector3();
@@ -6897,9 +7284,20 @@ function animate(now = performance.now()) {
                 if (diff > Math.PI) diff -= Math.PI * 2;
                 characterGroup.rotation.y += diff * 0.25;
 
-                // Natural human walking locomotion with subtle vertical gait bob & lateral hip sway
+                // Natural articulated human walking locomotion
                 walkCycle += delta * (isSprinting ? 9.5 : 6.5);
-                const gaitBob = Math.sin(walkCycle * 2) * 0.025;
+                const stride = Math.sin(walkCycle);
+
+                if (devChar) {
+                    devChar.legL.rotation.x = -stride * 0.62;
+                    devChar.legR.rotation.x = stride * 0.62;
+                    devChar.armL.rotation.x = stride * 0.48;
+                    devChar.armR.rotation.x = -stride * 0.48;
+                    devChar.armL.rotation.z = 0.08;
+                    devChar.armR.rotation.z = -0.08;
+                }
+
+                const gaitBob = Math.sin(walkCycle * 2) * 0.02;
                 if (characterGroup.position.y > currentFloorElevation + 0.4) {
                     characterGroup.position.y = THREE.MathUtils.lerp(characterGroup.position.y, currentFloorElevation, 0.16);
                 } else {
@@ -6908,14 +7306,26 @@ function animate(now = performance.now()) {
 
                 // Natural human forward torso lean and subtle hip roll
                 const targetRoll = Math.sin(walkCycle) * 0.035;
-                const targetPitch = isSprinting ? 0.07 : 0.03;
+                const targetPitch = isSprinting ? 0.09 : 0.04;
                 characterGroup.rotation.z = THREE.MathUtils.lerp(characterGroup.rotation.z, targetRoll, 0.15);
                 characterGroup.rotation.x = THREE.MathUtils.lerp(characterGroup.rotation.x, targetPitch, 0.15);
             } else {
+                idleTimer += delta * 2.2;
+                if (devChar) {
+                    devChar.legL.rotation.x = THREE.MathUtils.lerp(devChar.legL.rotation.x, 0, 0.2);
+                    devChar.legR.rotation.x = THREE.MathUtils.lerp(devChar.legR.rotation.x, 0, 0.2);
+                    devChar.armL.rotation.x = THREE.MathUtils.lerp(devChar.armL.rotation.x, Math.sin(idleTimer) * 0.03, 0.15);
+                    devChar.armR.rotation.x = THREE.MathUtils.lerp(devChar.armR.rotation.x, -Math.sin(idleTimer) * 0.03, 0.15);
+                    devChar.armL.rotation.z = THREE.MathUtils.lerp(devChar.armL.rotation.z, 0.06, 0.15);
+                    devChar.armR.rotation.z = THREE.MathUtils.lerp(devChar.armR.rotation.z, -0.06, 0.15);
+                }
+
                 characterGroup.position.y = THREE.MathUtils.lerp(characterGroup.position.y, currentFloorElevation, 0.2);
                 characterGroup.rotation.z = THREE.MathUtils.lerp(characterGroup.rotation.z, 0, 0.18);
                 characterGroup.rotation.x = THREE.MathUtils.lerp(characterGroup.rotation.x, 0, 0.18);
             }
+
+            updateTachometerHUD(moving ? (isSprinting ? 5.2 : 2.8) : 0, false);
 
             // Dynamic Surface Elevation & Step/Drop Detection (Rooftops, Steps, Platforms, Causeway)
             const targetSurfaceY = getSurfaceElevationAt(characterGroup.position.x, characterGroup.position.z, characterGroup.position.y);
@@ -6996,10 +7406,16 @@ function animate(now = performance.now()) {
     if (cameraMode === 'orbit') orbitControls.update();
 
     updateSpeechBubble();
+    updateWorldWaypoints();
+    updateLevelOfDetail(camera.position);
     renderer.render(scene, camera);
 }
 
 function updateSpeechBubble() {
+    if (activeVehicle || isFlightMode) {
+        if (speechBubbleEl && speechBubbleEl.classList.contains('visible')) speechBubbleEl.classList.remove('visible');
+        return;
+    }
     if (!speechBubbleEl.classList.contains('visible')) return;
     const pos = characterGroup.position.clone();
     pos.y += 2.8;
@@ -7131,6 +7547,9 @@ window.__resolveCollision = resolveCollision;
 window.__bikeVehicle = bikeVehicle;
 window.__carVehicle = carVehicle;
 window.__getActiveVehicle = () => activeVehicle;
+window.__devChar = devChar;
+window.teleportTo = teleportTo;
+window.mountVehicle = mountVehicle;
 window.__setWeatherMode = (m) => { weatherMode = m; };
 window.__setCameraMode = (m) => { cameraMode = m; orbitControls.enabled = (m === 'orbit'); };
 window.__starkTower = {

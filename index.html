@@ -100,18 +100,9 @@
             font-family: 'JetBrains Mono', monospace;
         }
 
-        /* Time, Weather & Fast Travel Controls */
+        /* Time, Weather & Fast Travel Controls (Integrated into Cyber-Phone) */
         .world-controls {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: rgba(15, 23, 42, 0.88);
-            backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.14);
-            padding: 6px 14px;
-            border-radius: 999px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
-            flex-wrap: wrap;
+            display: none !important;
         }
 
         .time-pill {
@@ -299,6 +290,295 @@
             font-weight: 700;
         }
 
+        /* GTA Style Top-Left District / Street Pill */
+        .gta-district-pill {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 12px;
+            padding: 8px 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+            pointer-events: auto;
+        }
+
+        .gta-district-icon {
+            font-size: 14px;
+        }
+
+        .gta-district-name {
+            font-size: 12.5px;
+            font-weight: 800;
+            letter-spacing: 1.2px;
+            color: #f8fafc;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        /* GTA Top Right Cash & Clock */
+        .gta-header-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            pointer-events: auto;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .gta-cash-badge {
+            background: rgba(15, 23, 42, 0.90);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(251, 191, 36, 0.35);
+            border-radius: 12px;
+            padding: 7px 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 15px;
+            font-weight: 900;
+            color: #fbbf24;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4), 0 0 16px rgba(251, 191, 36, 0.2);
+        }
+
+        .gta-time-badge {
+            background: rgba(15, 23, 42, 0.90);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 12px;
+            padding: 7px 14px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            font-weight: 800;
+            color: #f8fafc;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
+        }
+
+        .fps-badge {
+            background: rgba(34, 197, 94, 0.15);
+            border: 1px solid rgba(34, 197, 94, 0.35);
+            color: #22c55e;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 800;
+            padding: 4px 8px;
+            border-radius: 8px;
+            letter-spacing: 0.5px;
+        }
+
+        /* GTA Radar Card (Bottom Left) */
+        .gta-radar-card {
+            background: rgba(15, 23, 42, 0.92);
+            backdrop-filter: blur(16px);
+            border: 2px solid rgba(56, 189, 248, 0.45);
+            border-radius: 16px;
+            padding: 10px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7), 0 0 24px rgba(56, 189, 248, 0.25);
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            pointer-events: auto;
+            width: 236px;
+        }
+
+        .radar-canvas-box {
+            position: relative;
+            width: 220px;
+            height: 140px;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #020617;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        #minimap-canvas {
+            width: 220px;
+            height: 140px;
+            display: block;
+        }
+
+        .radar-bars {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .radar-bar-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .radar-bar-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9px;
+            font-weight: 800;
+            color: #94a3b8;
+            width: 44px;
+            letter-spacing: 0.5px;
+        }
+
+        .radar-bar-track {
+            flex: 1;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .radar-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.2s ease;
+        }
+
+        .radar-bar-fill.armor {
+            width: 100%;
+            background: #38bdf8;
+            box-shadow: 0 0 8px rgba(56, 189, 248, 0.8);
+        }
+
+        .radar-bar-fill.health {
+            width: 100%;
+            background: #22c55e;
+            box-shadow: 0 0 8px rgba(34, 197, 94, 0.8);
+        }
+
+        .radar-district-banner {
+            background: rgba(0, 0, 0, 0.45);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            padding: 3px 6px;
+            font-size: 9px;
+            font-weight: 700;
+            color: #cbd5e1;
+            text-align: center;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Tachometer / Speedometer Gauge (Bottom Center) */
+        .tachometer-card {
+            position: absolute;
+            left: 50%;
+            bottom: 0;
+            transform: translateX(-50%);
+            pointer-events: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .tacho-dial {
+            position: relative;
+            width: 180px;
+            height: 140px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .tacho-svg {
+            width: 180px;
+            height: 180px;
+            position: absolute;
+            top: -20px;
+        }
+
+        .tacho-num {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 800;
+            fill: #94a3b8;
+            text-anchor: middle;
+            dominant-baseline: central;
+        }
+
+        .tacho-num.tacho-red {
+            fill: #ef4444;
+        }
+
+        .tacho-info {
+            position: absolute;
+            bottom: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 1px;
+        }
+
+        .tacho-speed-line {
+            display: flex;
+            align-items: baseline;
+            gap: 4px;
+        }
+
+        .tacho-speed-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 32px;
+            font-weight: 900;
+            color: #f8fafc;
+            line-height: 1;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+        }
+
+        .tacho-speed-unit {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 800;
+            color: #94a3b8;
+        }
+
+        .tacho-gear-badge {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 800;
+            color: #38bdf8;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .tacho-mode-label {
+            font-size: 9px;
+            font-weight: 700;
+            color: #64748b;
+            letter-spacing: 1.2px;
+        }
+
+        /* Controls Wrapper (Bottom Right) */
+        .controls-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 6px;
+            pointer-events: auto;
+        }
+
+        .controls-toggle-btn {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 10px;
+            padding: 6px 14px;
+            color: #94a3b8;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+            transition: all 0.2s ease;
+        }
+
+        .controls-toggle-btn:hover {
+            color: #f8fafc;
+            border-color: #38bdf8;
+        }
+
         /* Mini-Map Radar (Bottom Right) */
         .minimap-container {
             background: rgba(15, 23, 42, 0.92);
@@ -393,7 +673,7 @@
         /* Interaction Toast Prompt */
         #interaction-prompt {
             position: absolute;
-            bottom: 124px;
+            bottom: 228px;
             left: 50%;
             transform: translateX(-50%) translateY(20px);
             background: linear-gradient(135deg, rgba(37, 99, 235, 0.95), rgba(56, 189, 248, 0.95));
@@ -1027,6 +1307,518 @@
             border-color: #38bdf8;
             box-shadow: 0 0 16px rgba(56, 189, 248, 0.45);
         }
+
+        /* Top-Left Cyber-Phone & Options Button */
+        #btn-mobile-options {
+            position: fixed;
+            top: 14px;
+            left: 14px;
+            z-index: 1200;
+            background: rgba(15, 23, 42, 0.85);
+            border: 1.5px solid #38bdf8;
+            box-shadow: 0 0 16px rgba(56, 189, 248, 0.4), inset 0 0 8px rgba(56, 189, 248, 0.2);
+            color: #f8fafc;
+            padding: 8px 14px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            pointer-events: auto;
+            transition: all 0.2s ease;
+        }
+        #btn-mobile-options:hover {
+            background: rgba(56, 189, 248, 0.25);
+            transform: scale(1.05);
+        }
+
+        /* 3D Spatial World Waypoints */
+        .world-waypoints-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 15;
+            overflow: hidden;
+        }
+        .world-waypoint-pin {
+            position: absolute;
+            transform: translate(-50%, -100%);
+            background: rgba(15, 23, 42, 0.82);
+            border: 1.5px solid rgba(56, 189, 248, 0.7);
+            border-radius: 16px;
+            padding: 5px 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 700;
+            color: #f8fafc;
+            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.6), 0 0 10px rgba(56, 189, 248, 0.35);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            pointer-events: auto;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: transform 0.1s ease-out, opacity 0.2s ease;
+        }
+        .world-waypoint-pin::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 6px 5px 0 5px;
+            border-style: solid;
+            border-color: rgba(56, 189, 248, 0.8) transparent transparent transparent;
+        }
+        .world-waypoint-pin:hover {
+            transform: translate(-50%, -108%) scale(1.08);
+            border-color: #38bdf8;
+            background: rgba(2, 132, 199, 0.9);
+        }
+        .wp-dist-badge {
+            background: rgba(56, 189, 248, 0.25);
+            color: #38bdf8;
+            padding: 2px 5px;
+            border-radius: 8px;
+            font-size: 9.5px;
+        }
+
+        /* Fast-Travel Subway Transit Vignette */
+        #subway-vignette {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, rgba(15, 23, 42, 0.94) 0%, rgba(3, 7, 18, 0.98) 100%);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.35s ease-in-out;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        #subway-vignette.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .subway-vignette-card {
+            background: rgba(15, 23, 42, 0.85);
+            border: 2px solid #06b6d4;
+            border-radius: 16px;
+            padding: 28px 36px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(6, 182, 212, 0.4), inset 0 0 20px rgba(6, 182, 212, 0.15);
+            max-width: 90vw;
+            width: 440px;
+        }
+        .subway-badge {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            letter-spacing: 2px;
+            color: #38bdf8;
+            font-weight: 800;
+            margin-bottom: 12px;
+        }
+        .subway-route-line {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin: 16px 0;
+        }
+        .subway-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #06b6d4;
+            box-shadow: 0 0 10px #06b6d4;
+        }
+        .subway-track-bar {
+            height: 3px;
+            width: 120px;
+            background: linear-gradient(90deg, #06b6d4, #38bdf8, #a855f7);
+            position: relative;
+            overflow: hidden;
+        }
+        .subway-track-bar::after {
+            content: '';
+            position: absolute;
+            top: 0; left: -50%;
+            width: 50%; height: 100%;
+            background: #ffffff;
+            animation: subwayPulse 1s infinite linear;
+        }
+        @keyframes subwayPulse {
+            to { left: 100%; }
+        }
+        .subway-dest-title {
+            font-size: 20px;
+            font-weight: 800;
+            color: #ffffff;
+            margin: 8px 0;
+            letter-spacing: 1px;
+        }
+        .subway-status-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: #94a3b8;
+            letter-spacing: 1.5px;
+        }
+
+        /* Cyber-Smartphone Drawer ("FNSM App" style) */
+        #cyber-phone-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(3, 7, 18, 0.65);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            z-index: 1500;
+            display: flex;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        #cyber-phone-overlay.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .cyber-phone-drawer {
+            width: 380px;
+            max-width: 92vw;
+            height: 100%;
+            background: rgba(11, 17, 33, 0.94);
+            border-right: 2px solid #06b6d4;
+            box-shadow: 10px 0 35px rgba(0, 0, 0, 0.7), 0 0 25px rgba(6, 182, 212, 0.25);
+            display: flex;
+            flex-direction: column;
+            transform: translateX(-100%);
+            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            overflow: hidden;
+        }
+        #cyber-phone-overlay.open .cyber-phone-drawer {
+            transform: translateX(0);
+        }
+        .phone-status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 16px;
+            background: rgba(15, 23, 42, 0.8);
+            border-bottom: 1px solid rgba(56, 189, 248, 0.2);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: #94a3b8;
+        }
+        .phone-signals {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .phone-close-btn {
+            background: none;
+            border: none;
+            color: #f8fafc;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        .phone-close-btn:hover {
+            color: #ef4444;
+        }
+        .phone-profile-card {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 16px;
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.15) 0%, rgba(15, 23, 42, 0.6) 100%);
+            border-bottom: 1px solid rgba(56, 189, 248, 0.2);
+        }
+        .phone-avatar-glow {
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #06b6d4 0%, #0f172a 100%);
+            border: 2px solid #38bdf8;
+            box-shadow: 0 0 12px rgba(6, 182, 212, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+        .phone-user-name {
+            font-size: 15px;
+            font-weight: 800;
+            color: #ffffff;
+            letter-spacing: 0.5px;
+        }
+        .phone-user-role {
+            font-size: 11px;
+            color: #38bdf8;
+            margin: 2px 0;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .phone-location-tag {
+            font-size: 10px;
+            color: #94a3b8;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .live-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #10b981;
+            box-shadow: 0 0 6px #10b981;
+        }
+        .phone-nav-tabs {
+            display: flex;
+            background: rgba(15, 23, 42, 0.7);
+            border-bottom: 1px solid rgba(56, 189, 248, 0.2);
+            overflow-x: auto;
+        }
+        .phone-tab-btn {
+            flex: 1;
+            padding: 11px 8px;
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10.5px;
+            font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+            border-bottom: 2px solid transparent;
+        }
+        .phone-tab-btn.active {
+            color: #38bdf8;
+            border-bottom-color: #38bdf8;
+            background: rgba(56, 189, 248, 0.1);
+        }
+        .phone-tab-content {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            display: none;
+        }
+        .phone-tab-content.active {
+            display: block;
+        }
+        .phone-section-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 800;
+            color: #38bdf8;
+            letter-spacing: 1.5px;
+            margin-bottom: 12px;
+        }
+        .transit-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .transit-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            background: rgba(15, 23, 42, 0.65);
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            border-radius: 10px;
+            color: #ffffff;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: left;
+            width: 100%;
+        }
+        .transit-card:hover {
+            background: rgba(56, 189, 248, 0.18);
+            border-color: #38bdf8;
+            transform: translateX(3px);
+        }
+        .transit-icon {
+            font-size: 20px;
+        }
+        .transit-info {
+            flex: 1;
+        }
+        .transit-info strong {
+            display: block;
+            font-size: 13px;
+        }
+        .transit-info small {
+            color: #94a3b8;
+            font-size: 10.5px;
+        }
+        .transit-badge {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            font-weight: 800;
+            color: #06b6d4;
+            background: rgba(6, 182, 212, 0.15);
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid rgba(6, 182, 212, 0.3);
+        }
+        .phone-settings-row {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+        .phone-setting-btn {
+            padding: 10px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            border-radius: 8px;
+            color: #f8fafc;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .phone-setting-btn:hover {
+            background: rgba(56, 189, 248, 0.2);
+            border-color: #38bdf8;
+        }
+        .phone-project-card {
+            background: rgba(15, 23, 42, 0.65);
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+        .proj-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+        .proj-header h4 {
+            font-size: 13px;
+            color: #ffffff;
+            margin: 0;
+        }
+        .proj-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9px;
+            background: rgba(6, 182, 212, 0.2);
+            color: #38bdf8;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        .phone-project-card p {
+            font-size: 11px;
+            color: #94a3b8;
+            line-height: 1.4;
+            margin: 0;
+        }
+        .skills-category {
+            margin-bottom: 14px;
+        }
+        .skills-category h5 {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: #38bdf8;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+        .skill-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .skill-pill {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            padding: 4px 8px;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            border-radius: 6px;
+            color: #cbd5e1;
+        }
+        .skill-pill.highlight {
+            border-color: #06b6d4;
+            color: #38bdf8;
+            background: rgba(6, 182, 212, 0.12);
+        }
+        .contact-links-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .contact-card-btn {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            background: rgba(15, 23, 42, 0.65);
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            border-radius: 10px;
+            color: #ffffff;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .contact-card-btn:hover {
+            background: rgba(56, 189, 248, 0.2);
+            border-color: #38bdf8;
+            transform: translateX(4px);
+        }
+        .contact-icon {
+            font-size: 22px;
+        }
+        .contact-card-btn strong {
+            display: block;
+            font-size: 13px;
+        }
+        .contact-card-btn small {
+            font-size: 10.5px;
+            color: #94a3b8;
+        }
+
+        /* Mobile Viewport Cleanup */
+        @media (max-width: 768px), (hover: none) and (pointer: coarse) {
+            .top-bar {
+                display: none !important;
+            }
+            .gta-radar-card {
+                display: none !important;
+            }
+            .tachometer-card {
+                display: none !important;
+            }
+            .controls-card {
+                display: none !important;
+            }
+            #mobile-touch-controls {
+                display: flex !important;
+            }
+            #btn-mobile-options {
+                display: flex !important;
+            }
+        }
     </style>
 
     <!-- Three.js + Addons Import Map (High-Speed CDN) -->
@@ -1177,97 +1969,346 @@
     <!-- UI Overlay Layer -->
     <div id="ui-layer">
         <header class="top-bar">
-            <div class="brand-badge">
-                <div class="brand-avatar">D</div>
-                <div class="brand-info">
-                    <span class="brand-title">Devarshi Davane</span>
-                    <span class="brand-subtitle">Interactive 3D Open World Portfolio</span>
-                </div>
+            <!-- GTA Top-Left District / Street Indicator -->
+            <div class="gta-district-pill" id="gta-district-pill">
+                <span class="gta-district-icon">📍</span>
+                <span class="gta-district-name" id="gta-district-name">MIDTOWN AVENUE | HOME HQ PLAZA</span>
             </div>
 
-            <!-- Time, Weather & Fast Travel Controls -->
-            <div class="world-controls">
-                <div class="time-pill">
-                    <span id="time-icon">🌇</span>
-                    <span id="time-label">Sunset</span>
+            <!-- GTA Top-Right Status & World Fast-Travel -->
+            <div class="gta-header-right">
+                <div class="gta-cash-badge" id="gta-cash">$2,450,000</div>
+                <div class="gta-time-badge" id="gta-time">
+                    <span id="time-icon">🌅</span>
+                    <span id="time-label">18:15</span>
                 </div>
-                <button class="ctrl-btn" id="btn-toggle-time">⏰ Cycle Time (T)</button>
-                <button class="ctrl-btn" id="btn-toggle-weather">🌧️ Weather</button>
-                <button class="ctrl-btn" id="btn-tp-gateway">📍 Gateway</button>
-                <button class="ctrl-btn" id="btn-landmark-preview">🏛️ 3D Model</button>
-                <button class="ctrl-btn" id="btn-tp-home">🏠 Home HQ</button>
-                <button class="ctrl-btn" id="btn-tp-stark">⚡ Helipad [F4]</button>
-                <button class="ctrl-btn" id="btn-toggle-flight">⚡ Iron Man [G]</button>
-                <button class="ctrl-btn" id="btn-tp-school">🏫 School</button>
-                <button class="ctrl-btn" id="btn-tp-college">🎓 DMCE</button>
-                <button class="ctrl-btn" id="btn-toggle-audio">🔊 Audio: ON</button>
+                <span class="fps-badge" id="fps-badge">60 FPS</span>
+                <div class="world-controls">
+                    <button class="ctrl-btn" id="btn-toggle-time">⏰ Time</button>
+                    <button class="ctrl-btn" id="btn-toggle-weather">🌧️ Weather</button>
+                    <button class="ctrl-btn" id="btn-tp-gateway">📍 Gateway</button>
+                    <button class="ctrl-btn" id="btn-landmark-preview">🏛️ 3D Model</button>
+                    <button class="ctrl-btn" id="btn-tp-home">🏠 Home HQ</button>
+                    <button class="ctrl-btn" id="btn-tp-stark">⚡ Helipad [F4]</button>
+                    <button class="ctrl-btn" id="btn-toggle-flight">⚡ Iron Man [G]</button>
+                    <button class="ctrl-btn" id="btn-tp-school">🏫 School</button>
+                    <button class="ctrl-btn" id="btn-tp-college">🎓 DMCE</button>
+                    <button class="ctrl-btn" id="btn-toggle-audio">🔊 Audio: ON</button>
+                </div>
             </div>
         </header>
 
         <div class="bottom-hud">
-            <!-- Game Controls Info -->
-            <div class="controls-card">
-                <div class="controls-row">
-                    <div class="key-group">
-                        <span class="key-badge">W</span>
-                        <span class="key-badge">A</span>
-                        <span class="key-badge">S</span>
-                        <span class="key-badge">D</span>
-                        <span class="key-label">Move / Steer</span>
+            <!-- GTA Rectangular Radar Mini-Map (Bottom Left) -->
+            <div class="gta-radar-card" id="gta-radar-card">
+                <div class="radar-canvas-box">
+                    <canvas id="minimap-canvas" width="220" height="140"></canvas>
+                </div>
+                <div class="radar-bars">
+                    <div class="radar-bar-row">
+                        <span class="radar-bar-label">ARMOR</span>
+                        <div class="radar-bar-track"><div class="radar-bar-fill armor" id="radar-armor-fill"></div></div>
                     </div>
-                    <div class="key-group">
-                        <span class="key-badge">SPACE</span>
-                        <span class="key-label">Jump / Boost</span>
-                    </div>
-                    <div class="key-group">
-                        <span class="key-badge">F</span>
-                        <span class="key-label">Ride Bike / Car</span>
+                    <div class="radar-bar-row">
+                        <span class="radar-bar-label">HEALTH</span>
+                        <div class="radar-bar-track"><div class="radar-bar-fill health" id="radar-health-fill"></div></div>
                     </div>
                 </div>
-                <div class="controls-row">
-                    <div class="key-group">
-                        <span class="key-badge">G</span>
-                        <span class="key-label">Fly Suit</span>
-                    </div>
-                    <div class="key-group">
-                        <span class="key-badge">E</span>
-                        <span class="key-label">Interact / Train</span>
-                    </div>
-                    <div class="key-group">
-                        <span class="key-badge">T</span>
-                        <span class="key-label">Time of Day</span>
-                    </div>
-                    <div class="key-group">
-                        <span class="key-badge">C</span>
-                        <span class="key-label">Cam View</span>
-                    </div>
-                </div>
-                <!-- Vehicle Speedometer (Visible when riding) -->
-                <div id="speedo-card">
-                    <span class="speedo-mode" id="speedo-mode">🏍️ CYBER BIKE</span>
-                    <span class="speedo-val" id="speedo-val">0</span>
-                    <span class="speedo-unit">KM/H</span>
+                <div class="radar-district-banner" id="radar-district-banner">
+                    MIDTOWN AVENUE | HOME HQ PLAZA
                 </div>
             </div>
 
-            <!-- Accurate GPS Radar Mini-Map -->
-            <div class="minimap-container">
-                <div class="minimap-header">
-                    <span class="minimap-title">🧭 LIVE GPS RADAR</span>
-                    <span class="gps-coords" id="gps-coords">X: 0 | Z: -6</span>
+            <!-- Circular Tachometer & Digital Speedometer HUD (Bottom Center) -->
+            <div class="tachometer-card" id="tachometer-card">
+                <div class="tacho-dial">
+                    <svg class="tacho-svg" viewBox="0 0 200 200">
+                        <path class="tacho-bg-arc" d="M 38 152 A 76 76 0 1 1 162 152" fill="none" stroke="rgba(255, 255, 255, 0.16)" stroke-width="7" stroke-linecap="round"/>
+                        <path class="tacho-red-arc" d="M 136 64 A 76 76 0 0 1 162 152" fill="none" stroke="#ef4444" stroke-width="7" stroke-linecap="round"/>
+                        <path id="tacho-active-arc" d="M 38 152 A 76 76 0 1 1 162 152" fill="none" stroke="#38bdf8" stroke-width="7" stroke-linecap="round" stroke-dasharray="356" stroke-dashoffset="356"/>
+                        <text x="35" y="160" class="tacho-num">0</text>
+                        <text x="24" y="122" class="tacho-num">1</text>
+                        <text x="32" y="84"  class="tacho-num">2</text>
+                        <text x="56" y="54"  class="tacho-num">3</text>
+                        <text x="95" y="42"  class="tacho-num">4</text>
+                        <text x="134" y="54" class="tacho-num">5</text>
+                        <text x="158" y="84" class="tacho-num">6</text>
+                        <text x="168" y="122" class="tacho-num tacho-red">7</text>
+                        <text x="156" y="160" class="tacho-num tacho-red">8</text>
+                        <text x="180" y="148" class="tacho-num tacho-red">9</text>
+                        <!-- Tachometer Needle with Pivot (pointing up at 0 rotation) -->
+                        <g id="tacho-needle-pivot" style="transform-origin: 100px 100px; transform: rotate(-125deg); transition: transform 0.08s ease-out;">
+                            <line x1="100" y1="100" x2="100" y2="34" stroke="#f8fafc" stroke-width="3" stroke-linecap="round"/>
+                        </g>
+                        <circle cx="100" cy="100" r="7" fill="#0284c7" stroke="#38bdf8" stroke-width="2"/>
+                        <circle cx="100" cy="100" r="2.5" fill="#ffffff"/>
+                    </svg>
+                    <div class="tacho-info">
+                        <div class="tacho-speed-line">
+                            <span class="tacho-speed-value" id="tacho-speed-value">0</span>
+                            <span class="tacho-speed-unit">KM/H</span>
+                        </div>
+                        <div class="tacho-gear-badge" id="tacho-gear-badge">1ST GEAR</div>
+                        <div class="tacho-mode-label" id="tacho-mode-label">SPEED | SPORT MODE</div>
+                    </div>
                 </div>
-                <div class="minimap-canvas-wrapper">
-                    <canvas id="minimap-canvas" width="190" height="190"></canvas>
+            </div>
+
+            <!-- Game Controls Info (Bottom Right) -->
+            <div class="controls-wrapper">
+                <button class="controls-toggle-btn" id="controls-toggle-btn">⌨️ Controls [H]</button>
+                <div class="controls-card" id="controls-card">
+                    <div class="controls-row">
+                        <div class="key-group">
+                            <span class="key-badge">W</span>
+                            <span class="key-badge">A</span>
+                            <span class="key-badge">S</span>
+                            <span class="key-badge">D</span>
+                            <span class="key-label">Move / Steer</span>
+                        </div>
+                        <div class="key-group">
+                            <span class="key-badge">SPACE</span>
+                            <span class="key-label">Jump / Boost</span>
+                        </div>
+                        <div class="key-group">
+                            <span class="key-badge">F</span>
+                            <span class="key-label">Ride Car / Bike</span>
+                        </div>
+                    </div>
+                    <div class="controls-row">
+                        <div class="key-group">
+                            <span class="key-badge">G</span>
+                            <span class="key-label">Fly Suit</span>
+                        </div>
+                        <div class="key-group">
+                            <span class="key-badge">E</span>
+                            <span class="key-label">Interact</span>
+                        </div>
+                        <div class="key-group">
+                            <span class="key-badge">T</span>
+                            <span class="key-label">Time</span>
+                        </div>
+                        <div class="key-group">
+                            <span class="key-badge">C</span>
+                            <span class="key-label">Cam View</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="waypoint-tracker" id="waypoint-tracker">
-                    🎯 Nearest: Gateway of India (0m)
+            </div>
+
+            <!-- Fallback elements for script backwards compatibility -->
+            <div id="speedo-card" style="display:none;"><span id="speedo-mode"></span><span id="speedo-val">0</span></div>
+            <span id="gps-coords" style="display:none;"></span>
+            <span id="waypoint-tracker" style="display:none;"></span>
+        </div>
+    </div>
+
+    <!-- 3D Spatial World Waypoints Overlay Container -->
+    <div id="world-waypoints-container" class="world-waypoints-container"></div>
+
+    <!-- Fast-Travel Subway Transit Vignette -->
+    <div id="subway-vignette" class="subway-vignette">
+        <div class="subway-vignette-card">
+            <div class="subway-badge">🚆 MUMBAI CITY EXPRESS • TRANSIT SYSTEM</div>
+            <div class="subway-route-line">
+                <span class="subway-dot start"></span>
+                <span class="subway-track-bar"></span>
+                <span class="subway-dot dest"></span>
+            </div>
+            <h2 class="subway-dest-title" id="subway-dest-title">NEXT STOP: HOME HQ PLAZA</h2>
+            <div class="subway-status-label">RAPID REPOSITIONING IN PROGRESS...</div>
+        </div>
+    </div>
+
+    <!-- Top-Left Floating Cyber-Phone Options Button -->
+    <button id="btn-mobile-options" class="cyber-options-btn" aria-label="Open Cyber-Phone Options">
+        <span style="font-size: 15px;">📱</span>
+        <span>CYBER-PHONE</span>
+    </button>
+
+    <!-- Cyber-Smartphone Drawer ("FNSM App" Style) -->
+    <div id="cyber-phone-overlay" class="cyber-phone-overlay">
+        <div class="cyber-phone-drawer" id="cyber-phone-drawer">
+            <!-- Phone Bezel & Status Bar -->
+            <div class="phone-status-bar">
+                <span class="phone-time" id="phone-clock">18:15</span>
+                <div class="phone-signals">
+                    <span>5G</span>
+                    <span>⚡ 100%</span>
+                    <button class="phone-close-btn" id="btn-phone-close">✕</button>
                 </div>
-                <div class="minimap-legend">
-                    <div class="legend-item"><span class="legend-dot" style="background:#ef4444;"></span> Devarshi (GPS)</div>
-                    <div class="legend-item"><span class="legend-dot" style="background:#06b6d4;"></span> Home HQ</div>
-                    <div class="legend-item"><span class="legend-dot" style="background:#f59e0b;"></span> Gateway Arch</div>
-                    <div class="legend-item"><span class="legend-dot" style="background:#a855f7;"></span> School</div>
-                    <div class="legend-item"><span class="legend-dot" style="background:#10b981;"></span> DMCE College</div>
+            </div>
+
+            <!-- Phone Profile Header -->
+            <div class="phone-profile-card">
+                <div class="phone-avatar-glow">
+                    <span class="avatar-icon">⚡</span>
+                </div>
+                <div class="phone-profile-meta">
+                    <h3 class="phone-user-name">DEVARSHI DAVANE</h3>
+                    <p class="phone-user-role">3D Systems & Full-Stack Architect</p>
+                    <div class="phone-location-tag">
+                        <span class="live-dot"></span> <span id="phone-cur-loc">MUMBAI CYBER DISTRICT</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Phone Navigation Tabs -->
+            <nav class="phone-nav-tabs">
+                <button class="phone-tab-btn active" data-tab="tab-fast-travel">📍 NAV</button>
+                <button class="phone-tab-btn" data-tab="tab-projects">⚡ PROJECTS</button>
+                <button class="phone-tab-btn" data-tab="tab-skills">🛠️ SKILLS</button>
+                <button class="phone-tab-btn" data-tab="tab-contact">📡 CONTACT</button>
+            </nav>
+
+            <!-- Tab 1: Map & Fast Travel -->
+            <div class="phone-tab-content active" id="tab-fast-travel">
+                <div class="phone-section-title">RAPID TRANSIT (MUMBAI EXPRESS)</div>
+                <div class="transit-grid">
+                    <button class="transit-card" data-x="0" data-z="140" data-y="0" data-name="Home HQ Plaza">
+                        <span class="transit-icon">🏠</span>
+                        <div class="transit-info">
+                            <strong>Home HQ Plaza</strong>
+                            <small>Developer Battlestation</small>
+                        </div>
+                        <span class="transit-badge">GO</span>
+                    </button>
+                    <button class="transit-card" data-x="0" data-z="0" data-y="0" data-name="Gateway of India">
+                        <span class="transit-icon">🏛️</span>
+                        <div class="transit-info">
+                            <strong>Gateway Promenade</strong>
+                            <small>Arabian Sea Waterfront</small>
+                        </div>
+                        <span class="transit-badge">GO</span>
+                    </button>
+                    <button class="transit-card" data-x="240" data-z="60" data-y="0" data-name="St. Xavier's School">
+                        <span class="transit-icon">🏫</span>
+                        <div class="transit-info">
+                            <strong>St. Xavier's High School</strong>
+                            <small>Academic Landmark</small>
+                        </div>
+                        <span class="transit-badge">GO</span>
+                    </button>
+                    <button class="transit-card" data-x="-260" data-z="220" data-y="0" data-name="DMCE College">
+                        <span class="transit-icon">🎓</span>
+                        <div class="transit-info">
+                            <strong>DMCE Engineering</strong>
+                            <small>Computer Science Campus</small>
+                        </div>
+                        <span class="transit-badge">GO</span>
+                    </button>
+                    <button class="transit-card" data-x="0" data-z="140" data-y="120" data-name="Stark Helipad Deck">
+                        <span class="transit-icon">⚡</span>
+                        <div class="transit-info">
+                            <strong>Stark Tower Helipad</strong>
+                            <small>Rooftop Flight Deck (120m)</small>
+                        </div>
+                        <span class="transit-badge">GO</span>
+                    </button>
+                    <button class="transit-card" data-x="-300" data-z="-180" data-y="0" data-name="International Airport">
+                        <span class="transit-icon">✈️</span>
+                        <div class="transit-info">
+                            <strong>Mumbai Airport</strong>
+                            <small>Runway & Terminal</small>
+                        </div>
+                        <span class="transit-badge">GO</span>
+                    </button>
+                </div>
+                <div class="phone-section-title" style="margin-top:14px;">ENVIRONMENT CONTROLS</div>
+                <div class="phone-settings-row">
+                    <button class="phone-setting-btn" id="phone-btn-time">⏰ Time</button>
+                    <button class="phone-setting-btn" id="phone-btn-weather">🌧️ Weather</button>
+                    <button class="phone-setting-btn" id="phone-btn-cam">📷 Camera</button>
+                    <button class="phone-setting-btn" id="phone-btn-audio">🔊 Audio</button>
+                </div>
+            </div>
+
+            <!-- Tab 2: Projects (Missions) -->
+            <div class="phone-tab-content" id="tab-projects">
+                <div class="phone-section-title">ACTIVE SHOWCASES & SYSTEMS</div>
+                <div class="projects-list">
+                    <div class="phone-project-card">
+                        <div class="proj-header">
+                            <h4>⚡ 3D Open World Portfolio</h4>
+                            <span class="proj-tag">Three.js / WebGL</span>
+                        </div>
+                        <p>6-DOF Iron Man flight engine, kinetic cyber sports car & bike physics, automated subway transit, and procedural city in pure Three.js.</p>
+                    </div>
+                    <div class="phone-project-card">
+                        <div class="proj-header">
+                            <h4>🛡️ Cyber Lab Battlestation</h4>
+                            <span class="proj-tag">Security / C++</span>
+                        </div>
+                        <p>Live terminal stream, penetration testing tools, and network packet visualizer inside the Home HQ interactive villa.</p>
+                    </div>
+                    <div class="phone-project-card">
+                        <div class="proj-header">
+                            <h4>🤖 Autonomous Multi-Agent Orchestrator</h4>
+                            <span class="proj-tag">AI / Systems</span>
+                        </div>
+                        <p>Distributed LLM routing framework with progressive disclosure, zero-alloc state graphs, and self-healing worker pools.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 3: Skills (Skill Tree) -->
+            <div class="phone-tab-content" id="tab-skills">
+                <div class="phone-section-title">TECHNICAL PROFICIENCY TREE</div>
+                <div class="skills-category">
+                    <h5>3D GRAPHICS & ENGINES</h5>
+                    <div class="skill-pills">
+                        <span class="skill-pill highlight">Three.js</span>
+                        <span class="skill-pill highlight">WebGL 2.0</span>
+                        <span class="skill-pill">GLSL Shaders</span>
+                        <span class="skill-pill">Blender</span>
+                    </div>
+                </div>
+                <div class="skills-category">
+                    <h5>FULL-STACK & SYSTEMS</h5>
+                    <div class="skill-pills">
+                        <span class="skill-pill highlight">JavaScript (ES6+)</span>
+                        <span class="skill-pill highlight">TypeScript</span>
+                        <span class="skill-pill">Node.js</span>
+                        <span class="skill-pill">Python</span>
+                        <span class="skill-pill">C++</span>
+                    </div>
+                </div>
+                <div class="skills-category">
+                    <h5>ARCHITECTURE & INFRASTRUCTURE</h5>
+                    <div class="skill-pills">
+                        <span class="skill-pill highlight">Low-Latency WebSockets</span>
+                        <span class="skill-pill">Docker</span>
+                        <span class="skill-pill">Distributed Systems</span>
+                        <span class="skill-pill">Performance Profiling</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 4: Contact -->
+            <div class="phone-tab-content" id="tab-contact">
+                <div class="phone-section-title">COMMUNICATION BEACON</div>
+                <div class="contact-links-grid">
+                    <a href="https://linkedin.com/in/devarshidavane" target="_blank" rel="noopener" class="contact-card-btn">
+                        <span class="contact-icon">💼</span>
+                        <div>
+                            <strong>LinkedIn</strong>
+                            <small>Connect with Devarshi</small>
+                        </div>
+                    </a>
+                    <a href="https://github.com/devarshidavane" target="_blank" rel="noopener" class="contact-card-btn">
+                        <span class="contact-icon">🐙</span>
+                        <div>
+                            <strong>GitHub</strong>
+                            <small>Explore Repositories</small>
+                        </div>
+                    </a>
+                    <a href="mailto:devarshidavane@gmail.com" class="contact-card-btn">
+                        <span class="contact-icon">✉️</span>
+                        <div>
+                            <strong>Email</strong>
+                            <small>devarshidavane@gmail.com</small>
+                        </div>
+                    </a>
                 </div>
             </div>
         </div>
@@ -1283,6 +2324,7 @@
         <div id="touch-action-buttons">
             <button class="touch-btn" id="touch-btn-fly" title="Fly [G]">⚡ FLY</button>
             <button class="touch-btn" id="touch-btn-ride" title="Ride [F]">🏍️ RIDE</button>
+            <button class="touch-btn" id="touch-btn-cam" title="Cam [C]">📷 CAM</button>
             <button class="touch-btn" id="touch-btn-action" title="Interact [E]">💬 ACT</button>
             <button class="touch-btn primary" id="touch-btn-jump" title="Jump [SPACE]">⬆️ JUMP</button>
         </div>
