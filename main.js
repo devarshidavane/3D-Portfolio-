@@ -11,7 +11,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0c1427);
 scene.fog = new THREE.FogExp2(0x0c1427, 0.0022);
 
-const camera = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.1, 1200);
+const camera = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.1, 3000);
 // Initial position behind the character landing spot, looking forward into the open world city
 camera.position.set(0, 7.5, -18);
 
@@ -730,25 +730,27 @@ if (btnWeather) btnWeather.addEventListener('click', cycleWeather);
 // ==========================================
 const WORLD_CONFIG = {
     bounds: {
-        minX: -400,
-        maxX: 400,
-        minZ: -450,
-        maxZ: 540
+        minX: -1000,
+        maxX: 1000,
+        minZ: -400,
+        maxZ: 1600
     },
     playableLimits: {
-        minX: -395,
-        maxX: 395,
-        minZ: -380,
-        maxZ: 530
+        minX: -990,
+        maxX: 990,
+        minZ: -390,
+        maxZ: 1590
     },
-    width: 800,
-    depth: 800,
+    width: 2000,
+    depth: 2000,
     districts: {
-        waterfront: { minX: -400, maxX: 400, minZ: -450, maxZ: 10, name: "Gateway Waterfront & Arabian Sea" },
-        historicResidential: { minX: -380, maxX: -110, minZ: 10, maxZ: 240, name: "Girgaon & Lalbaug Residential" },
-        modernDowntown: { minX: -100, maxX: 100, minZ: 10, maxZ: 240, name: "Modern Downtown & Stark Tower Site" },
-        commercialMarkets: { minX: 110, maxX: 380, minZ: 10, maxZ: 240, name: "Crawford Commercial & Markets" },
-        techAcademia: { minX: -360, maxX: 360, minZ: 240, maxZ: 530, name: "Tech Academia & DMCE Campus" }
+        waterfront: { minX: -600, maxX: 600, minZ: -400, maxZ: 10, name: "Gateway Waterfront & Marine Drive" },
+        historicResidential: { minX: -800, maxX: -200, minZ: 10, maxZ: 750, name: "Western Residential & Historic Chawls" },
+        modernDowntown: { minX: -200, maxX: 200, minZ: 10, maxZ: 350, name: "Modern Downtown & Home HQ Plaza" },
+        commercialMarkets: { minX: 150, maxX: 700, minZ: 10, maxZ: 650, name: "Crawford Commercial & Cyber Bazaar" },
+        schoolQuarter: { minX: -550, maxX: -150, minZ: 750, maxZ: 1150, name: "Northwestern Academic Quarter (School)" },
+        dmceCampus: { minX: 200, maxX: 650, minZ: 700, maxZ: 1100, name: "Northeastern Tech Campus (DMCE College)" },
+        csmiaAirport: { minX: 350, maxX: 950, minZ: 1100, maxZ: 1550, name: "CSMIA International Airport & Aero-Hub" }
     },
     starkTowerSite: {
         x: 0,
@@ -926,8 +928,8 @@ function addTree(x, z, type = 'palm') {
 // OPEN WORLD TERRAIN & DISTRICT GEOMETRY
 // ==========================================
 
-// 1. Arabian Sea (Z = -10 to -630, X = -600 to +600)
-const waterGeom = new THREE.PlaneGeometry(1200, 620, 64, 32);
+// 1. Arabian Sea (Z = -20 to -820, X = -1200 to +1200)
+const waterGeom = new THREE.PlaneGeometry(2400, 800, 96, 48);
 const waterUniforms = { uTime: { value: 0 } };
 const waterMat = new THREE.MeshStandardMaterial({ color: 0x0e4466, roughness: 0.15, metalness: 0.8, flatShading: true });
 waterMat.onBeforeCompile = (shader) => {
@@ -943,17 +945,17 @@ waterMat.onBeforeCompile = (shader) => {
 };
 const seaMesh = new THREE.Mesh(waterGeom, waterMat);
 seaMesh.rotation.x = -Math.PI / 2;
-seaMesh.position.set(0, -0.6, -320);
+seaMesh.position.set(0, -0.6, -420);
 seaMesh.receiveShadow = false;
 scene.add(seaMesh);
 
-// 2. Main Ground Turf (Lush Green Grass spanning north of Marine Drive waterfront: Z = -20 to 560)
+// 2. Main Ground Turf (Lush Green Grass spanning north of Marine Drive: Z = -10 to 1690, width 2200m)
 const mainGround = new THREE.Mesh(
-    new THREE.PlaneGeometry(860, 580),
+    new THREE.PlaneGeometry(2200, 1800),
     new THREE.MeshStandardMaterial({ map: grassTex, roughness: 0.9 })
 );
 mainGround.rotation.x = -Math.PI / 2;
-mainGround.position.set(0, -0.4, 270);
+mainGround.position.set(0, -0.4, 790);
 mainGround.receiveShadow = true;
 scene.add(mainGround);
 
@@ -2241,6 +2243,21 @@ registerRoadSegment(320, 128, 224, 10, false);
 registerRoadSegment(-48, 39, 46, 12, false);
 registerRoadSegment(48, 39, 46, 12, false);
 
+// 12. Extended North Express Superhighway Spine (X = 0, Z = 480 to 1400)
+registerRoadSegment(0, 940, 920, 14, false);
+
+// 13. Western Academic Corridor to Model High School (X = -320, Z = 240 to 1000)
+registerRoadSegment(-320, 620, 760, 12, false);
+
+// 14. Eastern Tech Corridor to DMCE College Campus (X = +420, Z = 240 to 1000)
+registerRoadSegment(420, 620, 760, 12, false);
+
+// 15. Trans-City Academic Boulevard connecting School & DMCE (Z = 900, X = -450 to +550)
+registerRoadSegment(50, 900, 1000, 14, true);
+
+// 16. Far North Airport Parkway to CSMIA Terminal (Z = 1250, X = 150 to 900)
+registerRoadSegment(525, 1250, 750, 14, true);
+
 // 12. Stark Tower Ceremonial Roundabout & Plaza Foundation at (0, 140)
 const roundaboutOuter = new THREE.CylinderGeometry(40, 40, 0.4, 32);
 roundaboutOuter.translate(0, -0.2, 140);
@@ -3154,10 +3171,12 @@ buildExpandedDistrictsBatch();
 window.__cityBuildings = cityBuildings;
 
 // ==========================================
-// AIRPORT DISTRICT (Far North Z = 380)
+// AIRPORT DISTRICT (CSMIA International Aero-Hub: X = 650, Z = 1250)
 // Runway 27/09, ATC Radar Tower & 38m Jetliner
 // Styled per Technical Orthographic Model Sheet
 // ==========================================
+let poiAirport = { x: 650, z: 1250, radius: 45 };
+window.__poiAirport = poiAirport;
 let atcRadarDish = null;
 
 function buildAirportDistrict() {
@@ -3384,10 +3403,13 @@ function buildAirportDistrict() {
 
     airport.add(terminalGroup);
 
-    registerBoxCollider(-76, -64, 354, 366, 'ATCRadarTower');
-    registerBoxCollider(28, 62, 360, 392, 'JetlinerApron');
-    registerBoxCollider(59, 131, 337, 359, 'AirportTerminalBuilding', -5, 18, 16.0);
-    registerBoxCollider(43, 61, 358, 372, 'AirportJetway', -5, 8.5, 5.8);
+    airport.position.set(poiAirport.x, 0, poiAirport.z - 380);
+    const offX = poiAirport.x;
+    const offZ = poiAirport.z - 380;
+    registerBoxCollider(offX - 76, offX - 64, offZ + 354, offZ + 366, 'ATCRadarTower');
+    registerBoxCollider(offX + 28, offX + 62, offZ + 360, offZ + 392, 'JetlinerApron');
+    registerBoxCollider(offX + 59, offX + 131, offZ + 337, offZ + 359, 'AirportTerminalBuilding', -5, 18, 16.0);
+    registerBoxCollider(offX + 43, offX + 61, offZ + 358, offZ + 372, 'AirportJetway', -5, 8.5, 5.8);
 
     scene.add(airport);
 }
@@ -3422,12 +3444,11 @@ function createWallPoster(parent, text, bg, textCol, x, y, z) {
 }
 
 // ==========================================
-// DISTRICT 2: SCHOOL
-// (East Academic Sector: X = 64, Z = 80)
-// Strictly Non-Interactive Architectural Landmark
-// Styled per Stitch Design Blueprint ARCH-3D-012
+// DISTRICT 2: MODEL HIGH SCHOOL
+// (Northwestern Academic Quarter: X = -320, Z = 920)
+// Architectural Landmark & Academic Foundation
 // ==========================================
-let poiSchool = { x: 64, z: 80, radius: 14 };
+let poiSchool = { x: -320, z: 920, radius: 18 };
 window.__poiSchool = poiSchool;
 function buildSchoolDistrict() {
     registerBoxCollider(poiSchool.x - 18, poiSchool.x + 18, poiSchool.z - 9, poiSchool.z + 8, 'SchoolBuilding', -5, 24);
@@ -3542,9 +3563,10 @@ buildSchoolDistrict();
 
 // ==========================================
 // DISTRICT 3: DMCE COLLEGE CAMPUS
-// (X = 48, Z = 62)
+// (Northeastern Tech Campus: X = 420, Z = 880)
+// Higher Education & Engineering Credentials
 // ==========================================
-let poiCollege = { x: 48, z: 62, radius: 12 };
+let poiCollege = { x: 420, z: 880, radius: 18 };
 function buildCollegeDistrict() {
     registerBoxCollider(poiCollege.x - 17, poiCollege.x + 17, poiCollege.z - 12, poiCollege.z - 1, 'CollegeBuilding', -5, 18);
     const college = new THREE.Group();
@@ -6077,9 +6099,9 @@ if (phoneBtnAudio) phoneBtnAudio.addEventListener('click', () => { toggleAudio()
 const WORLD_WAYPOINTS = [
     { id: 'wp-home', name: 'Home HQ', icon: '🏠', pos: new THREE.Vector3(0, 18, 140) },
     { id: 'wp-gateway', name: 'Gateway', icon: '🏛️', pos: new THREE.Vector3(0, 14, 0) },
-    { id: 'wp-school', name: "School", icon: '🏫', pos: new THREE.Vector3(240, 16, 60) },
-    { id: 'wp-college', name: 'DMCE College', icon: '🎓', pos: new THREE.Vector3(-260, 20, 220) },
-    { id: 'wp-airport', name: 'Airport', icon: '✈️', pos: new THREE.Vector3(-300, 16, -180) }
+    { id: 'wp-school', name: "School", icon: '🏫', pos: new THREE.Vector3(-320, 16, 920) },
+    { id: 'wp-college', name: 'DMCE College', icon: '🎓', pos: new THREE.Vector3(420, 20, 880) },
+    { id: 'wp-airport', name: 'Airport', icon: '✈️', pos: new THREE.Vector3(650, 16, 1250) }
 ];
 
 const waypointsContainer = document.getElementById('world-waypoints-container');
@@ -6142,7 +6164,7 @@ if (btnTpHm) btnTpHm.addEventListener('click', () => teleportTo(0, 122, 'Home HQ
 const btnTpSc = document.getElementById('btn-tp-school');
 if (btnTpSc) btnTpSc.addEventListener('click', () => teleportTo(poiSchool.x, poiSchool.z - 16, 'School', 0));
 const btnTpCl = document.getElementById('btn-tp-college');
-if (btnTpCl) btnTpCl.addEventListener('click', () => teleportTo(48, 34, 'DMCE College', 0));
+if (btnTpCl) btnTpCl.addEventListener('click', () => teleportTo(poiCollege.x, poiCollege.z - 16, 'DMCE College', 0));
 const btnTpStark = document.getElementById('btn-tp-stark');
 if (btnTpStark) btnTpStark.addEventListener('click', () => teleportTo(0, 122, 'Home HQ', 0));
 
@@ -6214,23 +6236,30 @@ const tachoModeLabel = document.getElementById('tacho-mode-label');
 
 function getDistrictName(x, z) {
     if (z < -10) {
-        if (Math.abs(x) < 25) return "GATEWAY ESPLANADE | COLABA HARBOR";
+        if (Math.abs(x) < 35) return "GATEWAY ESPLANADE | ARABIAN HARBOR";
         return "HAJI ALI CAUSEWAY | WORLI SHORELINE";
     }
     if (z >= -10 && z < 70) {
         if (x < -20 && z < 35) return "CENTRAL RAILWAY TERMINUS | VT LINE";
-        return "MARINE DRIVE PROMENADE | SOUTH MUMBAI";
+        return "MARINE DRIVE PROMENADE | SOUTH COAST";
     }
-    if (z >= 70 && z < 190) {
-        if (x < -100) return "WEST RESIDENTIAL | ST. XAVIER'S ENCLAVE";
-        if (x > 100) return "EAST COMMERCIAL | DMCE METRO PLAZA";
+    if (z >= 70 && z < 350) {
+        if (x < -150) return "WEST RESIDENTIAL | HISTORIC CHAWLS";
+        if (x > 150) return "EAST COMMERCIAL | CYBER BAZAAR";
         return "MIDTOWN AVENUE | HOME HQ PLAZA";
     }
-    if (z >= 190 && z < 300) {
-        if (x > 100) return "DATTA MEGHE CAMPUS | ACADEMIC BOULEVARD";
-        return "MIDTOWN NORTH | ACADEMIA COMMONS";
+    if (z >= 350 && z < 750) {
+        if (x < -150) return "WEST CHAWLS & RESIDENTIAL DISTRICT";
+        if (x > 150) return "COMMERCIAL TECH MART & BAZAAR";
+        return "CENTRAL EXPRESSWAY | MIDTOWN BOULEVARD";
     }
-    return "NORTH EXPRESSWAY | BKC TECH CORRIDOR";
+    if (z >= 750 && z < 1100) {
+        if (x < -50) return "NORTHWEST ACADEMIA | MODEL HIGH SCHOOL";
+        if (x > 50) return "NORTHEAST TECH CAMPUS | DMCE COLLEGE";
+        return "CENTRAL PARKWAY & TECH MEADOWS";
+    }
+    if (x > 200) return "CSMIA INTERNATIONAL AIRPORT | AERO-HUB";
+    return "NORTH EXPRESS SUPERHIGHWAY | AEROSPACE WAY";
 }
 
 function updateTachometerHUD(speedMps, isReverse = false) {
@@ -6442,7 +6471,19 @@ console.log("Welcome to my Cyber Universe!");
             <strong>Higher Education & Engineering Credentials:</strong><br>
             • <strong>Degree:</strong> Bachelor of Engineering (B.E.) in Computer Engineering (2019 – 2023)<br>
             • <strong>Key Coursework:</strong> Distributed Operating Systems, Network Security & Cryptography, Analysis of Algorithms, Artificial Intelligence, Database Management Systems.<br>
-            • <strong>Leadership & Clubs:</strong> Cybersecurity Club Core Member, Hackathon Lead, and Open-Source Contributor.
+            • <strong>Leadership & Clubs:</strong> Cybersecurity Club Core Member, Hackathon Lead, and Open-Source Contributor.<br>
+            • <em>Northeastern Tech Campus — Mumbai Open World</em>
+        `;
+        modalCodePreviewEl.style.display = 'none';
+        interactiveModalEl.classList.add('active');
+    } else if (currentInteraction === 'schoolBoard') {
+        modalTitleEl.innerHTML = "🏫 Model High School & Academic Foundations";
+        modalBodyEl.innerHTML = `
+            <strong>Secondary & Higher Secondary Education:</strong><br><br>
+            • <strong>Stream:</strong> Science, Mathematics & Computer Applications<br>
+            • <strong>Foundations:</strong> Early passion for programming, logic design, and competitive coding<br>
+            • <strong>Achievements:</strong> High School Tech Exhibition Winner & Academic Honors<br>
+            • <em>Northwestern Academic Quarter — Mumbai Open World</em>
         `;
         modalCodePreviewEl.style.display = 'none';
         interactiveModalEl.classList.add('active');
@@ -6488,17 +6529,16 @@ let radarAngle = 0;
 function updateMiniMap(playerX, playerZ, playerRot) {
     if (gpsCoordsEl) gpsCoordsEl.textContent = `X: ${Math.round(playerX)} | Z: ${Math.round(playerZ)}`;
 
-    // Nearest waypoint calculation across all expanded districts
+    // Nearest waypoint calculation across all expanded districts (2km world)
     const waypoints = [
         { name: "Gateway Arch", x: 0, z: -6 },
         { name: "Home HQ (Tower)", x: 0, z: 140 },
-        { name: "School", x: poiSchool.x, z: poiSchool.z },
+        { name: "Model High School", x: poiSchool.x, z: poiSchool.z },
         { name: "DMCE College", x: poiCollege.x, z: poiCollege.z },
         { name: "City Train Station", x: trainState.x, z: 16 },
-        { name: "West Residential District", x: -240, z: 90 },
-        { name: "East Commercial Bazaar", x: 240, z: 90 },
-        { name: "North Tech Academia", x: 0, z: 340 },
-        { name: "Airport District", x: 0, z: 380 }
+        { name: "West Residential Chawls", x: -550, z: 500 },
+        { name: "East Commercial Bazaar", x: 350, z: 450 },
+        { name: "CSMIA Airport Terminal", x: poiAirport.x, z: poiAirport.z }
     ];
 
     let nearest = waypoints[0];
@@ -6562,8 +6602,16 @@ function updateMiniMap(playerX, playerZ, playerRot) {
     // Far North Expressway (Z = 380, width 10)
     mapCtx.fillRect(toMapX(-360), toMapY(385), 720 * scale, 10 * scale);
 
-    // North Express Avenue Spine (X = 0, Z = 16 to 480)
-    mapCtx.fillRect(toMapX(-6), toMapY(480), 12 * scale, 464 * scale);
+    // North Express Avenue Spine (X = 0, Z = 16 to 1400)
+    mapCtx.fillRect(toMapX(-6), toMapY(1400), 12 * scale, 1384 * scale);
+    // Academia Cross Boulevard (Z = 900, School to DMCE)
+    mapCtx.fillRect(toMapX(-450), toMapY(907), 1000 * scale, 14 * scale);
+    // Airport Terminal Parkway (Z = 1250)
+    mapCtx.fillRect(toMapX(150), toMapY(1257), 750 * scale, 14 * scale);
+    // West Academic Corridor (X = -320 to School)
+    mapCtx.fillRect(toMapX(-326), toMapY(1000), 12 * scale, 760 * scale);
+    // East Tech Corridor (X = 420 to DMCE)
+    mapCtx.fillRect(toMapX(414), toMapY(1000), 12 * scale, 760 * scale);
     // West Arterial (X = -180, Z = 16 to 480)
     mapCtx.fillRect(toMapX(-186), toMapY(480), 12 * scale, 464 * scale);
     // East Arterial (X = 180, Z = 16 to 480)
@@ -6637,6 +6685,10 @@ function updateMiniMap(playerX, playerZ, playerRot) {
     // DMCE College (Emerald)
     mapCtx.fillStyle = '#059669';
     mapCtx.fillRect(toMapX(poiCollege.x - 16), toMapY(poiCollege.z + 6), 32 * scale, 16 * scale);
+
+    // CSMIA Airport Runway (Orange Strip)
+    mapCtx.fillStyle = '#f97316';
+    mapCtx.fillRect(toMapX(poiAirport.x - 120), toMapY(poiAirport.z + 14), 240 * scale, 28 * scale);
 
     // 7. Train Coaches
     [trainState.coach1, trainState.coach2, trainState.coach3].forEach((c, idx) => {
@@ -7121,11 +7173,11 @@ function animate(now = performance.now()) {
                 characterGroup.position.y += Math.sin(flightBobTimer) * 0.04 * delta * 20;
             }
 
-            // 7. World Clamps & Altitude Bounds (Allow full oceanic flight down to Z = -380)
-            characterGroup.position.x = THREE.MathUtils.clamp(characterGroup.position.x, -390, 390);
-            characterGroup.position.z = THREE.MathUtils.clamp(characterGroup.position.z, -380, 524);
+            // 7. World Clamps & Altitude Bounds (Expanded 2km x 2km airspace)
+            characterGroup.position.x = THREE.MathUtils.clamp(characterGroup.position.x, -990, 990);
+            characterGroup.position.z = THREE.MathUtils.clamp(characterGroup.position.z, -390, 1590);
             const minFlyY = (characterGroup.position.z < -20) ? 0.6 : 0.2;
-            characterGroup.position.y = THREE.MathUtils.clamp(characterGroup.position.y, minFlyY, 320);
+            characterGroup.position.y = THREE.MathUtils.clamp(characterGroup.position.y, minFlyY, 450);
 
             // 8. Dynamic 3D Building Collisions
             resolveCollision(characterGroup.position, 1.0);
@@ -7450,6 +7502,13 @@ function checkProximity() {
     if (p.distanceTo(new THREE.Vector3(poiCollege.x, 0, poiCollege.z - 10)) < 18) {
         currentInteraction = 'collegeBoard';
         showPrompt('E', 'Inspect DMCE College 🎓');
+        return;
+    }
+
+    // 2b. Check Model High School Board
+    if (p.distanceTo(new THREE.Vector3(poiSchool.x, 0, poiSchool.z - 10)) < 18) {
+        currentInteraction = 'schoolBoard';
+        showPrompt('E', 'Inspect Model High School 🏫');
         return;
     }
 
