@@ -4840,25 +4840,32 @@ let activeVehicle = null; // null | bikeVehicle | carVehicle | rickshawVehicle |
 // Continuous Indian Standard Broad Gauge (1,676mm) Spline Loop
 // Dual Tracks: Up Line (X = -22, Northbound), Down Line (X = -26, Southbound)
 // ==========================================
-const trainStationZ = [16, 50, 84, 135, 180, 230, 285, 345]; // 8 Suburban Stations connecting Gateway to Airport
+const trainStationZ = [16, 80, 250, 480, 900, 430, 860, 1250]; // 8 Suburban Stations
+const allTrains = [];
+const railwayStations = [];
+const trafficSignals = [];
+const trafficVehicles = [];
+const publicTransit = [];
+
 let trainSpline = null;
-let stationSchedule = []; // Array of { name, s, z, platX }
+let stationSchedule = [];
+let boardableTrain = null;
 
 let trainState = {
     spline: null,
-    splineLength: 360,
+    splineLength: 1900,
     coach1: null,
     coach2: null,
     coach3: null,
-    mesh: null, // Lead coach reference for compatibility
+    mesh: null,
     x: -22,
     z: 16,
     speed: 0,
-    maxSpeed: 16.0, // 58 km/h cruising speed
+    maxSpeed: 16.0,
     progress: 0.05,
     targetStationIdx: 0,
     dwellTimer: 0,
-    isDwelling: true, // Start dwelling at Gateway Station
+    isDwelling: true,
     hornPlayed: false
 };
 
@@ -4884,583 +4891,842 @@ function createTrainDestinationTexture(mrText, enText) {
     return new THREE.CanvasTexture(c);
 }
 
+// ------------------------------------------
+// SYSTEM 3 & 4: MUMBAI RAILWAY & 8 STATIONS
+// ------------------------------------------
 function buildRailwaySystem() {
-    // 1. Define Continuous Broad Gauge Closed Spline Loop
-    // Dual parallel tracks: Up Line (X = -22) and Down Line (X = -26)
-    // Smooth continuous curved turnaround loops at Airport Terminal (Z ~ 356) and South Gateway (Z ~ 0.5)
-    const railwayLoopPoints = [
+    // 1. Line 1: Western Coastal Suburban Corridor (Blue Line: Gateway to School & North Park)
+    const line1Points = [
         new THREE.Vector3(-22, 0.25, 8),
-        new THREE.Vector3(-22, 0.25, 16),  // 1. Gateway Up
-        new THREE.Vector3(-22, 0.25, 30),
-        new THREE.Vector3(-22, 0.25, 42),  // Market St Crossing
-        new THREE.Vector3(-22, 0.25, 50),  // 2. Market St Up
-        new THREE.Vector3(-22, 0.25, 70),
-        new THREE.Vector3(-22, 0.25, 84),  // 3. Home West Up
-        new THREE.Vector3(-22, 0.25, 110),
-        new THREE.Vector3(-22, 0.25, 135), // 4. Central Midtown Up
-        new THREE.Vector3(-22, 0.25, 160),
-        new THREE.Vector3(-22, 0.25, 180), // 5. Mindspace Up
-        new THREE.Vector3(-22, 0.25, 205),
-        new THREE.Vector3(-22, 0.25, 230), // 6. Campus North Up
-        new THREE.Vector3(-22, 0.25, 260),
-        new THREE.Vector3(-22, 0.25, 285), // 7. Airport Junction Up
-        new THREE.Vector3(-22, 0.25, 315),
-        new THREE.Vector3(-22, 0.25, 345), // 8. CSMIA Airport Terminal Up
-        new THREE.Vector3(-22.3, 0.25, 352),
-        new THREE.Vector3(-23.1, 0.25, 355),
-        new THREE.Vector3(-24.0, 0.25, 356), // North Turn Apex
-        new THREE.Vector3(-24.9, 0.25, 355),
-        new THREE.Vector3(-25.7, 0.25, 352),
-        new THREE.Vector3(-26.0, 0.25, 345), // 8. CSMIA Airport Terminal Down
-        new THREE.Vector3(-26.0, 0.25, 315),
-        new THREE.Vector3(-26.0, 0.25, 285), // 7. Airport Junction Down
-        new THREE.Vector3(-26.0, 0.25, 260),
-        new THREE.Vector3(-26.0, 0.25, 230), // 6. Campus North Down
-        new THREE.Vector3(-26.0, 0.25, 205),
-        new THREE.Vector3(-26.0, 0.25, 180), // 5. Mindspace Down
-        new THREE.Vector3(-26.0, 0.25, 160),
-        new THREE.Vector3(-26.0, 0.25, 135), // 4. Central Midtown Down
-        new THREE.Vector3(-26.0, 0.25, 110),
-        new THREE.Vector3(-26.0, 0.25, 84),  // 3. Home West Down
-        new THREE.Vector3(-26.0, 0.25, 70),
-        new THREE.Vector3(-26.0, 0.25, 50),  // 2. Market St Down
-        new THREE.Vector3(-26.0, 0.25, 42),  // Market St Crossing
-        new THREE.Vector3(-26.0, 0.25, 30),
-        new THREE.Vector3(-26.0, 0.25, 16),  // 1. Gateway Down
-        new THREE.Vector3(-26.0, 0.25, 8),
-        new THREE.Vector3(-25.7, 0.25, 4.5),
-        new THREE.Vector3(-24.9, 0.25, 1.5),
+        new THREE.Vector3(-22, 0.25, 16),   // 1. Gateway Terminus
+        new THREE.Vector3(-22, 0.25, 80),   // 2. Marine Drive Halt
+        new THREE.Vector3(-22, 0.25, 140),  // Midtown West
+        new THREE.Vector3(-22, 0.25, 250),  // 3. Downtown Home HQ
+        new THREE.Vector3(-22, 0.25, 380),  // Chawls South
+        new THREE.Vector3(-22, 0.25, 480),  // 4. Chawls Central
+        new THREE.Vector3(-22, 0.25, 700),  // Chawls North
+        new THREE.Vector3(-22, 0.25, 900),  // 5. School & North Park
+        new THREE.Vector3(-22.5, 0.25, 930),
+        new THREE.Vector3(-24.0, 0.25, 940), // North Turn Apex
+        new THREE.Vector3(-25.5, 0.25, 930),
+        new THREE.Vector3(-26, 0.25, 900),  // Down Line
+        new THREE.Vector3(-26, 0.25, 700),
+        new THREE.Vector3(-26, 0.25, 480),
+        new THREE.Vector3(-26, 0.25, 380),
+        new THREE.Vector3(-26, 0.25, 250),
+        new THREE.Vector3(-26, 0.25, 140),
+        new THREE.Vector3(-26, 0.25, 80),
+        new THREE.Vector3(-26, 0.25, 16),
+        new THREE.Vector3(-26, 0.25, 8),
+        new THREE.Vector3(-25.5, 0.25, 2),
         new THREE.Vector3(-24.0, 0.25, 0.5), // South Turn Apex
-        new THREE.Vector3(-23.1, 0.25, 1.5),
-        new THREE.Vector3(-22.3, 0.25, 4.5)
+        new THREE.Vector3(-22.5, 0.25, 2)
+    ];
+    const splineLine1 = new THREE.CatmullRomCurve3(line1Points, true, 'centripetal');
+    trainSpline = splineLine1;
+    const splineLen1 = splineLine1.getLength();
+
+    // 2. Line 2: Central & Harbour Aero-Express Corridor (Red Line: Gateway to CSMIA Airport)
+    const line2Points = [
+        new THREE.Vector3(-10, 0.25, 16),   // Gateway East
+        new THREE.Vector3(-10, 0.25, 140),  // Downtown South
+        new THREE.Vector3(-10, 0.25, 250),  // Home HQ East
+        new THREE.Vector3(30, 0.25, 330),   // Turn to East
+        new THREE.Vector3(180, 0.25, 430),  // 6. Commercial Bazaar Junction
+        new THREE.Vector3(280, 0.25, 620),  // Eastern Transit Arc
+        new THREE.Vector3(400, 0.25, 860),  // 7. DMCE Academia Station
+        new THREE.Vector3(500, 0.25, 1050), // North Aero Viaduct
+        new THREE.Vector3(640, 0.25, 1250), // 8. CSMIA Airport Terminal
+        new THREE.Vector3(646, 0.25, 1275),
+        new THREE.Vector3(652, 0.25, 1270), // Airport Turn Apex
+        new THREE.Vector3(646, 0.25, 1250), // Down Return Track
+        new THREE.Vector3(506, 0.25, 1050),
+        new THREE.Vector3(406, 0.25, 860),
+        new THREE.Vector3(286, 0.25, 620),
+        new THREE.Vector3(186, 0.25, 430),
+        new THREE.Vector3(36, 0.25, 330),
+        new THREE.Vector3(-4, 0.25, 250),
+        new THREE.Vector3(-4, 0.25, 140),
+        new THREE.Vector3(-4, 0.25, 16),
+        new THREE.Vector3(-7, 0.25, 4)
+    ];
+    const splineLine2 = new THREE.CatmullRomCurve3(line2Points, true, 'centripetal');
+    const splineLen2 = splineLine2.getLength();
+
+    // 3. Station Definitions across both Corridors (8 Distinct Stations)
+    const allStationDefs = [
+        { id: 'st-gateway', name: "GATEWAY TERMINUS", mr: "गेटवे ऑफ इंडिया", x: -24, z: 16, spline: splineLine1, line: 1 },
+        { id: 'st-marinedrive', name: "MARINE DRIVE HALT", mr: "मरीन ड्राईव्ह", x: -24, z: 80, spline: splineLine1, line: 1 },
+        { id: 'st-homehq', name: "DOWNTOWN HOME HQ", mr: "होम मुख्यालय (देव)", x: -24, z: 250, spline: splineLine1, line: 1 },
+        { id: 'st-chawls', name: "CHAWLS CENTRAL", mr: "चाळ मध्यवर्ती", x: -24, z: 480, spline: splineLine1, line: 1 },
+        { id: 'st-school', name: "SCHOOL & NORTH PARK", mr: "शाळा व उत्तर उद्यान", x: -24, z: 900, spline: splineLine1, line: 1 },
+        { id: 'st-bazaar', name: "COMMERCIAL BAZAAR", mr: "व्यापारी बाजार जंक्शन", x: 180, z: 430, spline: splineLine2, line: 2 },
+        { id: 'st-dmce', name: "DMCE ACADEMIA", mr: "डी.एम.सी.ई. अभियांत्रिकी", x: 400, z: 860, spline: splineLine2, line: 2 },
+        { id: 'st-airport', name: "CSMIA AIRPORT TERMINAL", mr: "छ.शि.म. आंतरराष्ट्रीय विमानतळ", x: 640, z: 1250, spline: splineLine2, line: 2 }
     ];
 
-    trainSpline = new THREE.CatmullRomCurve3(railwayLoopPoints, true, 'centripetal');
-    trainState.spline = trainSpline;
-    const splineLen = trainSpline.getLength();
-    trainState.splineLength = splineLen;
+    const stationPlatGeoms = [];
+    const stationCanopyGeoms = [];
+    const stationPillarGeoms = [];
+    const commuterGeoms = [];
 
-    // Calibrate scheduled station stops along the continuous spline loop
-    const stopsDef = [
-        { name: "Gateway (Up)", target: new THREE.Vector3(-22, 0.25, 16), z: 16, platX: -24 },
-        { name: "Market St (Up)", target: new THREE.Vector3(-22, 0.25, 50), z: 50, platX: -24 },
-        { name: "Home West (Up)", target: new THREE.Vector3(-22, 0.25, 84), z: 84, platX: -24 },
-        { name: "Midtown (Up)", target: new THREE.Vector3(-22, 0.25, 135), z: 135, platX: -24 },
-        { name: "Mindspace Tech (Up)", target: new THREE.Vector3(-22, 0.25, 180), z: 180, platX: -24 },
-        { name: "Academia North (Up)", target: new THREE.Vector3(-22, 0.25, 230), z: 230, platX: -24 },
-        { name: "Airport Junction (Up)", target: new THREE.Vector3(-22, 0.25, 285), z: 285, platX: -24 },
-        { name: "CSMIA Airport (Up)", target: new THREE.Vector3(-22, 0.25, 345), z: 345, platX: -24 },
-        { name: "CSMIA Airport (Down)", target: new THREE.Vector3(-26, 0.25, 345), z: 345, platX: -28.6 },
-        { name: "Airport Junction (Down)", target: new THREE.Vector3(-26, 0.25, 285), z: 285, platX: -28.6 },
-        { name: "Academia North (Down)", target: new THREE.Vector3(-26, 0.25, 230), z: 230, platX: -28.6 },
-        { name: "Mindspace Tech (Down)", target: new THREE.Vector3(-26, 0.25, 180), z: 180, platX: -28.6 },
-        { name: "Midtown (Down)", target: new THREE.Vector3(-26, 0.25, 135), z: 135, platX: -28.6 },
-        { name: "Home West (Down)", target: new THREE.Vector3(-26, 0.25, 84), z: 84, platX: -28.6 },
-        { name: "Market St (Down)", target: new THREE.Vector3(-26, 0.25, 50), z: 50, platX: -28.6 },
-        { name: "Gateway (Down)", target: new THREE.Vector3(-26, 0.25, 16), z: 16, platX: -28.6 }
-    ];
+    const platMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.8 });
+    const canopyMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.4, metalness: 0.5 });
+    const commuterMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7 });
 
-    stationSchedule = [];
-    const SAMPLES = 720;
-    stopsDef.forEach(def => {
-        let bestS = 0;
-        let bestDist = Infinity;
-        for (let i = 0; i < SAMPLES; i++) {
-            const s = i / SAMPLES;
-            const pt = trainSpline.getPointAt(s);
-            const d = pt.distanceTo(def.target);
-            if (d < bestDist) {
-                bestDist = d;
-                bestS = s;
-            }
-        }
-        stationSchedule.push({ name: def.name, s: bestS, z: def.z, platX: def.platX });
-    });
-    stationSchedule.sort((a, b) => a.s - b.s);
-    trainState.progress = stationSchedule[0].s;
+    allStationDefs.forEach((st) => {
+        const plat = new THREE.BoxGeometry(4.2, 0.65, 28);
+        plat.translate(st.x - 4.5, 0.325, st.z);
+        stationPlatGeoms.push(plat);
 
-    // 2. Physical Indian Standard Broad Gauge (1,676mm) Steel Rails
-    const leftRailPts = [];
-    const rightRailPts = [];
-    const RAIL_SAMPLES = 420;
-    const UP = new THREE.Vector3(0, 1, 0);
+        const canopy = new THREE.BoxGeometry(4.8, 0.22, 28);
+        canopy.translate(st.x - 4.5, 4.3, st.z);
+        stationCanopyGeoms.push(canopy);
 
-    for (let i = 0; i < RAIL_SAMPLES; i++) {
-        const t = i / RAIL_SAMPLES;
-        const pt = trainSpline.getPointAt(t);
-        const tan = trainSpline.getTangentAt(t);
-        const norm = new THREE.Vector3().crossVectors(tan, UP).normalize();
-
-        leftRailPts.push(new THREE.Vector3(pt.x + norm.x * 0.838, 0.22, pt.z + norm.z * 0.838));
-        rightRailPts.push(new THREE.Vector3(pt.x - norm.x * 0.838, 0.22, pt.z - norm.z * 0.838));
-    }
-
-    const leftRailCurve = new THREE.CatmullRomCurve3(leftRailPts, true, 'centripetal');
-    const rightRailCurve = new THREE.CatmullRomCurve3(rightRailPts, true, 'centripetal');
-
-    const leftRailGeom = new THREE.TubeGeometry(leftRailCurve, 360, 0.05, 6, true);
-    const rightRailGeom = new THREE.TubeGeometry(rightRailCurve, 360, 0.05, 6, true);
-    const mergedRails = BufferGeometryUtils.mergeGeometries([leftRailGeom, rightRailGeom]);
-
-    const steelRailMat = new THREE.MeshStandardMaterial({
-        color: 0x94a3b8,
-        metalness: 0.95,
-        roughness: 0.18
-    });
-    const railsMesh = new THREE.Mesh(mergedRails, steelRailMat);
-    railsMesh.castShadow = false;
-    scene.add(railsMesh);
-
-    // 3. Batched Concrete Sleepers (Ties) along track
-    const sleeperGeoms = [];
-    const SLEEPER_COUNT = 360;
-    for (let k = 0; k < SLEEPER_COUNT; k++) {
-        const t = k / SLEEPER_COUNT;
-        const pt = trainSpline.getPointAt(t);
-        const tan = trainSpline.getTangentAt(t);
-        const rotY = Math.atan2(tan.x, tan.z) + Math.PI / 2;
-
-        const sleeper = new THREE.BoxGeometry(2.6, 0.14, 0.24);
-        sleeper.rotateY(rotY);
-        sleeper.translate(pt.x, 0.08, pt.z);
-        sleeperGeoms.push(sleeper);
-    }
-    const mergedSleepers = BufferGeometryUtils.mergeGeometries(sleeperGeoms);
-    const sleeperMesh = new THREE.Mesh(mergedSleepers, concreteTrimMat);
-    sleeperMesh.receiveShadow = true;
-    scene.add(sleeperMesh);
-
-    // 4. Crushed Granite Stone Ballast Bed (Spanning full corridor from Z = 0 to 356)
-    const ballastGeoms = [];
-    const straightBallast = new THREE.BoxGeometry(8.4, 0.22, 348);
-    straightBallast.translate(-24, 0.01, 178);
-    ballastGeoms.push(straightBallast);
-
-    const northBallast = new THREE.BoxGeometry(8.4, 0.22, 12);
-    northBallast.translate(-24, 0.01, 353);
-    ballastGeoms.push(northBallast);
-
-    const southBallast = new THREE.BoxGeometry(8.4, 0.22, 10);
-    southBallast.translate(-24, 0.01, 4.0);
-    ballastGeoms.push(southBallast);
-
-    const mergedBallast = BufferGeometryUtils.mergeGeometries(ballastGeoms);
-    const ballastMesh = new THREE.Mesh(mergedBallast, darkGraniteMat);
-    ballastMesh.receiveShadow = true;
-    scene.add(ballastMesh);
-
-    // 5. Overhead 25 kV AC Catenary Masts (Portal Gantries) & Contact Wire
-    const gantryGeoms = [];
-    const gantryZ = [8, 28, 48, 68, 88, 108, 128, 148, 168, 188, 208, 228, 248, 268, 288, 308, 328, 348, 354];
-    gantryZ.forEach(gz => {
-        // Left Column (X = -27.8)
-        const colL = new THREE.BoxGeometry(0.25, 6.2, 0.25);
-        colL.translate(-27.8, 3.1, gz);
-        gantryGeoms.push(colL);
-
-        // Right Column (X = -20.2)
-        const colR = new THREE.BoxGeometry(0.25, 6.2, 0.25);
-        colR.translate(-20.2, 3.1, gz);
-        gantryGeoms.push(colR);
-
-        // Horizontal Lattice Beam
-        const beam = new THREE.BoxGeometry(8.0, 0.35, 0.35);
-        beam.translate(-24.0, 6.0, gz);
-        gantryGeoms.push(beam);
-
-        // Cantilever suspension drop arms at X = -22 and X = -26
-        [-26, -22].forEach(cx => {
-            const arm = new THREE.BoxGeometry(0.08, 0.8, 0.08);
-            arm.translate(cx, 5.5, gz);
-            gantryGeoms.push(arm);
-            const insul = new THREE.CylinderGeometry(0.08, 0.08, 0.3, 6);
-            insul.translate(cx, 5.25, gz);
-            gantryGeoms.push(insul);
-        });
-    });
-    const mergedGantries = BufferGeometryUtils.mergeGeometries(gantryGeoms);
-    const gantryMesh = new THREE.Mesh(mergedGantries, metalRailingMat);
-    gantryMesh.castShadow = false;
-    scene.add(gantryMesh);
-
-    // Continuous 25 kV AC Copper Contact Wire at Y = 5.2m
-    const wirePts = [];
-    for (let i = 0; i < 240; i++) {
-        const pt = trainSpline.getPointAt(i / 240);
-        wirePts.push(new THREE.Vector3(pt.x, 5.2, pt.z));
-    }
-    const wireCurve = new THREE.CatmullRomCurve3(wirePts, true, 'centripetal');
-    const wireGeom = new THREE.TubeGeometry(wireCurve, 240, 0.016, 4, true);
-    const wireMesh = new THREE.Mesh(wireGeom, new THREE.MeshStandardMaterial({
-        color: 0xb45309,
-        metalness: 0.85,
-        roughness: 0.3
-    }));
-    scene.add(wireMesh);
-
-    // 6. Market Street Level Crossing (Z = 42)
-    const crossingPanel = new THREE.Mesh(
-        new THREE.BoxGeometry(8.4, 0.22, 10.0),
-        new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.8 })
-    );
-    crossingPanel.position.set(-24.0, 0.12, 42.0);
-    scene.add(crossingPanel);
-
-    [-28.4, -19.6].forEach(px => {
-        const post = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3.2, 0.3), metalRailingMat);
-        post.position.set(px, 1.6, 42.0);
-        scene.add(post);
-
-        const boom = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 5.0), new THREE.MeshStandardMaterial({ color: 0xef4444 }));
-        boom.position.set(px, 1.2, 42.0);
-        scene.add(boom);
-
-        const light = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 8), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
-        light.position.set(px, 3.1, 42.0);
-        scene.add(light);
-    });
-
-    // 7. Passenger Stations along Extended Suburban Line
-    trainStationZ.forEach((sz, idx) => {
-        registerBoxCollider(-31.0, -26.5, sz - 11, sz + 11, 'Platform_' + idx);
-        registerBoxCollider(-24.8, -23.2, sz - 11, sz + 11, 'IslandPlatform_' + idx);
-    });
-
-    const platGeoms = [];
-    const canopyGeoms = [];
-
-    const stationNames = [
-        { mr: "गेटवे ऑफ इंडिया", en: "GATEWAY TERMINAL" },
-        { mr: "मार्केट स्ट्रीट जंक्शन", en: "MARKET STREET JUNCTION" },
-        { mr: "होम वेस्ट (देव मुख्यालय)", en: "HOME WEST (DEV HQ)" },
-        { mr: "सेंट्रल मिडटाऊन कमर्शियल", en: "CENTRAL MIDTOWN COMMERCIAL" },
-        { mr: "माइंडस्पेस टेक पार्क", en: "MINDSPACE TECH PARK" },
-        { mr: "अकॅडेमिया नॉर्थ (महाविद्यालय)", en: "ACADEMIA NORTH (COLLEGE)" },
-        { mr: "एअरपोर्ट पार्कवे जंक्शन", en: "AIRPORT PARKWAY JUNCTION" },
-        { mr: "छत्रपती शिवाजी महाराज आंतरराष्ट्रीय विमानतळ", en: "CSMIA INTL AIRPORT TERMINAL" }
-    ];
-
-    trainStationZ.forEach((sz, idx) => {
-        // Western Main Platform Slab (X = -28.7, width 4.2, length 22, height 0.65)
-        const platW = new THREE.BoxGeometry(4.2, 0.65, 22);
-        platW.translate(-28.7, 0.325, sz);
-        platGeoms.push(platW);
-
-        // Central Island Platform (X = -24.0, width 1.6, length 22, height 0.65)
-        const platIsland = new THREE.BoxGeometry(1.6, 0.65, 22);
-        platIsland.translate(-24.0, 0.325, sz);
-        platGeoms.push(platIsland);
-
-        // Western Platform Canopy Roof
-        const canopy = new THREE.BoxGeometry(4.6, 0.22, 22);
-        canopy.translate(-28.7, 4.3, sz);
-        canopyGeoms.push(canopy);
-
-        // Canopy Support Pillars
-        [-8, 0, 8].forEach(pz => {
+        [-10, 0, 10].forEach(pz => {
             const pillar = new THREE.BoxGeometry(0.2, 3.8, 0.2);
-            pillar.translate(-30.0, 2.3, sz + pz);
-            canopyGeoms.push(pillar);
+            pillar.translate(st.x - 6.0, 2.3, st.z + pz);
+            stationPillarGeoms.push(pillar);
         });
 
-        // High-Resolution Bilingual Station Signboard (Marathi + English)
-        const signTex = createBilingualSignboardTexture(stationNames[idx].mr, stationNames[idx].en);
+        const signTex = createBilingualSignboardTexture(st.mr, st.name);
         const signMesh = new THREE.Mesh(
             new THREE.PlaneGeometry(5.2, 1.3),
             new THREE.MeshBasicMaterial({ map: signTex, side: THREE.DoubleSide })
         );
-        signMesh.position.set(-26.55, 3.2, sz);
+        signMesh.position.set(st.x - 3.8, 3.2, st.z);
         signMesh.rotation.y = Math.PI / 2;
         scene.add(signMesh);
+
+        for (let c = 0; c < 5; c++) {
+            const cz = st.z - 8 + c * 3.8 + (Math.random() - 0.5) * 0.8;
+            const cx = st.x - 4.2 + (Math.random() - 0.5) * 1.5;
+            const body = applyVertexColor(new THREE.BoxGeometry(0.42, 1.1, 0.25), Math.random() > 0.5 ? 0x2563eb : 0xd97706);
+            body.translate(cx, 1.2, cz);
+            commuterGeoms.push(body);
+            const head = applyVertexColor(new THREE.SphereGeometry(0.14, 6, 6), 0xd4a373);
+            head.translate(cx, 1.9, cz);
+            commuterGeoms.push(head);
+        }
+
+        registerBoxCollider(st.x - 6.8, st.x - 2.2, st.z - 14, st.z + 14, `Platform_${st.id}`, -5, 1.2);
+
+        railwayStations.push({
+            id: st.id,
+            name: st.name,
+            mr: st.mr,
+            x: st.x,
+            z: st.z,
+            line: st.line,
+            spline: st.spline
+        });
     });
 
-    const mergedPlats = BufferGeometryUtils.mergeGeometries(platGeoms);
-    const platformMesh = new THREE.Mesh(mergedPlats, concreteTrimMat);
-    platformMesh.receiveShadow = true;
-    scene.add(platformMesh);
-
-    const mergedCanopies = BufferGeometryUtils.mergeGeometries(canopyGeoms);
-    const canopyMesh = new THREE.Mesh(mergedCanopies, new THREE.MeshStandardMaterial({
-        color: 0x0284c7,
-        roughness: 0.5,
-        metalness: 0.3
-    }));
-    canopyMesh.castShadow = false;
-    scene.add(canopyMesh);
-
-    // 7b. Station Overbridge Stairs & ATVM Ticket Booth at Gateway Station (X = -32, Z = 16)
-    const ticketMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.6 });
-    const ticketGeoms = [];
-    const boothBody = new THREE.BoxGeometry(3.6, 2.8, 3.0);
-    boothBody.translate(-32.5, 1.4, 16);
-    ticketGeoms.push(boothBody);
-    const winCutout = new THREE.BoxGeometry(0.3, 1.0, 1.8);
-    winCutout.translate(-30.6, 1.5, 16);
-    ticketGeoms.push(winCutout);
-    for (let st = 0; st < 10; st++) {
-        const step = new THREE.BoxGeometry(2.2, 0.35, 0.65);
-        step.translate(-31.2, st * 0.35 + 0.175, 20 + st * 0.65);
-        ticketGeoms.push(step);
+    if (stationPlatGeoms.length > 0) scene.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(stationPlatGeoms), platMat));
+    if (stationCanopyGeoms.length > 0) scene.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(stationCanopyGeoms), canopyMat));
+    if (stationPillarGeoms.length > 0) scene.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(stationPillarGeoms), metalRailingMat));
+    if (commuterGeoms.length > 0) {
+        scene.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(commuterGeoms), commuterMat));
     }
-    const ticketMesh = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(ticketGeoms), ticketMat);
-    scene.add(ticketMesh);
 
-    const ticketSignTex = createBilingualSignboardTexture("अनारक्षित तिकीट खिडकी", "UNRESERVED TICKETS / ATVM");
-    const ticketSign = new THREE.Mesh(
-        new THREE.PlaneGeometry(3.2, 0.8),
-        new THREE.MeshBasicMaterial({ map: ticketSignTex, side: THREE.DoubleSide })
-    );
-    ticketSign.position.set(-30.5, 2.5, 16);
-    ticketSign.rotation.y = Math.PI / 2;
-    scene.add(ticketSign);
-
-    // 8. Articulated 3-Car Mumbai Suburban EMU Rake
-    const emuWhiteMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.25, metalness: 0.2 });
-    const emuPurpleMat = new THREE.MeshStandardMaterial({ color: 0x581c87, roughness: 0.35, metalness: 0.25 });
-    const emuYellowMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.35, metalness: 0.2 });
-    const emuDarkMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.6, metalness: 0.5 });
-    const emuGlassMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.1, metalness: 0.9, transparent: true, opacity: 0.75 });
-    const emuGrabPoleMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.15, metalness: 0.95 });
-    const emuWheelMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.3, metalness: 0.85 });
-
-    function createEMUCoach(type = 'lead') {
-        const coach = new THREE.Group();
-
-        // 1. Merged White Body Geometries (Floor, Roof, Rear Panel)
-        const whiteGeoms = [];
-        const floorGeom = new THREE.BoxGeometry(3.08, 0.3, 6.0);
-        floorGeom.translate(0, 0.8, 0);
-        whiteGeoms.push(floorGeom);
-
-        const roofGeom = new THREE.BoxGeometry(3.1, 0.25, 6.0);
-        roofGeom.translate(0, 3.35, 0);
-        whiteGeoms.push(roofGeom);
-
-        if (type === 'trail') {
-            const rearGeom = new THREE.BoxGeometry(3.08, 2.2, 0.4);
-            rearGeom.translate(0, 1.9, -3.1);
-            whiteGeoms.push(rearGeom);
-        }
-
-        const mergedWhite = BufferGeometryUtils.mergeGeometries(whiteGeoms);
-        const whiteMesh = new THREE.Mesh(mergedWhite, emuWhiteMat);
-        whiteMesh.castShadow = false;
-        coach.add(whiteMesh);
-
-        // 2. Merged Purple Stripes (Waist & Roofline)
-        const purpleGeoms = [];
-        const waistGeom = new THREE.BoxGeometry(3.14, 0.5, 6.02);
-        waistGeom.translate(0, 1.45, 0);
-        purpleGeoms.push(waistGeom);
-
-        const topGeom = new THREE.BoxGeometry(3.14, 0.25, 6.02);
-        topGeom.translate(0, 3.15, 0);
-        purpleGeoms.push(topGeom);
-
-        const mergedPurple = BufferGeometryUtils.mergeGeometries(purpleGeoms);
-        const purpleMesh = new THREE.Mesh(mergedPurple, emuPurpleMat);
-        coach.add(purpleMesh);
-
-        // 3. Merged Dark Interior & Bogies
-        const darkGeoms = [];
-        const seat1Geom = new THREE.BoxGeometry(0.6, 0.35, 5.4);
-        seat1Geom.translate(-1.1, 0.95, 0);
-        darkGeoms.push(seat1Geom);
-
-        const seat2Geom = new THREE.BoxGeometry(0.6, 0.35, 5.4);
-        seat2Geom.translate(1.1, 0.95, 0);
-        darkGeoms.push(seat2Geom);
-
-        [-1.8, 1.8].forEach(bz => {
-            const bogieGeom = new THREE.BoxGeometry(2.2, 0.16, 2.1);
-            bogieGeom.translate(0, 0.42, bz);
-            darkGeoms.push(bogieGeom);
+    function calibrateSchedule(spline, lineStations) {
+        const sched = [];
+        const SAMPLES = 800;
+        lineStations.forEach(st => {
+            let bestS = 0, bestDist = Infinity;
+            for (let i = 0; i < SAMPLES; i++) {
+                const s = i / SAMPLES;
+                const pt = spline.getPointAt(s);
+                const d = pt.distanceTo(new THREE.Vector3(st.x, 0.25, st.z));
+                if (d < bestDist) { bestDist = d; bestS = s; }
+            }
+            sched.push({ name: st.name, s: bestS, x: st.x, z: st.z });
         });
+        sched.sort((a, b) => a.s - b.s);
+        return sched;
+    }
 
-        if (type === 'lead') {
-            const cowGeom = new THREE.BoxGeometry(2.6, 0.2, 0.3);
-            cowGeom.translate(0, 0.3, 3.25);
-            darkGeoms.push(cowGeom);
-        } else if (type === 'motor') {
-            const tracGeom = new THREE.BoxGeometry(2.2, 0.4, 2.8);
-            tracGeom.translate(0, 3.65, 0);
-            darkGeoms.push(tracGeom);
+    const schedLine1 = calibrateSchedule(splineLine1, allStationDefs.filter(s => s.line === 1));
+    const schedLine2 = calibrateSchedule(splineLine2, allStationDefs.filter(s => s.line === 2));
+    stationSchedule = schedLine1;
+
+    function buildCorridorTracks(spline, sampleCount) {
+        const leftPts = [], rightPts = [];
+        const UP = new THREE.Vector3(0, 1, 0);
+        for (let i = 0; i < sampleCount; i++) {
+            const t = i / sampleCount;
+            const pt = spline.getPointAt(t);
+            const tan = spline.getTangentAt(t);
+            const norm = new THREE.Vector3().crossVectors(tan, UP).normalize();
+            leftPts.push(new THREE.Vector3(pt.x + norm.x * 0.838, 0.22, pt.z + norm.z * 0.838));
+            rightPts.push(new THREE.Vector3(pt.x - norm.x * 0.838, 0.22, pt.z - norm.z * 0.838));
         }
+        const lGeom = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(leftPts, true, 'centripetal'), sampleCount, 0.05, 5, true);
+        const rGeom = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(rightPts, true, 'centripetal'), sampleCount, 0.05, 5, true);
+        const railsMesh = new THREE.Mesh(BufferGeometryUtils.mergeGeometries([lGeom, rGeom]), new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.9, roughness: 0.2 }));
+        scene.add(railsMesh);
+    }
+    buildCorridorTracks(splineLine1, 480);
+    buildCorridorTracks(splineLine2, 480);
 
-        const mergedDark = BufferGeometryUtils.mergeGeometries(darkGeoms);
-        const darkMesh = new THREE.Mesh(mergedDark, emuDarkMat);
-        coach.add(darkMesh);
+    function buildEMUCoachSet(trainName, colorHex) {
+        const emuPurpleMat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.45, metalness: 0.15 });
+        const emuCreamMat = new THREE.MeshStandardMaterial({ color: 0xfef9c3, roughness: 0.55 });
+        const emuDarkMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.7 });
+        const emuWheelMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.85, roughness: 0.25 });
 
-        // 4. Merged Flanged Steel Wheels (8 wheels per car)
-        const wheelGeoms = [];
-        [-1.8, 1.8].forEach(bz => {
-            [-0.84, 0.84].forEach(wx => {
-                [-0.65, 0.65].forEach(wz => {
-                    const wGeom = new THREE.CylinderGeometry(0.38, 0.38, 0.14, 12);
-                    wGeom.rotateZ(Math.PI / 2);
-                    wGeom.translate(wx, 0.25, bz + wz);
-                    wheelGeoms.push(wGeom);
+        function createCoach(type) {
+            const coach = new THREE.Group();
+            const body = new THREE.Mesh(new THREE.BoxGeometry(3.1, 2.6, 6.0), emuCreamMat);
+            body.position.set(0, 1.8, 0);
+            coach.add(body);
+
+            const stripe = new THREE.Mesh(new THREE.BoxGeometry(3.14, 0.5, 6.02), emuPurpleMat);
+            stripe.position.set(0, 1.45, 0);
+            coach.add(stripe);
+
+            [-1.8, 1.8].forEach(bz => {
+                const bogie = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.2, 2.1), emuDarkMat);
+                bogie.position.set(0, 0.45, bz);
+                coach.add(bogie);
+
+                [-0.84, 0.84].forEach(wx => {
+                    const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.14, 10), emuWheelMat);
+                    wheel.rotateZ(Math.PI / 2);
+                    wheel.position.set(wx, 0.25, bz);
+                    coach.add(wheel);
                 });
             });
-        });
-        const mergedWheels = BufferGeometryUtils.mergeGeometries(wheelGeoms);
-        const wheelMesh = new THREE.Mesh(mergedWheels, emuWheelMat);
-        coach.add(wheelMesh);
 
-        // 5. Merged Stainless-Steel Grab Poles (4 doorway poles)
-        const poleGeoms = [];
-        [-1.56, 1.56].forEach(wx => {
-            [-1.3, 1.3].forEach(dz => {
-                const pGeom = new THREE.CylinderGeometry(0.025, 0.025, 2.1, 6);
-                pGeom.translate(wx > 0 ? wx - 0.06 : wx + 0.06, 2.0, dz);
-                poleGeoms.push(pGeom);
-            });
-        });
-        const mergedPoles = BufferGeometryUtils.mergeGeometries(poleGeoms);
-        const poleMesh = new THREE.Mesh(mergedPoles, emuGrabPoleMat);
-        coach.add(poleMesh);
-
-        // 6. Windows & Front Glass
-        const glassGeoms = [];
-        [-1.56, 1.56].forEach(wx => {
-            const winGeom = new THREE.PlaneGeometry(1.2, 0.85);
-            winGeom.rotateY(wx > 0 ? Math.PI / 2 : -Math.PI / 2);
-            winGeom.translate(wx, 2.2, 0);
-            glassGeoms.push(winGeom);
-        });
-
-        if (type === 'lead') {
-            const windshieldGeom = new THREE.PlaneGeometry(2.4, 0.9);
-            windshieldGeom.translate(0, 2.45, 3.32);
-            glassGeoms.push(windshieldGeom);
-        }
-        const mergedGlass = BufferGeometryUtils.mergeGeometries(glassGeoms);
-        const glassMesh = new THREE.Mesh(mergedGlass, emuGlassMat);
-        coach.add(glassMesh);
-
-        // 7. Specialized Lead / Motor / Trail Features
-        if (type === 'lead') {
-            const hazardCanvas = document.createElement('canvas');
-            hazardCanvas.width = 256; hazardCanvas.height = 128;
-            const hzCtx = hazardCanvas.getContext('2d');
-            hzCtx.fillStyle = '#facc15';
-            hzCtx.fillRect(0, 0, 256, 128);
-            // Angled black chevron hazard stripes across lower cab
-            hzCtx.fillStyle = '#0f172a';
-            for (let x = -60; x < 320; x += 36) {
-                hzCtx.beginPath();
-                hzCtx.moveTo(x, 128);
-                hzCtx.lineTo(x + 16, 128);
-                hzCtx.lineTo(x + 38, 52);
-                hzCtx.lineTo(x + 22, 52);
-                hzCtx.closePath();
-                hzCtx.fill();
-            }
-            // Central Railway red emblem circle
-            hzCtx.fillStyle = '#dc2626';
-            hzCtx.beginPath();
-            hzCtx.arc(128, 28, 12, 0, Math.PI * 2);
-            hzCtx.fill();
-            hzCtx.fillStyle = '#ffffff';
-            hzCtx.font = 'bold 10px sans-serif';
-            hzCtx.textAlign = 'center';
-            hzCtx.fillText("CR", 128, 32);
-
-            const hazardTex = new THREE.CanvasTexture(hazardCanvas);
-            const emuLeadFrontMat = new THREE.MeshStandardMaterial({ map: hazardTex, roughness: 0.35, metalness: 0.2 });
-            const yellowFront = new THREE.Mesh(new THREE.BoxGeometry(3.08, 2.2, 0.4), emuLeadFrontMat);
-            yellowFront.position.set(0, 1.9, 3.1);
-            coach.add(yellowFront);
-
-            const destTex = createTrainDestinationTexture("छ.शि.म.ट. जलद", "CSMT FAST");
-            const destMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.4), new THREE.MeshBasicMaterial({ map: destTex }));
-            destMesh.position.set(0, 3.05, 3.32);
-            coach.add(destMesh);
-
-            [-0.85, 0.85].forEach(hx => {
-                const hl = new THREE.Mesh(new THREE.CircleGeometry(0.18, 12), new THREE.MeshBasicMaterial({ color: 0xfffbeb }));
-                hl.position.set(hx, 1.35, 3.32);
+            if (type === 'lead') {
+                const hl = new THREE.Mesh(new THREE.CircleGeometry(0.2, 10), new THREE.MeshBasicMaterial({ color: 0xfffbeb }));
+                hl.position.set(0, 1.4, 3.02);
                 coach.add(hl);
-            });
-
-            const trainHeadlight = new THREE.SpotLight(0xfffae6, 4.0, 48, Math.PI / 4.5, 0.35);
-            trainHeadlight.position.set(0, 1.8, 3.3);
-            trainHeadlight.target.position.set(0, 0, 35);
-            coach.add(trainHeadlight);
-            coach.add(trainHeadlight.target);
-        } else if (type === 'motor') {
-            const pantoBase = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.12, 1.4), metalRailingMat);
-            pantoBase.position.set(0, 3.9, 0.2);
-            coach.add(pantoBase);
-
-            const arm1 = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.1, 6), new THREE.MeshStandardMaterial({ color: 0xea580c }));
-            arm1.rotation.x = Math.PI / 4;
-            arm1.position.set(-0.4, 4.4, -0.1);
-            coach.add(arm1);
-
-            const arm2 = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.1, 6), new THREE.MeshStandardMaterial({ color: 0xea580c }));
-            arm2.rotation.x = -Math.PI / 4;
-            arm2.position.set(-0.4, 4.9, 0.3);
-            coach.add(arm2);
-
-            const shoe = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.08, 0.18), new THREE.MeshStandardMaterial({ color: 0xb45309, metalness: 0.9 }));
-            shoe.position.set(0, 5.2, 0.3);
-            coach.add(shoe);
-        } else if (type === 'trail') {
-            [-0.85, 0.85].forEach(rx => {
-                const tl = new THREE.Mesh(new THREE.CircleGeometry(0.18, 12), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
-                tl.position.set(rx, 1.35, -3.32);
-                tl.rotation.y = Math.PI;
-                coach.add(tl);
-            });
+            }
+            return coach;
         }
 
-        return coach;
+        const c1 = createCoach('lead');
+        const c2 = createCoach('motor');
+        const c3 = createCoach('trail');
+        scene.add(c1); scene.add(c2); scene.add(c3);
+        return { c1, c2, c3 };
     }
 
-    const coach1 = createEMUCoach('lead');
-    const coach2 = createEMUCoach('motor');
-    const coach3 = createEMUCoach('trail');
+    // 4 Active Trainsets across both Corridors (Opposing Services)
+    const t0 = buildEMUCoachSet("WESTERN FAST UP", 0x7c3aed);
+    allTrains.push({
+        id: 0,
+        name: "Western Express Up (To School)",
+        line: 1,
+        spline: splineLine1,
+        splineLength: splineLen1,
+        schedule: schedLine1,
+        targetIdx: 0,
+        progress: 0.05,
+        speed: 0,
+        maxSpeed: 16.0,
+        isDwelling: true,
+        dwellTimer: 0,
+        hornPlayed: false,
+        coach1: t0.c1,
+        coach2: t0.c2,
+        coach3: t0.c3
+    });
 
-    scene.add(coach1);
-    scene.add(coach2);
-    scene.add(coach3);
+    const t1 = buildEMUCoachSet("WESTERN LOCAL DOWN", 0x2563eb);
+    allTrains.push({
+        id: 1,
+        name: "Western Local Down (To Gateway)",
+        line: 1,
+        spline: splineLine1,
+        splineLength: splineLen1,
+        schedule: schedLine1,
+        targetIdx: Math.floor(schedLine1.length / 2),
+        progress: 0.55,
+        speed: 12.0,
+        maxSpeed: 16.0,
+        isDwelling: false,
+        dwellTimer: 0,
+        hornPlayed: false,
+        coach1: t1.c1,
+        coach2: t1.c2,
+        coach3: t1.c3
+    });
 
-    trainState.coach1 = coach1;
-    trainState.coach2 = coach2;
-    trainState.coach3 = coach3;
-    trainState.mesh = coach1;
+    const t2 = buildEMUCoachSet("AERO-EXPRESS UP", 0xdc2626);
+    allTrains.push({
+        id: 2,
+        name: "Harbour Aero-Express Up (To Airport)",
+        line: 2,
+        spline: splineLine2,
+        splineLength: splineLen2,
+        schedule: schedLine2,
+        targetIdx: 0,
+        progress: 0.08,
+        speed: 0,
+        maxSpeed: 18.0,
+        isDwelling: true,
+        dwellTimer: 0,
+        hornPlayed: false,
+        coach1: t2.c1,
+        coach2: t2.c2,
+        coach3: t2.c3
+    });
 
-    // Initial Coach Alignment on Spline
-    const initialS = stationSchedule[0].s;
-    const deltaS = 6.8 / splineLen;
+    const t3 = buildEMUCoachSet("AERO-EXPRESS DOWN", 0x059669);
+    allTrains.push({
+        id: 3,
+        name: "Harbour Aero-Express Down (To Gateway)",
+        line: 2,
+        spline: splineLine2,
+        splineLength: splineLen2,
+        schedule: schedLine2,
+        targetIdx: Math.floor(schedLine2.length / 2),
+        progress: 0.58,
+        speed: 14.0,
+        maxSpeed: 18.0,
+        isDwelling: false,
+        dwellTimer: 0,
+        hornPlayed: false,
+        coach1: t3.c1,
+        coach2: t3.c2,
+        coach3: t3.c3
+    });
 
-    const p1 = trainSpline.getPointAt(initialS);
-    const t1 = trainSpline.getTangentAt(initialS);
-    coach1.position.copy(p1);
-    coach1.rotation.y = Math.atan2(t1.x, t1.z);
+    trainState.coach1 = allTrains[0].coach1;
+    trainState.coach2 = allTrains[0].coach2;
+    trainState.coach3 = allTrains[0].coach3;
+    trainState.mesh = allTrains[0].coach1;
+    trainState.splineLength = splineLen1;
 
-    const s2 = (initialS - deltaS + 1.0) % 1.0;
-    const p2 = trainSpline.getPointAt(s2);
-    const t2 = trainSpline.getTangentAt(s2);
-    coach2.position.copy(p2);
-    coach2.rotation.y = Math.atan2(t2.x, t2.z);
-
-    const s3 = (initialS - deltaS * 2 + 1.0) % 1.0;
-    const p3 = trainSpline.getPointAt(s3);
-    const t3 = trainSpline.getTangentAt(s3);
-    coach3.position.copy(p3);
-    coach3.rotation.y = Math.atan2(t3.x, t3.z);
-
-    trainState.x = p1.x;
-    trainState.z = p1.z;
-    trainState.progress = initialS;
-
+    window.__allTrains = allTrains;
+    window.__railwayStations = railwayStations;
     window.__trainState = trainState;
-    window.__trainSpline = trainSpline;
+    window.__trainSpline = splineLine1;
     window.__stationSchedule = stationSchedule;
 }
+
+// ------------------------------------------
+// SYSTEM 5: TRAFFIC SIGNAL SIMULATION (20 JUNCTIONS)
+// ------------------------------------------
+function buildTrafficSignalSystem() {
+    const signalCoords = [
+        { x: 0, z: 16 }, { x: 0, z: 42 }, { x: 0, z: 140 }, { x: 0, z: 240 },
+        { x: 0, z: 380 }, { x: 0, z: 500 }, { x: 0, z: 700 }, { x: 0, z: 900 },
+        { x: 0, z: 1100 }, { x: 0, z: 1250 },
+        { x: -180, z: 16 }, { x: -180, z: 42 }, { x: -180, z: 140 }, { x: -180, z: 240 }, { x: -180, z: 480 },
+        { x: -320, z: 900 },
+        { x: 180, z: 16 }, { x: 180, z: 140 },
+        { x: 420, z: 900 },
+        { x: 650, z: 1250 }
+    ];
+
+    const poleMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.7 });
+    const greenMat = new THREE.MeshBasicMaterial({ color: 0x22c55e });
+    const offMat = new THREE.MeshBasicMaterial({ color: 0x334155 });
+    const postGeoms = [];
+
+    signalCoords.forEach((loc, idx) => {
+        const pole = new THREE.CylinderGeometry(0.12, 0.14, 4.2, 8);
+        pole.translate(loc.x + 7.0, 2.1, loc.z + 7.0);
+        postGeoms.push(pole);
+
+        const nsHead = new THREE.Group();
+        nsHead.position.set(loc.x + 7.0, 3.6, loc.z + 7.0);
+        const rLight = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 8), offMat.clone());
+        rLight.position.set(0, 0.35, 0);
+        const aLight = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 8), offMat.clone());
+        aLight.position.set(0, 0, 0);
+        const gLight = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 8), greenMat.clone());
+        gLight.position.set(0, -0.35, 0);
+        nsHead.add(rLight); nsHead.add(aLight); nsHead.add(gLight);
+        scene.add(nsHead);
+
+        trafficSignals.push({
+            id: idx,
+            x: loc.x,
+            z: loc.z,
+            phase: 0,
+            timer: (idx * 3.7) % 25.0,
+            rLight, aLight, gLight,
+            isRedFor: function(carX, carZ, dirX, dirZ) {
+                const isNS = Math.abs(dirZ) > Math.abs(dirX);
+                if (isNS) {
+                    return this.phase === 2 || this.phase === 3 || this.phase === 1;
+                } else {
+                    return this.phase === 0 || this.phase === 1 || this.phase === 3;
+                }
+            }
+        });
+    });
+
+    if (postGeoms.length > 0) scene.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(postGeoms), poleMat));
+    window.__trafficSignals = trafficSignals;
+}
+
+// ------------------------------------------
+// SYSTEM 2: ROAD TRAFFIC SIMULATION (60 VEHICLES)
+// ------------------------------------------
+function buildRoadTrafficSystem() {
+    const laneConfigs = [
+        { startX: 6, startZ: 20, dirX: 0, dirZ: 1, maxZ: 1380, minZ: 20 },
+        { startX: -6, startZ: 1380, dirX: 0, dirZ: -1, maxZ: 1380, minZ: 20 },
+        { startX: -174, startZ: 20, dirX: 0, dirZ: 1, maxZ: 470, minZ: 20 },
+        { startX: -186, startZ: 470, dirX: 0, dirZ: -1, maxZ: 470, minZ: 20 },
+        { startX: -314, startZ: 250, dirX: 0, dirZ: 1, maxZ: 980, minZ: 250 },
+        { startX: -326, startZ: 980, dirX: 0, dirZ: -1, maxZ: 980, minZ: 250 },
+        { startX: 426, startZ: 250, dirX: 0, dirZ: 1, maxZ: 980, minZ: 250 },
+        { startX: 414, startZ: 980, dirX: 0, dirZ: -1, maxZ: 980, minZ: 250 },
+        { startX: -400, startZ: 896, dirX: 1, dirZ: 0, minX: -400, maxX: 500 },
+        { startX: 500, startZ: 904, dirX: -1, dirZ: 0, minX: -400, maxX: 500 },
+        { startX: 160, startZ: 1246, dirX: 1, dirZ: 0, minX: 160, maxX: 850 },
+        { startX: 850, startZ: 1254, dirX: -1, dirZ: 0, minX: 160, maxX: 850 }
+    ];
+
+    const carPalette = [0x3b82f6, 0xe2e8f0, 0x0f172a, 0xdc2626, 0x06b6d4, 0xf97316, 0x8b5cf6];
+
+    for (let i = 0; i < 12; i++) {
+        const lane = laneConfigs[i % laneConfigs.length];
+        const vGroup = new THREE.Group();
+        const color = carPalette[i % carPalette.length];
+
+        const body = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.75, 4.2), new THREE.MeshStandardMaterial({ color, roughness: 0.35, metalness: 0.3 }));
+        body.position.y = 0.55;
+        vGroup.add(body);
+
+        const glass = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.55, 2.2), new THREE.MeshStandardMaterial({ color: 0x0284c7, transparent: true, opacity: 0.85 }));
+        glass.position.set(0, 1.05, -0.2);
+        vGroup.add(glass);
+
+        [-0.7, 0.7].forEach(hx => {
+            const hl = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6), new THREE.MeshBasicMaterial({ color: 0xfffbeb }));
+            hl.position.set(hx, 0.5, 2.12);
+            vGroup.add(hl);
+        });
+
+        const wheels = [];
+        [-0.95, 0.95].forEach(wx => {
+            [-1.2, 1.2].forEach(wz => {
+                const w = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.18, 10), new THREE.MeshStandardMaterial({ color: 0x0f172a }));
+                w.rotateZ(Math.PI / 2);
+                w.position.set(wx, 0.32, wz);
+                vGroup.add(w);
+                wheels.push(w);
+            });
+        });
+
+        const offsetAlongLane = (i * 70.0) % 800;
+        const curX = lane.dirX !== 0 ? (lane.startX + lane.dirX * offsetAlongLane) : lane.startX;
+        const curZ = lane.dirZ !== 0 ? (lane.startZ + lane.dirZ * offsetAlongLane) : lane.startZ;
+
+        vGroup.position.set(curX, 0, curZ);
+        vGroup.rotation.y = Math.atan2(lane.dirX, lane.dirZ);
+        scene.add(vGroup);
+
+        trafficVehicles.push({
+            id: i,
+            isDetailed: true,
+            group: vGroup,
+            wheels,
+            lane,
+            x: curX,
+            z: curZ,
+            dirX: lane.dirX,
+            dirZ: lane.dirZ,
+            speed: 12.0 + (i % 4) * 1.5,
+            targetSpeed: 12.0
+        });
+    }
+
+    const instGeom = new THREE.BoxGeometry(1.9, 0.85, 3.8);
+    const instMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.5 });
+    const instMesh = new THREE.InstancedMesh(instGeom, instMat, 48);
+    instMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    scene.add(instMesh);
+
+    const dummy = new THREE.Object3D();
+    for (let k = 0; k < 48; k++) {
+        const lane = laneConfigs[(k + 12) % laneConfigs.length];
+        const offset = (k * 45.0) % 900;
+        const curX = lane.dirX !== 0 ? (lane.startX + lane.dirX * offset) : lane.startX;
+        const curZ = lane.dirZ !== 0 ? (lane.startZ + lane.dirZ * offset) : lane.startZ;
+
+        dummy.position.set(curX, 0.5, curZ);
+        dummy.rotation.y = Math.atan2(lane.dirX, lane.dirZ);
+        dummy.updateMatrix();
+        instMesh.setMatrixAt(k, dummy.matrix);
+
+        trafficVehicles.push({
+            id: 12 + k,
+            isDetailed: false,
+            instIndex: k,
+            lane,
+            x: curX,
+            z: curZ,
+            dirX: lane.dirX,
+            dirZ: lane.dirZ,
+            speed: 11.0 + (k % 3) * 1.2,
+            targetSpeed: 11.0
+        });
+    }
+    instMesh.instanceMatrix.needsUpdate = true;
+    window.__trafficVehicles = trafficVehicles;
+    window.__instancedTraffic = instMesh;
+    window.__trafficDummy = dummy;
+}
+
+// ------------------------------------------
+// SYSTEM 6: PUBLIC TRANSPORT SIMULATION (12 BUSES + 8 TAXIS)
+// ------------------------------------------
+function buildPublicTransitSystem() {
+    const busMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.45 });
+    const creamMat = new THREE.MeshStandardMaterial({ color: 0xfef08a, roughness: 0.6 });
+    const taxiBlackMat = new THREE.MeshStandardMaterial({ color: 0x09090b, roughness: 0.35 });
+    const taxiYellowMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.4 });
+
+    for (let b = 0; b < 12; b++) {
+        const busGroup = new THREE.Group();
+        const isDoubleDecker = (b % 3 === 0);
+
+        const lower = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.8, 8.4), busMat);
+        lower.position.y = 1.1;
+        busGroup.add(lower);
+
+        const height = isDoubleDecker ? 1.6 : 0.3;
+        const upper = new THREE.Mesh(new THREE.BoxGeometry(2.55, height, 8.2), isDoubleDecker ? busMat : creamMat);
+        upper.position.y = isDoubleDecker ? 2.8 : 2.15;
+        busGroup.add(upper);
+
+        [-1.25, 1.25].forEach(wx => {
+            [-2.6, 2.6].forEach(wz => {
+                const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.48, 0.28, 10), new THREE.MeshStandardMaterial({ color: 0x18181b }));
+                wheel.rotateZ(Math.PI / 2);
+                wheel.position.set(wx, 0.48, wz);
+                busGroup.add(wheel);
+            });
+        });
+
+        const destBoard = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 0.45), new THREE.MeshBasicMaterial({ color: 0xfacc15 }));
+        destBoard.position.set(0, isDoubleDecker ? 3.4 : 1.9, 4.22);
+        busGroup.add(destBoard);
+
+        const route = (b < 6) ? 1 : 2;
+        const startZ = 20 + b * 110;
+        const posX = route === 1 ? -6 : 6;
+        busGroup.position.set(posX, 0, startZ);
+        busGroup.rotation.y = (route === 1) ? Math.PI : 0;
+        scene.add(busGroup);
+
+        publicTransit.push({
+            id: `bus_${b}`,
+            type: 'bus',
+            group: busGroup,
+            route,
+            x: posX,
+            z: startZ,
+            dirX: 0,
+            dirZ: route === 1 ? -1 : 1,
+            speed: 10.0,
+            targetSpeed: 10.0,
+            dwellTimer: 0,
+            isDwelling: false
+        });
+    }
+
+    for (let tx = 0; tx < 8; tx++) {
+        const taxiGroup = new THREE.Group();
+
+        const lower = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.65, 3.8), taxiBlackMat);
+        lower.position.y = 0.52;
+        taxiGroup.add(lower);
+
+        const upper = new THREE.Mesh(new THREE.BoxGeometry(1.65, 0.55, 2.0), taxiYellowMat);
+        upper.position.set(0, 1.05, -0.15);
+        taxiGroup.add(upper);
+
+        const roofLight = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.14, 0.22), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
+        roofLight.position.set(0, 1.4, -0.15);
+        taxiGroup.add(roofLight);
+
+        const laneZ = 40 + tx * 160;
+        taxiGroup.position.set(-174, 0, laneZ);
+        scene.add(taxiGroup);
+
+        publicTransit.push({
+            id: `taxi_${tx}`,
+            type: 'taxi',
+            group: taxiGroup,
+            x: -174,
+            z: laneZ,
+            dirX: 0,
+            dirZ: 1,
+            speed: 13.5,
+            targetSpeed: 13.5
+        });
+    }
+
+    window.__publicTransit = publicTransit;
+}
+
+// ------------------------------------------
+// TRANSIT & TRAFFIC ANIMATION UPDATES
+// ------------------------------------------
+function updateRailwaySystem(delta) {
+    if (!allTrains || allTrains.length === 0) return;
+
+    for (let i = 0; i < allTrains.length; i++) {
+        const tr = allTrains[i];
+        if (!tr.spline || tr.schedule.length === 0 || !tr.coach1) continue;
+
+        const targetStop = tr.schedule[tr.targetIdx];
+        let distS = targetStop.s - tr.progress;
+        if (distS < 0) distS += 1.0;
+        const distM = distS * tr.splineLength;
+
+        if (tr.isDwelling) {
+            tr.dwellTimer += delta;
+            tr.speed = 0;
+            if (tr.dwellTimer > 3.8 && !tr.hornPlayed) {
+                if (i === 0 || tr === boardableTrain) playSound('trainHorn');
+                tr.hornPlayed = true;
+            }
+            if (tr.dwellTimer >= 5.0) {
+                tr.isDwelling = false;
+                tr.dwellTimer = 0;
+                tr.hornPlayed = false;
+                tr.targetIdx = (tr.targetIdx + 1) % tr.schedule.length;
+            }
+        } else {
+            if (distM < 16.0) {
+                const targetSpeed = Math.max(1.5, (distM / 16.0) * tr.maxSpeed);
+                tr.speed = THREE.MathUtils.lerp(tr.speed, targetSpeed, 0.08);
+                if (distM < 0.4 || distM > tr.splineLength - 1.0) {
+                    tr.progress = targetStop.s;
+                    tr.speed = 0;
+                    tr.isDwelling = true;
+                    tr.dwellTimer = 0;
+                    tr.hornPlayed = false;
+                    if (i === 0 || tr === boardableTrain) playSound('chime');
+                }
+            } else {
+                tr.speed = THREE.MathUtils.lerp(tr.speed, tr.maxSpeed, 0.05);
+            }
+            tr.progress = (tr.progress + (tr.speed * delta) / tr.splineLength) % 1.0;
+        }
+
+        const deltaS = 6.8 / tr.splineLength;
+        const s1 = tr.progress;
+        const s2 = (tr.progress - deltaS + 1.0) % 1.0;
+        const s3 = (tr.progress - deltaS * 2 + 1.0) % 1.0;
+
+        const p1 = tr.spline.getPointAt(s1);
+        const t1 = tr.spline.getTangentAt(s1);
+        tr.coach1.position.copy(p1);
+        tr.coach1.rotation.y = Math.atan2(t1.x, t1.z);
+
+        const p2 = tr.spline.getPointAt(s2);
+        const t2 = tr.spline.getTangentAt(s2);
+        tr.coach2.position.copy(p2);
+        tr.coach2.rotation.y = Math.atan2(t2.x, t2.z);
+
+        const p3 = tr.spline.getPointAt(s3);
+        const t3 = tr.spline.getTangentAt(s3);
+        tr.coach3.position.copy(p3);
+        tr.coach3.rotation.y = Math.atan2(t3.x, t3.z);
+
+        if (i === 0 || tr === boardableTrain) {
+            trainState.x = p1.x;
+            trainState.z = p1.z;
+            trainState.speed = tr.speed;
+            trainState.isDwelling = tr.isDwelling;
+            trainState.progress = tr.progress;
+        }
+    }
+}
+
+function updateTrafficSignals(delta) {
+    if (!trafficSignals || trafficSignals.length === 0) return;
+    for (let i = 0; i < trafficSignals.length; i++) {
+        const sig = trafficSignals[i];
+        sig.timer = (sig.timer + delta) % 25.0;
+
+        let newPhase = 0;
+        if (sig.timer < 10.0) newPhase = 0;
+        else if (sig.timer < 12.5) newPhase = 1;
+        else if (sig.timer < 22.5) newPhase = 2;
+        else newPhase = 3;
+
+        if (sig.phase !== newPhase) {
+            sig.phase = newPhase;
+            if (sig.rLight && sig.aLight && sig.gLight) {
+                if (newPhase === 0) {
+                    sig.gLight.material.color.setHex(0x22c55e);
+                    sig.aLight.material.color.setHex(0x334155);
+                    sig.rLight.material.color.setHex(0x334155);
+                } else if (newPhase === 1) {
+                    sig.gLight.material.color.setHex(0x334155);
+                    sig.aLight.material.color.setHex(0xf59e0b);
+                    sig.rLight.material.color.setHex(0x334155);
+                } else if (newPhase === 2) {
+                    sig.gLight.material.color.setHex(0x334155);
+                    sig.aLight.material.color.setHex(0x334155);
+                    sig.rLight.material.color.setHex(0xef4444);
+                } else {
+                    sig.gLight.material.color.setHex(0x334155);
+                    sig.aLight.material.color.setHex(0xf59e0b);
+                    sig.rLight.material.color.setHex(0xef4444);
+                }
+            }
+        }
+    }
+}
+
+function updateRoadTraffic(delta) {
+    if (!trafficVehicles || trafficVehicles.length === 0) return;
+    const instMesh = window.__instancedTraffic;
+    const dummy = window.__trafficDummy;
+    let instNeedsUpdate = false;
+
+    for (let i = 0; i < trafficVehicles.length; i++) {
+        const v = trafficVehicles[i];
+        let targetSpeed = 12.0;
+
+        for (let s = 0; s < trafficSignals.length; s++) {
+            const sig = trafficSignals[s];
+            const dx = sig.x - v.x;
+            const dz = sig.z - v.z;
+            const dist = Math.hypot(dx, dz);
+            if (dist < 16.0) {
+                const dot = dx * v.dirX + dz * v.dirZ;
+                if (dot > 0 && dot < 14.0) {
+                    if (sig.isRedFor(v.x, v.z, v.dirX, v.dirZ)) {
+                        targetSpeed = 0;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (targetSpeed > 0) {
+            for (let j = 0; j < trafficVehicles.length; j++) {
+                if (i === j) continue;
+                const other = trafficVehicles[j];
+                const dx = other.x - v.x;
+                const dz = other.z - v.z;
+                const dot = dx * v.dirX + dz * v.dirZ;
+                if (dot > 0 && dot < 9.0) {
+                    const perp = Math.abs(dx * v.dirZ - dz * v.dirX);
+                    if (perp < 2.5) {
+                        targetSpeed = Math.min(targetSpeed, Math.max(0, other.speed - 2.0));
+                        break;
+                    }
+                }
+            }
+        }
+
+        v.speed = THREE.MathUtils.lerp(v.speed, targetSpeed, delta * 3.5);
+
+        if (v.dirZ !== 0) {
+            v.z += v.dirZ * v.speed * delta;
+            if (v.lane.maxZ !== undefined && v.lane.minZ !== undefined) {
+                if (v.z > v.lane.maxZ) v.z = v.lane.minZ;
+                else if (v.z < v.lane.minZ) v.z = v.lane.maxZ;
+            }
+        } else if (v.dirX !== 0) {
+            v.x += v.dirX * v.speed * delta;
+            if (v.lane.maxX !== undefined && v.lane.minX !== undefined) {
+                if (v.x > v.lane.maxX) v.x = v.lane.minX;
+                else if (v.x < v.lane.minX) v.x = v.lane.maxX;
+            }
+        }
+
+        if (v.isDetailed) {
+            v.group.position.set(v.x, 0, v.z);
+            if (v.wheels) {
+                v.wheels.forEach(w => {
+                    w.rotation.x += v.speed * delta * 2.5;
+                });
+            }
+        } else if (instMesh && dummy) {
+            dummy.position.set(v.x, 0.5, v.z);
+            dummy.rotation.y = Math.atan2(v.dirX, v.dirZ);
+            dummy.updateMatrix();
+            instMesh.setMatrixAt(v.instIndex, dummy.matrix);
+            instNeedsUpdate = true;
+        }
+    }
+
+    if (instNeedsUpdate && instMesh) {
+        instMesh.instanceMatrix.needsUpdate = true;
+    }
+}
+
+function updatePublicTransit(delta) {
+    if (!publicTransit || publicTransit.length === 0) return;
+
+    for (let i = 0; i < publicTransit.length; i++) {
+        const pt = publicTransit[i];
+
+        if (pt.type === 'bus') {
+            if (pt.isDwelling) {
+                pt.dwellTimer += delta;
+                pt.speed = 0;
+                if (pt.dwellTimer >= 4.0) {
+                    pt.isDwelling = false;
+                    pt.dwellTimer = 0;
+                }
+            } else {
+                let targetSpeed = 10.0;
+                for (let s = 0; s < trafficSignals.length; s++) {
+                    const sig = trafficSignals[s];
+                    const dz = sig.z - pt.z;
+                    if (Math.abs(sig.x - pt.x) < 8 && dz * pt.dirZ > 0 && Math.abs(dz) < 14.0) {
+                        if (sig.isRedFor(pt.x, pt.z, pt.dirX, pt.dirZ)) {
+                            targetSpeed = 0;
+                            break;
+                        }
+                    }
+                }
+                pt.speed = THREE.MathUtils.lerp(pt.speed, targetSpeed, delta * 3.0);
+                pt.z += pt.dirZ * pt.speed * delta;
+
+                if (pt.route === 1) {
+                    if (pt.z < 20) pt.z = 1350;
+                } else {
+                    if (pt.z > 1350) pt.z = 20;
+                }
+
+                if (Math.floor(pt.z) % 220 < 2 && pt.speed > 4.0) {
+                    pt.isDwelling = true;
+                    pt.dwellTimer = 0;
+                }
+            }
+            pt.group.position.set(pt.x, 0, pt.z);
+        } else if (pt.type === 'taxi') {
+            let targetSpeed = 13.5;
+            for (let s = 0; s < trafficSignals.length; s++) {
+                const sig = trafficSignals[s];
+                const dz = sig.z - pt.z;
+                if (Math.abs(sig.x - pt.x) < 8 && dz * pt.dirZ > 0 && Math.abs(dz) < 14.0) {
+                    if (sig.isRedFor(pt.x, pt.z, pt.dirX, pt.dirZ)) {
+                        targetSpeed = 0;
+                        break;
+                    }
+                }
+            }
+            pt.speed = THREE.MathUtils.lerp(pt.speed, targetSpeed, delta * 3.5);
+            pt.z += pt.dirZ * pt.speed * delta;
+            if (pt.z > 470) pt.z = 20;
+            pt.group.position.set(pt.x, 0, pt.z);
+        }
+    }
+}
+
 buildRailwaySystem();
+buildTrafficSignalSystem();
+buildRoadTrafficSystem();
+buildPublicTransitSystem();
 
 // ==========================================
 // CHARACTER & HERO IRON MAN FLIGHT
@@ -6351,15 +6617,20 @@ function toggleVehicleMount() {
             }
         }
 
-        // Proximity check for Train
-        if (trainState.coach1) {
-            const p = characterGroup.position;
-            const d1 = p.distanceTo(trainState.coach1.position);
-            const d2 = p.distanceTo(trainState.coach2.position);
-            const d3 = p.distanceTo(trainState.coach3.position);
-            if (d1 < 5.5 || d2 < 5.5 || d3 < 5.5) {
-                mountTrain();
-                return;
+        // Proximity check for Train (All 4 Active Trains)
+        const trainsToBoard = (allTrains && allTrains.length > 0) ? allTrains : [trainState];
+        for (let t = 0; t < trainsToBoard.length; t++) {
+            const tr = trainsToBoard[t];
+            if (tr.coach1) {
+                const p = characterGroup.position;
+                const d1 = p.distanceTo(tr.coach1.position);
+                const d2 = tr.coach2 ? p.distanceTo(tr.coach2.position) : Infinity;
+                const d3 = tr.coach3 ? p.distanceTo(tr.coach3.position) : Infinity;
+                if (d1 < 5.8 || d2 < 5.8 || d3 < 5.8) {
+                    boardableTrain = tr;
+                    mountTrain();
+                    return;
+                }
             }
         }
     }
@@ -6394,24 +6665,42 @@ function mountVehicle(v) {
 
 function mountTrain() {
     activeVehicle = 'train';
-    trainState.coach1.add(characterGroup);
+    const tr = boardableTrain || (allTrains.length > 0 ? allTrains[0] : trainState);
+    trainState.coach1 = tr.coach1;
+    trainState.coach2 = tr.coach2;
+    trainState.coach3 = tr.coach3;
+    trainState.mesh = tr.coach1;
+    trainState.splineLength = tr.splineLength;
+    trainState.speed = tr.speed;
+    trainState.isDwelling = tr.isDwelling;
+
+    tr.coach1.add(characterGroup);
     characterGroup.visible = true;
     characterGroup.scale.set(0.85, 0.85, 0.85);
     characterGroup.position.set(-1.42, 0.65, 0);
     characterGroup.rotation.set(0, -Math.PI / 2, 0);
     speedoCard.style.display = 'flex';
-    speedoMode.textContent = '🚊 MUMBAI LOCAL EXPRESS';
+    speedoMode.textContent = `🚆 ${tr.name ? tr.name.toUpperCase() : 'MUMBAI LOCAL EXPRESS'}`;
     playSound('trainHorn');
 }
 
 function dismountVehicle() {
     characterGroup.scale.set(1, 1, 1);
     characterGroup.visible = true;
-    if (activeVehicle === 'train') {
+        if (activeVehicle === 'train') {
         activeVehicle = null;
         scene.add(characterGroup);
-        const nearestZ = trainStationZ.reduce((prev, curr) => Math.abs(curr - trainState.coach1.position.z) < Math.abs(prev - trainState.coach1.position.z) ? curr : prev);
-        characterGroup.position.set(-28.6, 0.65, nearestZ);
+        const curC = (boardableTrain && boardableTrain.coach1) ? boardableTrain.coach1 : (trainState.coach1 || { position: { x: -22, z: 16 } });
+        let platformX = curC.position.x < 100 ? -28.6 : (curC.position.x - 4.5);
+        let nearestZ = curC.position.z;
+        if (railwayStations.length > 0) {
+            const nearestSt = railwayStations.reduce((prev, curr) => Math.hypot(curr.x - curC.position.x, curr.z - curC.position.z) < Math.hypot(prev.x - curC.position.x, prev.z - curC.position.z) ? curr : prev);
+            if (nearestSt) {
+                platformX = nearestSt.x - 4.5;
+                nearestZ = nearestSt.z;
+            }
+        }
+        characterGroup.position.set(platformX, 0.65, nearestZ);
         characterGroup.rotation.set(0, Math.PI / 2, 0);
     } else if (activeVehicle) {
         const v = activeVehicle;
@@ -6690,19 +6979,40 @@ function updateMiniMap(playerX, playerZ, playerRot) {
     mapCtx.fillStyle = '#f97316';
     mapCtx.fillRect(toMapX(poiAirport.x - 120), toMapY(poiAirport.z + 14), 240 * scale, 28 * scale);
 
-    // 7. Train Coaches
-    [trainState.coach1, trainState.coach2, trainState.coach3].forEach((c, idx) => {
-        if (!c) return;
-        const cxMap = toMapX(c.position.x);
-        const cyMap = toMapY(c.position.z);
-        if (Math.hypot(cxMap - cx, cyMap - cy) > radarRadius) return;
-        mapCtx.save();
-        mapCtx.translate(cxMap, cyMap);
-        mapCtx.rotate(c.rotation.y);
-        mapCtx.fillStyle = idx === 0 ? '#facc15' : '#8b5cf6';
-        mapCtx.fillRect(-2.5, -4.5, 5, 9);
-        mapCtx.restore();
+    // 7. Train Coaches (All 4 Active Trains across Corridors)
+    const trainsToRender = (allTrains && allTrains.length > 0) ? allTrains : [{ coach1: trainState.coach1, coach2: trainState.coach2, coach3: trainState.coach3, line: 1 }];
+    trainsToRender.forEach((tr, tIdx) => {
+        [tr.coach1, tr.coach2, tr.coach3].forEach((c, idx) => {
+            if (!c) return;
+            const cxMap = toMapX(c.position.x);
+            const cyMap = toMapY(c.position.z);
+            if (Math.hypot(cxMap - cx, cyMap - cy) > radarRadius) return;
+            mapCtx.save();
+            mapCtx.translate(cxMap, cyMap);
+            mapCtx.rotate(c.rotation.y);
+            mapCtx.fillStyle = idx === 0 ? (tr.line === 1 ? '#facc15' : '#ef4444') : '#8b5cf6';
+            mapCtx.fillRect(-2.5, -4.5, 5, 9);
+            mapCtx.restore();
+        });
     });
+
+    // Public Transit Buses & Taxis on Radar
+    if (publicTransit && publicTransit.length > 0) {
+        publicTransit.forEach(pt => {
+            const mx = toMapX(pt.x);
+            const my = toMapY(pt.z);
+            if (Math.hypot(mx - cx, my - cy) > radarRadius) return;
+            if (pt.type === 'bus') {
+                mapCtx.fillStyle = '#dc2626';
+                mapCtx.fillRect(mx - 2, my - 3.5, 4, 7);
+            } else {
+                mapCtx.fillStyle = '#facc15';
+                mapCtx.beginPath();
+                mapCtx.arc(mx, my, 2, 0, Math.PI * 2);
+                mapCtx.fill();
+            }
+        });
+    }
 
     // Parked Vehicles
     mapCtx.fillStyle = '#06b6d4';
@@ -7007,68 +7317,11 @@ function animate(now = performance.now()) {
         }
     });
 
-    // 4. Mumbai Suburban Local Train Simulation (Articulated EMU Rake on Broad Gauge Spline Loop)
-    if (trainSpline && stationSchedule.length > 0 && trainState.coach1) {
-        const targetStop = stationSchedule[trainState.targetStationIdx];
-        let distS = targetStop.s - trainState.progress;
-        if (distS < 0) distS += 1.0;
-        const distM = distS * trainState.splineLength;
-
-        if (trainState.isDwelling) {
-            trainState.dwellTimer += delta;
-            trainState.speed = 0;
-            if (trainState.dwellTimer > 3.8 && !trainState.hornPlayed) {
-                playSound('trainHorn');
-                trainState.hornPlayed = true;
-            }
-            if (trainState.dwellTimer >= 5.0) {
-                trainState.isDwelling = false;
-                trainState.dwellTimer = 0;
-                trainState.hornPlayed = false;
-                trainState.targetStationIdx = (trainState.targetStationIdx + 1) % stationSchedule.length;
-            }
-        } else {
-            if (distM < 16.0) {
-                const targetSpeed = Math.max(1.5, (distM / 16.0) * trainState.maxSpeed);
-                trainState.speed = THREE.MathUtils.lerp(trainState.speed, targetSpeed, 0.08);
-                if (distM < 0.4 || distM > trainState.splineLength - 1.0) {
-                    trainState.progress = targetStop.s;
-                    trainState.speed = 0;
-                    trainState.isDwelling = true;
-                    trainState.dwellTimer = 0;
-                    trainState.hornPlayed = false;
-                    playSound('chime');
-                }
-            } else {
-                trainState.speed = THREE.MathUtils.lerp(trainState.speed, trainState.maxSpeed, 0.05);
-            }
-            trainState.progress = (trainState.progress + (trainState.speed * delta) / trainState.splineLength) % 1.0;
-        }
-
-        // Articulated Carriage Kinematics along Spline Loop
-        const deltaS = 6.8 / trainState.splineLength;
-        const s1 = trainState.progress;
-        const s2 = (trainState.progress - deltaS + 1.0) % 1.0;
-        const s3 = (trainState.progress - deltaS * 2 + 1.0) % 1.0;
-
-        const p1 = trainSpline.getPointAt(s1);
-        const t1 = trainSpline.getTangentAt(s1);
-        trainState.coach1.position.copy(p1);
-        trainState.coach1.rotation.y = Math.atan2(t1.x, t1.z);
-
-        const p2 = trainSpline.getPointAt(s2);
-        const t2 = trainSpline.getTangentAt(s2);
-        trainState.coach2.position.copy(p2);
-        trainState.coach2.rotation.y = Math.atan2(t2.x, t2.z);
-
-        const p3 = trainSpline.getPointAt(s3);
-        const t3 = trainSpline.getTangentAt(s3);
-        trainState.coach3.position.copy(p3);
-        trainState.coach3.rotation.y = Math.atan2(t3.x, t3.z);
-
-        trainState.x = p1.x;
-        trainState.z = p1.z;
-    }
+    // 4. Mumbai Transit & Road Infrastructure Simulation (Batch 2)
+    updateRailwaySystem(delta);
+    updateTrafficSignals(delta);
+    updateRoadTraffic(delta);
+    updatePublicTransit(delta);
 
     // 5. Superhero Iron Man Landing Sequence
     if (isFlyingIn) {
@@ -7530,15 +7783,20 @@ function checkProximity() {
         return;
     }
 
-    // 7. Check Mumbai Local EMU Train
-    if (trainState.coach1) {
-        const d1 = p.distanceTo(trainState.coach1.position);
-        const d2 = p.distanceTo(trainState.coach2.position);
-        const d3 = p.distanceTo(trainState.coach3.position);
-        if (d1 < 5.5 || d2 < 5.5 || d3 < 5.5) {
-            currentInteraction = 'trainRide';
-            showPrompt('E', 'Board Mumbai Local Train 🚊');
-            return;
+        // 7. Check Mumbai Local EMU Trains (All 4 Active Trainsets)
+    const trainsToCheck = (allTrains && allTrains.length > 0) ? allTrains : [trainState];
+    for (let t = 0; t < trainsToCheck.length; t++) {
+        const tr = trainsToCheck[t];
+        if (tr.coach1) {
+            const d1 = p.distanceTo(tr.coach1.position);
+            const d2 = tr.coach2 ? p.distanceTo(tr.coach2.position) : Infinity;
+            const d3 = tr.coach3 ? p.distanceTo(tr.coach3.position) : Infinity;
+            if (d1 < 5.8 || d2 < 5.8 || d3 < 5.8) {
+                boardableTrain = tr;
+                currentInteraction = 'trainRide';
+                showPrompt('E', `Board ${tr.name || 'Mumbai Local Train'} 🚆`);
+                return;
+            }
         }
     }
 
