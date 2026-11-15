@@ -141,18 +141,35 @@ export function teleportTo(x, z, name, y = 0, camera) {
 }
 
 export function teleportToFloor(floorIdx, camera) {
-    const altitudes = [0, 40, 80, 120];
-    const alt = altitudes[floorIdx] || 0;
+    const altitudes = [
+        0.15,  // F01 Grand Atrium & Fountain Lobby
+        20.0,  // F06 Observation & Sky Garden
+        34.0,  // F11 Living Quarters & Suites
+        48.0,  // F16 Sky Lounge & Cocktail Bar
+        62.0,  // F21 Gym & Wellness Suite
+        76.0,  // F26 Meeting & Boardroom
+        90.0,  // F31 Innovation Lab
+        104.0, // F36 Cybersecurity Command Center
+        118.0, // F41 R&D AI & Robotics Lab
+        132.0, // F46 Master Penthouse & Armor Suite
+        140.0, // F48 Sky Dining & Chef Terrace
+        145.0  // F50 Rooftop Flight Deck & Helipad
+    ];
+    const alt = altitudes[floorIdx] !== undefined ? altitudes[floorIdx] : 0.15;
     const fade = document.getElementById('fade-overlay');
     if (fade) fade.style.opacity = '1';
     playSound('chime');
 
+    const elevatorModal = document.getElementById('stark-elevator-modal');
+    if (elevatorModal) elevatorModal.classList.remove('active');
+
     setTimeout(() => {
-        characterGroup.position.set(poiHome.x, alt + 0.5, poiHome.z + 4);
-        characterGroup.rotation.set(0, Math.PI, 0);
+        const targetZ = (floorIdx === 11) ? (poiHome.z - 4.5) : (poiHome.z - 3.0);
+        characterGroup.position.set(poiHome.x, alt + 0.1, targetZ);
+        characterGroup.rotation.set(0, 0, 0);
         if (camera) {
-            camera.position.set(poiHome.x, alt + 6.5, poiHome.z - 10);
-            camera.lookAt(poiHome.x, alt + 2, poiHome.z + 4);
+            camera.position.set(poiHome.x, alt + 2.2, targetZ - 5.0);
+            camera.lookAt(poiHome.x, alt + 1.6, targetZ + 3.0);
         }
         if (fade) fade.style.opacity = '0';
     }, 450);
@@ -254,6 +271,12 @@ export function handleInteraction() {
     if (!currentInteraction) return;
     playSound('chime');
 
+    if (currentInteraction === 'homeElevator') {
+        const elevatorModal = document.getElementById('stark-elevator-modal');
+        if (elevatorModal) elevatorModal.classList.add('active');
+        return;
+    }
+
     if (currentInteraction === 'schoolBoard') {
         if (modalTitleEl) modalTitleEl.innerHTML = "🏫 Fr. Agnel Technical High School & Junior College";
         if (modalBodyEl) modalBodyEl.innerHTML = `
@@ -279,11 +302,18 @@ export function handleInteraction() {
     } else if (currentInteraction === 'homeHQ') {
         if (modalTitleEl) modalTitleEl.innerHTML = "💻 Devarshi Davane — Home HQ & Research Lab";
         if (modalBodyEl) modalBodyEl.innerHTML = `
-            <strong>Dharavi Koliwada (Mahim East) Cyber Command Skyscraper</strong><br><br>
-            • <strong>Level 1:</strong> Grand Public Atrium & Portfolio Terminal<br>
-            • <strong>Level 2:</strong> Executive Cyber Penthouse Suite<br>
-            • <strong>Level 3:</strong> Security Penetration Research Lab & Battlestation<br>
-            • <strong>Level 4:</strong> 120m Rooftop Helipad & Iron Man Flight Deck
+            <strong>150m Cyber Command Skyscraper • 12 Walkable Explorable Levels</strong><br><br>
+            • <strong>F50 (145m):</strong> Rooftop Flight Deck & Supersonic VTOL Jet<br>
+            • <strong>F46 (132m):</strong> Master Penthouse & Iron Man Armor Suite<br>
+            • <strong>F41 (118m):</strong> R&D AI & Robotics Lab (Articulated Arms)<br>
+            • <strong>F36 (104m):</strong> Cybersecurity Command Center (Tactical Threat Wall)<br>
+            • <strong>F31 (90m):</strong> Innovation Lab (3D Holographic Projector)<br>
+            • <strong>F26 (76m):</strong> Executive Strategy Boardroom<br>
+            • <strong>F21 (62m):</strong> High-Tech Gym & Wellness Center<br>
+            • <strong>F16 (48m):</strong> Sky Lounge & Illuminated Cocktail Bar<br>
+            • <strong>F11 (34m):</strong> Living Quarters & Suites<br>
+            • <strong>F06 (20m):</strong> Observation Mezzanine & Sky Garden<br>
+            • <strong>F01 (0m):</strong> Grand Atrium Lobby & Arc Water Fountain
         `;
         if (modalCodePreviewEl) {
             modalCodePreviewEl.style.display = 'block';
@@ -294,7 +324,7 @@ const developer = {
     school: "Fr. Agnel Technical High School (Bandra West)",
     college: "Datta Meghe College of Engineering (Airoli)",
     homeHQ: "Dharavi Koliwada (Mahim East)",
-    stack: ["Three.js", "WebGL", "TypeScript", "Python", "Docker", "Linux Kernel"]
+    stack: ["Three.js r160", "WebGL", "TypeScript", "Python", "Docker", "Linux Kernel"]
 };
             `;
         }
@@ -338,7 +368,12 @@ export function checkProximity() {
         return;
     }
 
-    // 3. Home HQ Check (0, 8.0, 0)
+    // 3. Home HQ Elevator & Terminal Check
+    if (Math.hypot(p.x - poiHome.x, p.z - (poiHome.z + 6.0)) < 5.5) {
+        currentInteraction = 'homeElevator';
+        showPrompt('E', 'Take Turbo-Lift ⚡');
+        return;
+    }
     if (Math.hypot(p.x - poiHome.x, p.z - poiHome.z) < 32) {
         currentInteraction = 'homeHQ';
         showPrompt('E', 'Access Home HQ Terminal 💻');

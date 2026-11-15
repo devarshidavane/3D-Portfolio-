@@ -94,14 +94,19 @@ export function getSurfaceElevationAt(x, z, currentY = 0) {
     let topY = naturalElevation;
 
     // 2. Stark Tower Home HQ in Dharavi Koliwada (origin X:0, Z:0 / historical Z:140)
-    // Multi-tier floor heights
+    // 12-tier explorable floor elevations matching architectural concept
     const distToOriginHq = Math.hypot(x - 0, z - 0);
     const distToOldHq = Math.hypot(x - 0, z - 140);
-    if (distToOriginHq < 24 || distToOldHq < 22) {
-        if (currentY >= 115) return 120; // Level 4: Helipad & Flight Deck
-        if (currentY >= 75) return 80;   // Level 3: Battlestation & Lab
-        if (currentY >= 35) return 40;   // Level 2: Executive Cyber Penthouse
-        return naturalElevation > 0 ? naturalElevation : 0;
+    if (distToOriginHq < 28 || distToOldHq < 22) {
+        // Explorable floor tiers (from highest to lowest)
+        const towerFloors = [145.0, 140.0, 132.0, 118.0, 104.0, 90.0, 76.0, 62.0, 48.0, 34.0, 20.0];
+        for (let i = 0; i < towerFloors.length; i++) {
+            const flY = towerFloors[i];
+            if (currentY >= flY - 2.5) {
+                return flY;
+            }
+        }
+        return naturalElevation > 0.15 ? naturalElevation : 0.15;
     }
 
     // 3. Fr. Agnel Technical High School Bandra West ridge (-1350, 32.0, 520)

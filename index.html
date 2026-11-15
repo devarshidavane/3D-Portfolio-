@@ -910,7 +910,19 @@
         .elevator-floors {
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 10px;
+            max-height: 520px;
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+
+        .elevator-floors::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .elevator-floors::-webkit-scrollbar-thumb {
+            background: rgba(56, 189, 248, 0.4);
+            border-radius: 4px;
         }
 
         .floor-btn {
@@ -2494,32 +2506,88 @@
             <button class="modal-close-btn" id="elevator-close-btn">&times;</button>
         </div>
         <div class="elevator-floors">
-            <button class="floor-btn" data-floor="3">
-                <div class="floor-badge">L4</div>
+            <button class="floor-btn" data-floor="11">
+                <div class="floor-badge">F50</div>
                 <div class="floor-info">
-                    <span class="floor-name">Rooftop Flight Deck & Armor Pad</span>
-                    <span class="floor-desc">Altitude: 120m — Panoramic City Overlook & Takeoff Deck</span>
+                    <span class="floor-name">Rooftop Flight Deck & Supersonic VTOL Jet</span>
+                    <span class="floor-desc">Altitude: 145m — Concentric Helipad & Panoramic Sky Overlook</span>
+                </div>
+            </button>
+            <button class="floor-btn" data-floor="10">
+                <div class="floor-badge">F48</div>
+                <div class="floor-info">
+                    <span class="floor-name">Sky Dining & Chef's Terrace</span>
+                    <span class="floor-desc">Altitude: 140m — Marble Island Counter & Outdoor Dining</span>
+                </div>
+            </button>
+            <button class="floor-btn" data-floor="9">
+                <div class="floor-badge">F46</div>
+                <div class="floor-info">
+                    <span class="floor-name">Master Penthouse & Iron Man Armor Suite</span>
+                    <span class="floor-desc">Altitude: 132m — Linear Fireplace, Sectional Lounge & Mark Armor Pod</span>
+                </div>
+            </button>
+            <button class="floor-btn" data-floor="8">
+                <div class="floor-badge">F41</div>
+                <div class="floor-info">
+                    <span class="floor-name">R&D AI & Robotics Laboratory</span>
+                    <span class="floor-desc">Altitude: 118m — Articulated Robotic Arms & Tech Fabrication Bay</span>
+                </div>
+            </button>
+            <button class="floor-btn" data-floor="7">
+                <div class="floor-badge">F36</div>
+                <div class="floor-info">
+                    <span class="floor-name">Cybersecurity Tactical Command Center</span>
+                    <span class="floor-desc">Altitude: 104m — Curved Global Threat Map Wall & Server Racks</span>
+                </div>
+            </button>
+            <button class="floor-btn" data-floor="6">
+                <div class="floor-badge">F31</div>
+                <div class="floor-info">
+                    <span class="floor-name">Innovation Lab & Hologram Projection Table</span>
+                    <span class="floor-desc">Altitude: 90m — 3D Holographic Globe & Collaborative Workstations</span>
+                </div>
+            </button>
+            <button class="floor-btn" data-floor="5">
+                <div class="floor-badge">F26</div>
+                <div class="floor-info">
+                    <span class="floor-name">Executive Strategy & Meeting Boardroom</span>
+                    <span class="floor-desc">Altitude: 76m — 12-Seat Conference Table & Telepresence Display</span>
+                </div>
+            </button>
+            <button class="floor-btn" data-floor="4">
+                <div class="floor-badge">F21</div>
+                <div class="floor-info">
+                    <span class="floor-name">High-Tech Gym & Wellness Center</span>
+                    <span class="floor-desc">Altitude: 62m — Panoramic Sea-Facing Treadmills & Weight Racks</span>
+                </div>
+            </button>
+            <button class="floor-btn" data-floor="3">
+                <div class="floor-badge">F16</div>
+                <div class="floor-info">
+                    <span class="floor-name">Sky Lounge & Illuminated Cocktail Bar</span>
+                    <span class="floor-desc">Altitude: 48m — Curved Backlit Bar Counter, Barstools & Lounge</span>
                 </div>
             </button>
             <button class="floor-btn" data-floor="2">
-                <div class="floor-badge">L3</div>
+                <div class="floor-badge">F11</div>
                 <div class="floor-info">
-                    <span class="floor-name">Cybersecurity Lab & Command Penthouse</span>
-                    <span class="floor-desc">Altitude: 80m — DevSecOps Battlestation & Armor Pod</span>
+                    <span class="floor-name">Residential Living Quarters & Suites</span>
+                    <span class="floor-desc">Altitude: 34m — King Platform Bed, Wardrobe & Ensuite Bathroom</span>
                 </div>
             </button>
             <button class="floor-btn" data-floor="1">
-                <div class="floor-badge">L2</div>
+                <div class="floor-badge">F06</div>
                 <div class="floor-info">
-                    <span class="floor-name">Luxury Residential Penthouse Suite</span>
-                    <span class="floor-desc">Altitude: 40m — Living Lounge, Kitchen Island & King Suite</span>
+                    <span class="floor-name">Observation Mezzanine & Sky Garden</span>
+                    <span class="floor-desc">Altitude: 20m — Cantilevered Balcony Terrace & Tropical Greenery</span>
                 </div>
             </button>
             <button class="floor-btn" data-floor="0">
-                <div class="floor-badge">L1</div>
+                <div class="floor-badge">F01</div>
                 <div class="floor-info">
-                    <span class="floor-name">Grand Entrance Atrium Lobby</span>
-                    <span class="floor-desc">Altitude: 0m — Reception, Security Turnstiles & Plaza Access</span>
+                    <span class="floor-name">Grand Atrium Lobby & Arc Water Fountain</span>
+                    <span class="floor-desc">Altitude: 0m — 8m Double-Height Volume, Reception & Plaza Access</span>
                 </div>
             </button>
         </div>
