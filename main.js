@@ -1754,30 +1754,66 @@ function createArticulatedPedestrian(config) {
 }
 
 const npcs = [];
+const allPedestrians = [];
+const streetActivities = [];
+const ambientAgents = [];
+let instancedPedestrians = null;
+let pedDummy = null;
 
-function buildMumbaiCrowd() {
-    // 8 Diverse Articulated Walking Pedestrians + 28 Batched Ambient Citizens across Mumbai
-    const crowdConfig = [
-        // --- ZONE 1: ARABIAN SEA WATERFRONT PROMENADE ---
-        { skin: 3, shirt: 0, pants: 0, hair: 0, type: 'chaiwala', wps: [{x: -8, z: -3}, {x: 12, z: -3}] },
-        { skin: 2, shirt: 0, pants: 3, hair: 0, type: 'dabbawala', wps: [{x: -28, z: 2}, {x: 6, z: 2}] },
-        { skin: 2, shirt: 3, pants: 3, hair: 0, type: 'saree', wps: [{x: 10, z: -4}, {x: 28, z: -4}] },
+// ==========================================
+// SYSTEM 1: PEDESTRIAN SIMULATION (120 PEDESTRIANS)
+// 30 Detailed Bi-Pedal Rigs + 90 Instanced Distance Walkers
+// ==========================================
+function buildPedestrianSimulation() {
+    // 1. 30 Detailed Bi-Pedal Articulated Walkers across all 7 Districts
+    const detailedConfigs = [
+        // District 1: Gateway Waterfront Promenade (5)
+        { skin: 3, shirt: 0, pants: 0, hair: 0, type: 'chaiwala', wps: [{x: -14, z: -4}, {x: 18, z: -4}, {x: 8, z: -12}, {x: -12, z: -10}] },
+        { skin: 2, shirt: 1, pants: 3, hair: 0, type: 'dabbawala', wps: [{x: -30, z: 2}, {x: 10, z: 2}, {x: 25, z: -4}, {x: -15, z: -4}] },
+        { skin: 1, shirt: 3, pants: 3, hair: 0, type: 'saree', wps: [{x: 12, z: -6}, {x: 32, z: -6}, {x: 20, z: 4}, {x: 0, z: 4}] },
+        { skin: 2, shirt: 2, pants: 1, hair: 1, type: 'commuter', wps: [{x: -25, z: -14}, {x: 25, z: -14}, {x: 15, z: -8}, {x: -18, z: -8}] },
+        { skin: 0, shirt: 4, pants: 2, hair: 2, type: 'tourist', wps: [{x: -8, z: -18}, {x: 8, z: -18}, {x: 14, z: -6}, {x: -14, z: -6}] },
 
-        // --- ZONE 2: NORTH AVENUE SIDEWALKS ---
-        { skin: 1, shirt: 0, pants: 2, hair: 0, type: 'commuter', wps: [{x: -5.0, z: 18}, {x: -5.0, z: 42}] },
-        { skin: 2, shirt: 4, pants: 0, hair: 1, type: 'student_headphones', wps: [{x: 5.0, z: 30}, {x: 5.0, z: 70}] },
+        // District 2: Marine Drive Coastal Promenade (4)
+        { skin: 1, shirt: 0, pants: 2, hair: 0, type: 'jogger', wps: [{x: -28, z: 30}, {x: -28, z: 110}, {x: -32, z: 90}, {x: -32, z: 40}] },
+        { skin: 2, shirt: 4, pants: 0, hair: 1, type: 'student_headphones', wps: [{x: -31, z: 50}, {x: -31, z: 120}, {x: -28, z: 100}, {x: -28, z: 60}] },
+        { skin: 3, shirt: 2, pants: 4, hair: 0, type: 'senior_walker', wps: [{x: -29, z: 40}, {x: -29, z: 85}, {x: -33, z: 80}, {x: -33, z: 45}] },
+        { skin: 1, shirt: 1, pants: 1, hair: 2, type: 'photographer', wps: [{x: -33, z: 65}, {x: -33, z: 105}, {x: -29, z: 95}, {x: -29, z: 70}] },
 
-        // --- ZONE 3: MARKET STREET CROSS AVENUE ---
-        { skin: 1, shirt: 1, pants: 0, hair: 0, type: 'poncho', wps: [{x: -28, z: 45.0}, {x: 14, z: 45.0}] },
+        // District 3: Downtown Home HQ / Stark Tower Midtown Plaza (5)
+        { skin: 1, shirt: 0, pants: 0, hair: 0, type: 'tech_exec', wps: [{x: -14, z: 230}, {x: 14, z: 230}, {x: 14, z: 260}, {x: -14, z: 260}] },
+        { skin: 2, shirt: 3, pants: 2, hair: 1, type: 'cyber_security', wps: [{x: 8, z: 220}, {x: 8, z: 275}, {x: -8, z: 275}, {x: -8, z: 220}] },
+        { skin: 0, shirt: 1, pants: 3, hair: 0, type: 'designer', wps: [{x: -18, z: 240}, {x: 18, z: 240}, {x: 10, z: 265}, {x: -10, z: 265}] },
+        { skin: 3, shirt: 4, pants: 1, hair: 2, type: 'office_worker', wps: [{x: 12, z: 235}, {x: -12, z: 235}, {x: -12, z: 255}, {x: 12, z: 255}] },
+        { skin: 2, shirt: 2, pants: 0, hair: 0, type: 'courier', wps: [{x: 6, z: 215}, {x: 6, z: 270}, {x: 14, z: 270}, {x: 14, z: 215}] },
 
-        // --- ZONE 4: RAILWAY STATION PLATFORMS ---
-        { skin: 2, shirt: 2, pants: 4, hair: 0, type: 'kurta', wps: [{x: -28.6, z: 12}, {x: -28.6, z: 36}] },
+        // District 4: West Residential Chawls (4)
+        { skin: 2, shirt: 0, pants: 4, hair: 0, type: 'chawl_resident', wps: [{x: -170, z: 460}, {x: -200, z: 460}, {x: -200, z: 500}, {x: -170, z: 500}] },
+        { skin: 3, shirt: 2, pants: 3, hair: 1, type: 'chai_drinker', wps: [{x: -175, z: 470}, {x: -195, z: 470}, {x: -195, z: 485}, {x: -175, z: 485}] },
+        { skin: 1, shirt: 3, pants: 1, hair: 0, type: 'neighbor', wps: [{x: -185, z: 450}, {x: -185, z: 510}, {x: -178, z: 510}, {x: -178, z: 450}] },
+        { skin: 2, shirt: 1, pants: 0, hair: 2, type: 'tailor', wps: [{x: -192, z: 465}, {x: -168, z: 465}, {x: -168, z: 495}, {x: -192, z: 495}] },
 
-        // --- ZONE 5: EAST CAMPUS & ACADEMIA ---
-        { skin: 2, shirt: 0, pants: 0, hair: 0, type: 'student', wps: [{x: 50, z: 74}, {x: 68, z: 74}] }
+        // District 5: Commercial Bazaar Junction (4)
+        { skin: 2, shirt: 4, pants: 0, hair: 0, type: 'merchant', wps: [{x: 165, z: 415}, {x: 195, z: 415}, {x: 195, z: 445}, {x: 165, z: 445}] },
+        { skin: 1, shirt: 1, pants: 2, hair: 1, type: 'shopper', wps: [{x: 170, z: 420}, {x: 170, z: 455}, {x: 185, z: 455}, {x: 185, z: 420}] },
+        { skin: 3, shirt: 0, pants: 3, hair: 0, type: 'porter', wps: [{x: 160, z: 430}, {x: 198, z: 430}, {x: 198, z: 440}, {x: 160, z: 440}] },
+        { skin: 0, shirt: 2, pants: 1, hair: 2, type: 'spice_trader', wps: [{x: 178, z: 410}, {x: 178, z: 450}, {x: 192, z: 450}, {x: 192, z: 410}] },
+
+        // District 6: Model High School District (4)
+        { skin: 1, shirt: 0, pants: 0, hair: 0, type: 'school_student_1', wps: [{x: -310, z: 885}, {x: -335, z: 885}, {x: -335, z: 925}, {x: -310, z: 925}] },
+        { skin: 2, shirt: 4, pants: 1, hair: 1, type: 'school_student_2', wps: [{x: -315, z: 890}, {x: -315, z: 935}, {x: -328, z: 935}, {x: -328, z: 890}] },
+        { skin: 3, shirt: 2, pants: 4, hair: 0, type: 'school_teacher', wps: [{x: -305, z: 895}, {x: -330, z: 895}, {x: -330, z: 915}, {x: -305, z: 915}] },
+        { skin: 0, shirt: 3, pants: 2, hair: 2, type: 'parent_guardian', wps: [{x: -322, z: 880}, {x: -322, z: 930}, {x: -312, z: 930}, {x: -312, z: 880}] },
+
+        // District 7: DMCE Academia Campus (4)
+        { skin: 2, shirt: 1, pants: 0, hair: 0, type: 'dmce_engineer_1', wps: [{x: 395, z: 865}, {x: 435, z: 865}, {x: 435, z: 905}, {x: 395, z: 905}] },
+        { skin: 1, shirt: 3, pants: 2, hair: 1, type: 'dmce_engineer_2', wps: [{x: 405, z: 870}, {x: 405, z: 915}, {x: 425, z: 915}, {x: 425, z: 870}] },
+        { skin: 3, shirt: 0, pants: 3, hair: 2, type: 'dmce_professor', wps: [{x: 412, z: 860}, {x: 438, z: 860}, {x: 438, z: 895}, {x: 412, z: 895}] },
+        { skin: 0, shirt: 4, pants: 1, hair: 0, type: 'dmce_researcher', wps: [{x: 398, z: 875}, {x: 398, z: 920}, {x: 430, z: 920}, {x: 430, z: 875}] }
     ];
 
-    crowdConfig.forEach((cfg, idx) => {
+    npcs.length = 0;
+    detailedConfigs.forEach((cfg, idx) => {
         const p = createArticulatedPedestrian({
             skinIdx: cfg.skin,
             shirtIdx: cfg.shirt,
@@ -1791,7 +1827,9 @@ function buildMumbaiCrowd() {
         p.group.position.set(startWp.x, 0, startWp.z);
         scene.add(p.group);
 
-        npcs.push({
+        const npcObj = {
+            id: `npc_det_${idx}`,
+            isDetailed: true,
             group: p.group,
             type: cfg.type,
             armL: p.armL,
@@ -1802,12 +1840,241 @@ function buildMumbaiCrowd() {
             walkCycle: p.walkCycle,
             waypoints: cfg.wps,
             wpIdx: 1,
-            speed: 1.1 + Math.random() * 0.7
+            speed: 1.1 + (idx % 5) * 0.18
+        };
+        npcs.push(npcObj);
+        allPedestrians.push(npcObj);
+    });
+
+    // 2. 90 Simplified / Instanced Distance Walkers in 1 Draw Call
+    const pedTorso = applyVertexColor(new THREE.BoxGeometry(0.42, 0.65, 0.24), 0x3b82f6);
+    pedTorso.translate(0, 1.25, 0);
+    const pedHead = applyVertexColor(new THREE.SphereGeometry(0.18, 6, 6), 0xd4a373);
+    pedHead.translate(0, 1.72, 0);
+    const pedLegs = applyVertexColor(new THREE.BoxGeometry(0.36, 0.85, 0.20), 0x1e293b);
+    pedLegs.translate(0, 0.45, 0);
+
+    const mergedPedGeom = BufferGeometryUtils.mergeGeometries([pedTorso, pedHead, pedLegs]);
+    const instMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6 });
+    instancedPedestrians = new THREE.InstancedMesh(mergedPedGeom, instMat, 90);
+    instancedPedestrians.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    scene.add(instancedPedestrians);
+    pedDummy = new THREE.Object3D();
+
+    const sidewalkCircuits = [
+        { minX: -7.5, maxX: -6.5, minZ: 16, maxZ: 960, dirZ: 1 },
+        { minX: 6.5, maxX: 7.5, minZ: 16, maxZ: 960, dirZ: -1 },
+        { minX: -34, maxX: -27, minZ: 20, maxZ: 240, dirZ: 1 },
+        { minX: -188, maxX: -172, minZ: 440, maxZ: 530, dirZ: 1 },
+        { minX: 165, maxX: 195, minZ: 400, maxZ: 460, dirZ: -1 },
+        { minX: -340, maxX: 440, minZ: 895, maxZ: 905, dirX: 1 }
+    ];
+
+    for (let k = 0; k < 90; k++) {
+        const circ = sidewalkCircuits[k % sidewalkCircuits.length];
+        const frac = (k / 90.0);
+        let curX = circ.minX + (circ.maxX - circ.minX) * ((k * 7) % 10) / 10;
+        let curZ = circ.minZ + (circ.maxZ - circ.minZ) * frac;
+        const dirX = circ.dirX || 0;
+        const dirZ = circ.dirZ || 1;
+
+        pedDummy.position.set(curX, 0, curZ);
+        pedDummy.rotation.y = Math.atan2(dirX, dirZ);
+        pedDummy.updateMatrix();
+        instancedPedestrians.setMatrixAt(k, pedDummy.matrix);
+
+        const instObj = {
+            id: `npc_inst_${k}`,
+            isDetailed: false,
+            instIndex: k,
+            circuit: circ,
+            x: curX,
+            z: curZ,
+            dirX,
+            dirZ,
+            speed: 1.0 + (k % 4) * 0.15,
+            walkPhase: Math.random() * Math.PI * 2
+        };
+        allPedestrians.push(instObj);
+    }
+    instancedPedestrians.instanceMatrix.needsUpdate = true;
+
+    window.__npcs = npcs;
+    window.__pedestrians = { detailed: npcs, instanced: allPedestrians.filter(p => !p.isDetailed), total: allPedestrians.length };
+    window.__allPedestriansCount = allPedestrians.length;
+}
+
+// ------------------------------------------
+// SYSTEM 11: STREET ACTIVITY SIMULATION (20 LOCATIONS)
+// ------------------------------------------
+function buildStreetActivities() {
+    streetActivities.length = 0;
+    const stallWoodMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.8 });
+    const stallCanopyMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.5 });
+    const metalBrassMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.3, metalness: 0.8 });
+    const greenProduceMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.7 });
+    const flowerMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.6 });
+
+    const activityDefs = [
+        { id: 'act_gw_chai', name: "Gateway Cutting Chai Stall", x: -12, z: -5, type: 'chai' },
+        { id: 'act_gw_coco', name: "Marine Drive Coconut Vendor", x: 14, z: -6, type: 'coconut' },
+        { id: 'act_gw_photo', name: "Waterfront Souvenir Kiosk", x: -26, z: -2, type: 'kiosk' },
+        { id: 'act_gw_bhutta', name: "Roasted Bhutta & Corn Cart", x: 28, z: -4, type: 'bhutta' },
+        { id: 'act_md_tapri', name: "Marine Drive Chai Tapri", x: -18, z: 75, type: 'chai' },
+        { id: 'act_md_kulfi', name: "Chowpatty Kulfi Cart", x: -15, z: 85, type: 'kulfi' },
+        { id: 'act_md_news', name: "Marine Newsstand & Books", x: -32, z: 78, type: 'kiosk' },
+        { id: 'act_hq_cyber', name: "Stark Plaza Cyber-Chai Bar", x: -8, z: 238, type: 'chai' },
+        { id: 'act_hq_vada', name: "Downtown Mumbai Vada Pav Thela", x: 12, z: 242, type: 'vadapav' },
+        { id: 'act_hq_fruit', name: "Fresh Fruit Cart", x: -12, z: 262, type: 'fruit' },
+        { id: 'act_ch_chai', name: "Chawl Corner Chai Tapri", x: -190, z: 475, type: 'chai' },
+        { id: 'act_ch_garland', name: "Marigold Flower Garland Stall", x: -170, z: 485, type: 'flower' },
+        { id: 'act_ch_veg', name: "Chawl Vegetable Thela", x: -185, z: 505, type: 'produce' },
+        { id: 'act_bz_spice', name: "Spice & Sacks Market", x: 175, z: 425, type: 'spice' },
+        { id: 'act_bz_pav', name: "Sizzling Pav Bhaji Tawa", x: 185, z: 435, type: 'pavbhaji' },
+        { id: 'act_bz_textile', name: "Textile & Saree Kiosk", x: 168, z: 445, type: 'kiosk' },
+        { id: 'act_sc_candy', name: "School Stationery & Candy Cart", x: -310, z: 895, type: 'kiosk' },
+        { id: 'act_sc_bhel', name: "Bhelpuri & Chana Cart", x: -330, z: 905, type: 'snack' },
+        { id: 'act_dmce_canteen', name: "DMCE Engineering Canteen Adda", x: 410, z: 895, type: 'chai' },
+        { id: 'act_dmce_print', name: "Blueprint & Xerox Kiosk", x: 430, z: 905, type: 'kiosk' }
+    ];
+
+    const staticWoodGeoms = [];
+    const staticMetalGeoms = [];
+    const staticCanopyGeoms = [];
+    const staticProduceGeoms = [];
+    const staticFlowerGeoms = [];
+
+    activityDefs.forEach((act, idx) => {
+        const table = new THREE.BoxGeometry(1.8, 0.85, 0.9);
+        table.translate(act.x, 0.425, act.z);
+        staticWoodGeoms.push(table);
+
+        const roof = new THREE.BoxGeometry(2.2, 0.12, 1.3);
+        roof.translate(act.x, 2.2, act.z);
+        staticCanopyGeoms.push(roof);
+
+        if (act.type === 'chai' || act.type === 'pavbhaji') {
+            const samovar = new THREE.CylinderGeometry(0.22, 0.22, 0.55, 10);
+            samovar.translate(act.x - 0.4, 0.95, act.z);
+            staticMetalGeoms.push(samovar);
+        } else if (act.type === 'coconut' || act.type === 'produce') {
+            const stack = new THREE.CylinderGeometry(0.35, 0.45, 0.4, 8);
+            stack.translate(act.x + 0.3, 0.95, act.z);
+            staticProduceGeoms.push(stack);
+        } else if (act.type === 'flower') {
+            const garlands = new THREE.TorusGeometry(0.35, 0.08, 6, 12);
+            garlands.rotateX(Math.PI / 2);
+            garlands.translate(act.x, 1.8, act.z);
+            staticFlowerGeoms.push(garlands);
+        }
+
+        registerBoxCollider(act.x - 1.2, act.x + 1.2, act.z - 0.8, act.z + 0.8, `StreetAct_${act.id}`, -2, 2.5);
+
+        let steamQuad = null;
+        if (act.type === 'chai' || act.type === 'pavbhaji') {
+            const steamMat = new THREE.MeshBasicMaterial({ color: 0xe2e8f0, transparent: true, opacity: 0.45 });
+            steamQuad = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.6), steamMat);
+            steamQuad.position.set(act.x - 0.4, 1.45, act.z);
+            scene.add(steamQuad);
+        }
+
+        streetActivities.push({
+            id: act.id,
+            name: act.name,
+            x: act.x,
+            z: act.z,
+            type: act.type,
+            steamQuad,
+            timer: idx * 0.8
         });
     });
+
+    if (staticWoodGeoms.length > 0) scene.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(staticWoodGeoms), stallWoodMat));
+    if (staticMetalGeoms.length > 0) scene.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(staticMetalGeoms), metalBrassMat));
+    if (staticCanopyGeoms.length > 0) scene.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(staticCanopyGeoms), stallCanopyMat));
+    if (staticProduceGeoms.length > 0) scene.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(staticProduceGeoms), greenProduceMat));
+    if (staticFlowerGeoms.length > 0) scene.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(staticFlowerGeoms), flowerMat));
+
+    window.__streetActivities = streetActivities;
 }
-buildMumbaiCrowd();
-window.__npcs = npcs;
+
+// ------------------------------------------
+// SYSTEM 12: ENVIRONMENTAL SIMULATION (30 AMBIENT AGENTS)
+// ------------------------------------------
+function createBirdMesh(colorHex = 0xf8fafc, span = 1.4) {
+    const birdGeom = new THREE.BufferGeometry();
+    const half = span / 2;
+    const vertices = new Float32Array([
+        0, 0, 0.4,   -half, 0.1, -0.2,   0, 0, -0.4,
+        0, 0, 0.4,    0, 0, -0.4,         half, 0.1, -0.2
+    ]);
+    birdGeom.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+    birdGeom.computeVertexNormals();
+
+    const mat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.6, side: THREE.DoubleSide });
+    const mesh = new THREE.Mesh(birdGeom, mat);
+    const grp = new THREE.Group();
+    grp.add(mesh);
+    return { group: grp, mesh };
+}
+
+function buildEnvironmentalSimulation() {
+    ambientAgents.length = 0;
+
+    for (let i = 0; i < 20; i++) {
+        const bird = createBirdMesh(0xf8fafc, 1.2);
+        const radius = 25.0 + (i % 5) * 12.0;
+        const startAngle = (i / 20.0) * Math.PI * 2;
+        const startY = 18.0 + (i % 4) * 4.5;
+        const cx = 0, cz = 0;
+
+        bird.group.position.set(cx + Math.cos(startAngle) * radius, startY, cz + Math.sin(startAngle) * radius);
+        scene.add(bird.group);
+
+        ambientAgents.push({
+            id: `seagull_${i}`,
+            type: 'seagull',
+            group: bird.group,
+            mesh: bird.mesh,
+            radius,
+            angle: startAngle,
+            altitude: startY,
+            speed: 0.8 + (i % 3) * 0.2,
+            flapSpeed: 10.0 + (i % 4) * 1.5,
+            center: { x: cx, z: cz }
+        });
+    }
+
+    for (let k = 0; k < 10; k++) {
+        const kite = createBirdMesh(0x78350f, 2.2);
+        const radius = 60.0 + (k % 4) * 25.0;
+        const startAngle = (k / 10.0) * Math.PI * 2;
+        const startY = 85.0 + (k % 3) * 20.0;
+        const cx = 0, cz = 360;
+
+        kite.group.position.set(cx + Math.cos(startAngle) * radius, startY, cz + Math.sin(startAngle) * radius);
+        scene.add(kite.group);
+
+        ambientAgents.push({
+            id: `kite_${k}`,
+            type: 'kite',
+            group: kite.group,
+            mesh: kite.mesh,
+            radius,
+            angle: startAngle,
+            altitude: startY,
+            speed: 0.35 + (k % 3) * 0.1,
+            flapSpeed: 2.5 + (k % 2) * 0.8,
+            center: { x: cx, z: cz }
+        });
+    }
+
+    window.__ambientAgents = ambientAgents;
+}
+
+buildPedestrianSimulation();
+buildStreetActivities();
+buildEnvironmentalSimulation();
 
 // ==========================================
 // AMBIENT MUMBAI CITIZENS (BATHED IN 1 DRAW CALL)
@@ -3270,85 +3537,7 @@ function buildAirportDistrict() {
     beacon.position.set(-70, 36.0, 360);
     airport.add(beacon);
 
-    // 3. 38m Commercial Twin-Engine Jetliner (Parked at X = 45, Z = 376)
-    const jetGroup = new THREE.Group();
-    jetGroup.position.set(45, 0, 376);
-    jetGroup.rotation.y = -Math.PI / 6;
-
-    const jetWhiteMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.3, metalness: 0.2 });
-    const jetEngineMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5, metalness: 0.7 });
-    const jetTricolorMat = new THREE.MeshStandardMaterial({ color: 0xea580c, roughness: 0.4 });
-
-    // Fuselage, Wings, Tail Fin, Engines & Gear merged into single batched mesh
-    const jetGeoms = [];
-    const fuselage = applyVertexColor(new THREE.CylinderGeometry(1.6, 1.6, 32, 14), 0xf8fafc);
-    fuselage.rotateX(Math.PI / 2);
-    fuselage.translate(0, 3.5, 0);
-    jetGeoms.push(fuselage);
-
-    // Aerodynamic Nose Cone
-    const nose = applyVertexColor(new THREE.ConeGeometry(1.6, 6.0, 14), 0xf8fafc);
-    nose.rotateX(Math.PI / 2);
-    nose.translate(0, 3.5, 19.0);
-    jetGeoms.push(nose);
-
-    // Main Swept Wings (36m Span)
-    const wingL = applyVertexColor(new THREE.BoxGeometry(16, 0.25, 4.2), 0xf8fafc);
-    wingL.rotateY(-0.35);
-    wingL.translate(-9.5, 3.2, -1.0);
-    jetGeoms.push(wingL);
-
-    const wingR = applyVertexColor(new THREE.BoxGeometry(16, 0.25, 4.2), 0xf8fafc);
-    wingR.rotateY(0.35);
-    wingR.translate(9.5, 3.2, -1.0);
-    jetGeoms.push(wingR);
-
-    // Horizontal Stabilizers at Tail
-    const hStabL = applyVertexColor(new THREE.BoxGeometry(5.5, 0.18, 1.8), 0xf8fafc);
-    hStabL.rotateY(-0.3);
-    hStabL.translate(-3.2, 5.0, -15.0);
-    jetGeoms.push(hStabL);
-
-    const hStabR = applyVertexColor(new THREE.BoxGeometry(5.5, 0.18, 1.8), 0xf8fafc);
-    hStabR.rotateY(0.3);
-    hStabR.translate(3.2, 5.0, -15.0);
-    jetGeoms.push(hStabR);
-
-    // Vertical Stabilizer / Tail Fin (Tricolor Orange)
-    const vFinGeom = applyVertexColor(new THREE.BoxGeometry(0.24, 5.5, 3.6), 0xea580c);
-    vFinGeom.translate(0, 6.5, -14.5);
-    jetGeoms.push(vFinGeom);
-
-    // Twin Turbofan Jet Engines on underwing pylons
-    [-6.5, 6.5].forEach(ex => {
-        const nacelle = applyVertexColor(new THREE.CylinderGeometry(0.9, 0.9, 4.2, 12), 0x1e293b);
-        nacelle.rotateX(Math.PI / 2);
-        nacelle.translate(ex, 2.3, 0.5);
-        jetGeoms.push(nacelle);
-
-        const spinner = applyVertexColor(new THREE.ConeGeometry(0.4, 1.2, 10), 0x94a3b8);
-        spinner.rotateX(Math.PI / 2);
-        spinner.translate(ex, 2.3, 2.7);
-        jetGeoms.push(spinner);
-    });
-
-    // Tricycle Landing Gear
-    const nWheel = applyVertexColor(new THREE.CylinderGeometry(0.45, 0.45, 0.35, 8), 0x020617);
-    nWheel.rotateZ(Math.PI / 2);
-    nWheel.translate(0, 0.45, 14.0);
-    jetGeoms.push(nWheel);
-
-    [-4.5, 4.5].forEach(gx => {
-        const mW = applyVertexColor(new THREE.CylinderGeometry(0.65, 0.65, 0.45, 8), 0x020617);
-        mW.rotateZ(Math.PI / 2);
-        mW.translate(gx, 0.65, -1.0);
-        jetGeoms.push(mW);
-    });
-
-    const jetMesh = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(jetGeoms), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.4 }));
-    jetMesh.castShadow = false;
-    jetGroup.add(jetMesh);
-    airport.add(jetGroup);
+// 3. Aircraft fleet handled by buildAirportSimulation() below
 
     // 4. Passenger Terminal 2 & Jetway Aerobridge per Stitch CAD Sheet 3
     const terminalGroup = new THREE.Group();
@@ -3414,6 +3603,168 @@ function buildAirportDistrict() {
     scene.add(airport);
 }
 buildAirportDistrict();
+
+// ==========================================
+// SYSTEM 7: AIRPORT SIMULATION (6 AIRCRAFT FLEET)
+// ==========================================
+const airportPlanes = [];
+
+function createJetlinerModel(fuselageHex = 0xf8fafc, tailHex = 0xea580c, engineHex = 0x1e293b) {
+    const jetGeoms = [];
+    const fuselage = applyVertexColor(new THREE.CylinderGeometry(1.6, 1.6, 32, 14), fuselageHex);
+    fuselage.rotateX(Math.PI / 2);
+    fuselage.translate(0, 3.5, 0);
+    jetGeoms.push(fuselage);
+
+    const nose = applyVertexColor(new THREE.ConeGeometry(1.6, 6.0, 14), fuselageHex);
+    nose.rotateX(Math.PI / 2);
+    nose.translate(0, 3.5, 19.0);
+    jetGeoms.push(nose);
+
+    const wingL = applyVertexColor(new THREE.BoxGeometry(16, 0.25, 4.2), fuselageHex);
+    wingL.rotateY(-0.35);
+    wingL.translate(-9.5, 3.2, -1.0);
+    jetGeoms.push(wingL);
+
+    const wingR = applyVertexColor(new THREE.BoxGeometry(16, 0.25, 4.2), fuselageHex);
+    wingR.rotateY(0.35);
+    wingR.translate(9.5, 3.2, -1.0);
+    jetGeoms.push(wingR);
+
+    const hStabL = applyVertexColor(new THREE.BoxGeometry(5.5, 0.18, 1.8), fuselageHex);
+    hStabL.rotateY(-0.3);
+    hStabL.translate(-3.2, 5.0, -15.0);
+    jetGeoms.push(hStabL);
+
+    const hStabR = applyVertexColor(new THREE.BoxGeometry(5.5, 0.18, 1.8), fuselageHex);
+    hStabR.rotateY(0.3);
+    hStabR.translate(3.2, 5.0, -15.0);
+    jetGeoms.push(hStabR);
+
+    const vFinGeom = applyVertexColor(new THREE.BoxGeometry(0.24, 5.5, 3.6), tailHex);
+    vFinGeom.translate(0, 6.5, -14.5);
+    jetGeoms.push(vFinGeom);
+
+    [-6.5, 6.5].forEach(ex => {
+        const nacelle = applyVertexColor(new THREE.CylinderGeometry(0.9, 0.9, 4.2, 12), engineHex);
+        nacelle.rotateX(Math.PI / 2);
+        nacelle.translate(ex, 2.3, 0.5);
+        jetGeoms.push(nacelle);
+
+        const spinner = applyVertexColor(new THREE.ConeGeometry(0.4, 1.2, 10), 0x94a3b8);
+        spinner.rotateX(Math.PI / 2);
+        spinner.translate(ex, 2.3, 2.7);
+        jetGeoms.push(spinner);
+    });
+
+    const nWheel = applyVertexColor(new THREE.CylinderGeometry(0.45, 0.45, 0.35, 8), 0x020617);
+    nWheel.rotateZ(Math.PI / 2);
+    nWheel.translate(0, 0.45, 14.0);
+    jetGeoms.push(nWheel);
+
+    [-4.5, 4.5].forEach(gx => {
+        const mW = applyVertexColor(new THREE.CylinderGeometry(0.65, 0.65, 0.45, 8), 0x020617);
+        mW.rotateZ(Math.PI / 2);
+        mW.translate(gx, 0.65, -1.0);
+        jetGeoms.push(mW);
+    });
+
+    const mesh = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(jetGeoms), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.4 }));
+    mesh.castShadow = false;
+    const grp = new THREE.Group();
+    grp.add(mesh);
+
+    const strobe = new THREE.Mesh(new THREE.SphereGeometry(0.25, 6, 6), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    strobe.position.set(0, 9.3, -15.5);
+    grp.add(strobe);
+
+    return { group: grp, strobe };
+}
+
+function buildAirportSimulation() {
+    airportPlanes.length = 0;
+    const apX = poiAirport.x;
+    const apZ = poiAirport.z;
+
+    const p0 = createJetlinerModel(0xf8fafc, 0xea580c, 0x1e293b);
+    p0.group.position.set(apX + 45, 0, apZ - 4);
+    p0.group.rotation.y = -Math.PI / 6;
+    scene.add(p0.group);
+    airportPlanes.push({ id: 0, name: "Air India AI-101 (Gate 1)", state: 'parked', group: p0.group, strobe: p0.strobe, x: apX + 45, y: 0, z: apZ - 4 });
+
+    const p1 = createJetlinerModel(0xf8fafc, 0x1d4ed8, 0x0f172a);
+    p1.group.position.set(apX + 85, 0, apZ - 4);
+    p1.group.rotation.y = -Math.PI / 6;
+    scene.add(p1.group);
+    airportPlanes.push({ id: 1, name: "IndiGo 6E-404 (Gate 2)", state: 'parked', group: p1.group, strobe: p1.strobe, x: apX + 85, y: 0, z: apZ - 4 });
+
+    const p2 = createJetlinerModel(0xf8fafc, 0x701a75, 0x1e293b);
+    p2.group.position.set(apX - 30, 0, apZ + 20);
+    scene.add(p2.group);
+    airportPlanes.push({
+        id: 2,
+        name: "Vistara UK-920 (Taxiing)",
+        state: 'taxiing',
+        group: p2.group,
+        strobe: p2.strobe,
+        x: apX - 30,
+        y: 0,
+        z: apZ + 20,
+        speed: 6.5,
+        progress: 0.1
+    });
+
+    const p3 = createJetlinerModel(0xf8fafc, 0xd97706, 0x1e293b);
+    p3.group.position.set(apX - 110, 0, apZ);
+    scene.add(p3.group);
+    airportPlanes.push({
+        id: 3,
+        name: "Akasa Air QP-112 (Takeoff / Climb)",
+        state: 'takeoff',
+        group: p3.group,
+        strobe: p3.strobe,
+        x: apX - 110,
+        y: 0,
+        z: apZ,
+        timer: 0,
+        stage: 0
+    });
+
+    const p4 = createJetlinerModel(0xf8fafc, 0x059669, 0x1e293b);
+    p4.group.position.set(apX - 320, 65, apZ);
+    scene.add(p4.group);
+    airportPlanes.push({
+        id: 4,
+        name: "SpiceJet SG-303 (Landing / Approach)",
+        state: 'landing',
+        group: p4.group,
+        strobe: p4.strobe,
+        x: apX - 320,
+        y: 65,
+        z: apZ,
+        timer: 0,
+        stage: 0
+    });
+
+    const p5 = createJetlinerModel(0xf8fafc, 0xdc2626, 0x1e293b);
+    p5.group.position.set(-600, 195, 400);
+    p5.group.rotation.y = Math.PI / 2;
+    scene.add(p5.group);
+    airportPlanes.push({
+        id: 5,
+        name: "Emirates EK-500 (Cruising Flight)",
+        state: 'cruising',
+        group: p5.group,
+        strobe: p5.strobe,
+        x: -600,
+        y: 195,
+        z: 400,
+        speed: 38.0
+    });
+
+    window.__airportPlanes = airportPlanes;
+}
+buildAirportSimulation();
 
 // ==========================================
 // DISTRICT 1: HOME HQ (STARK SKYSCRAPER)
@@ -7014,6 +7365,33 @@ function updateMiniMap(playerX, playerZ, playerRot) {
         });
     }
 
+    // Aircraft Fleet on Radar
+    if (airportPlanes && airportPlanes.length > 0) {
+        airportPlanes.forEach(p => {
+            const pxMap = toMapX(p.x);
+            const pyMap = toMapY(p.z);
+            if (Math.hypot(pxMap - cx, pyMap - cy) > radarRadius) return;
+            mapCtx.save();
+            mapCtx.translate(pxMap, pyMap);
+            mapCtx.fillStyle = '#ffffff';
+            mapCtx.beginPath();
+            mapCtx.arc(0, 0, 3, 0, Math.PI * 2);
+            mapCtx.fill();
+            mapCtx.restore();
+        });
+    }
+
+    // Street Activity Vendors on Radar
+    if (streetActivities && streetActivities.length > 0) {
+        streetActivities.forEach(act => {
+            const axMap = toMapX(act.x);
+            const ayMap = toMapY(act.z);
+            if (Math.hypot(axMap - cx, ayMap - cy) > radarRadius) return;
+            mapCtx.fillStyle = '#10b981';
+            mapCtx.fillRect(axMap - 1.5, ayMap - 1.5, 3, 3);
+        });
+    }
+
     // Parked Vehicles
     mapCtx.fillStyle = '#06b6d4';
     mapCtx.beginPath();
@@ -7234,6 +7612,181 @@ let lastFrameTime = performance.now();
 const TARGET_FPS = 60;
 const FRAME_INTERVAL = 1000 / TARGET_FPS;
 
+
+// ==========================================
+// BATCH 3 UPDATE FUNCTIONS
+// ==========================================
+function updatePedestrianSimulation(delta) {
+    if (!allPedestrians || allPedestrians.length === 0) return;
+    const isRaining = (typeof weatherMode !== 'undefined') && (weatherMode === 'rain' || weatherMode === 'storm');
+
+    for (let i = 0; i < npcs.length; i++) {
+        const npc = npcs[i];
+        const target = npc.waypoints[npc.wpIdx];
+        const dx = target.x - npc.group.position.x;
+        const dz = target.z - npc.group.position.z;
+        const dist = Math.hypot(dx, dz);
+
+        if (dist < 0.8) {
+            npc.wpIdx = (npc.wpIdx + 1) % npc.waypoints.length;
+        } else {
+            const nx = dx / dist;
+            const nz = dz / dist;
+            npc.group.position.x += nx * npc.speed * delta;
+            npc.group.position.z += nz * npc.speed * delta;
+
+            const targetRot = Math.atan2(nx, nz);
+            let diff = (targetRot - npc.group.rotation.y) % (Math.PI * 2);
+            if (diff < -Math.PI) diff += Math.PI * 2;
+            if (diff > Math.PI) diff -= Math.PI * 2;
+            npc.group.rotation.y += diff * 0.15;
+        }
+
+        npc.walkCycle += delta * npc.speed * 4.4;
+        const swing = Math.sin(npc.walkCycle);
+        if (npc.legL) npc.legL.rotation.x = -swing * 0.52;
+        if (npc.legR) npc.legR.rotation.x = swing * 0.52;
+        npc.group.position.y = Math.abs(Math.sin(npc.walkCycle * 2)) * 0.06;
+
+        if (npc.umbrellaGroup) npc.umbrellaGroup.visible = isRaining;
+        if (isRaining) {
+            if (npc.armR) { npc.armR.rotation.x = -Math.PI / 3; npc.armR.rotation.z = -0.15; }
+            if (npc.armL) npc.armL.rotation.x = swing * 0.35;
+        } else {
+            if (npc.armL) npc.armL.rotation.x = swing * 0.45;
+            if (npc.armR) { npc.armR.rotation.x = -swing * 0.45; npc.armR.rotation.z = 0; }
+        }
+    }
+
+    if (instancedPedestrians && pedDummy) {
+        for (let k = 0; k < 90; k++) {
+            const p = allPedestrians[30 + k];
+            if (!p) continue;
+            if (p.dirZ !== 0) {
+                p.z += p.dirZ * p.speed * delta;
+                if (p.z > p.circuit.maxZ) p.z = p.circuit.minZ;
+                else if (p.z < p.circuit.minZ) p.z = p.circuit.maxZ;
+            } else if (p.dirX !== 0) {
+                p.x += p.dirX * p.speed * delta;
+                if (p.x > p.circuit.maxX) p.x = p.circuit.minX;
+                else if (p.x < p.circuit.minX) p.x = p.circuit.maxX;
+            }
+
+            p.walkPhase += p.speed * delta * 6.0;
+            const bob = Math.abs(Math.sin(p.walkPhase)) * 0.04;
+
+            pedDummy.position.set(p.x, bob, p.z);
+            pedDummy.rotation.y = Math.atan2(p.dirX, p.dirZ);
+            pedDummy.updateMatrix();
+            instancedPedestrians.setMatrixAt(k, pedDummy.matrix);
+        }
+        instancedPedestrians.instanceMatrix.needsUpdate = true;
+    }
+}
+
+function updateAirportSimulation(delta) {
+    if (!airportPlanes || airportPlanes.length === 0) return;
+    const apX = poiAirport.x;
+    const apZ = poiAirport.z;
+
+    for (let i = 0; i < airportPlanes.length; i++) {
+        const plane = airportPlanes[i];
+
+        if (plane.strobe) {
+            const on = (Math.floor(Date.now() / 600) % 2 === 0);
+            plane.strobe.visible = on;
+        }
+
+        if (plane.state === 'taxiing') {
+            plane.progress = (plane.progress + (plane.speed * delta) / 400.0) % 1.0;
+            const ang = plane.progress * Math.PI * 2;
+            plane.x = apX + Math.cos(ang) * 60;
+            plane.z = apZ + 25 + Math.sin(ang) * 18;
+            plane.group.position.set(plane.x, 0, plane.z);
+            plane.group.rotation.y = -ang + Math.PI / 2;
+        } else if (plane.state === 'takeoff') {
+            plane.timer += delta;
+            if (plane.timer < 8.0) {
+                plane.x += delta * 25.0;
+                plane.y = 0;
+                plane.group.rotation.set(0, Math.PI / 2, 0);
+            } else if (plane.timer < 16.0) {
+                plane.x += delta * 35.0;
+                plane.y += delta * 8.0;
+                plane.group.rotation.set(0, Math.PI / 2, 0.22);
+            } else if (plane.timer < 28.0) {
+                const turnFrac = (plane.timer - 16.0) / 12.0;
+                const turnAng = Math.PI / 2 + turnFrac * Math.PI;
+                plane.x += Math.cos(turnAng) * 40.0 * delta;
+                plane.z += Math.sin(turnAng) * 40.0 * delta;
+                plane.group.rotation.set(0, turnAng, 0.35);
+            } else {
+                plane.timer = 0;
+                plane.x = apX - 110;
+                plane.y = 0;
+                plane.z = apZ;
+            }
+            plane.group.position.set(plane.x, plane.y, plane.z);
+        } else if (plane.state === 'landing') {
+            plane.timer += delta;
+            if (plane.timer < 10.0) {
+                const f = plane.timer / 10.0;
+                plane.x = apX - 320 + f * 220;
+                plane.y = THREE.MathUtils.lerp(65, 0, f);
+                plane.group.rotation.set(0, Math.PI / 2, -0.08);
+            } else if (plane.timer < 18.0) {
+                plane.x += (18.0 - plane.timer) * 3.5 * delta;
+                plane.y = 0;
+                plane.group.rotation.set(0, Math.PI / 2, 0);
+            } else {
+                plane.timer = 0;
+                plane.x = apX - 320;
+                plane.y = 65;
+            }
+            plane.group.position.set(plane.x, plane.y, plane.z);
+        } else if (plane.state === 'cruising') {
+            plane.x += plane.speed * delta;
+            if (plane.x > 1000) plane.x = -1000;
+            plane.group.position.set(plane.x, plane.y, plane.z);
+        }
+    }
+}
+
+function updateStreetActivities(delta) {
+    if (!streetActivities || streetActivities.length === 0) return;
+    const now = Date.now() * 0.003;
+    for (let i = 0; i < streetActivities.length; i++) {
+        const act = streetActivities[i];
+        if (act.steamQuad) {
+            const phase = (now + act.timer) % 1.0;
+            act.steamQuad.position.y = 1.35 + phase * 0.65;
+            act.steamQuad.scale.set(1.0 + phase * 0.8, 1.0 + phase * 0.8, 1.0);
+            act.steamQuad.material.opacity = (1.0 - phase) * 0.5;
+        }
+    }
+}
+
+function updateEnvironmentalSimulation(delta) {
+    if (!ambientAgents || ambientAgents.length === 0) return;
+
+    for (let i = 0; i < ambientAgents.length; i++) {
+        const ag = ambientAgents[i];
+        ag.angle += ag.speed * delta * 0.4;
+        const curX = ag.center.x + Math.cos(ag.angle) * ag.radius;
+        const curZ = ag.center.z + Math.sin(ag.angle) * ag.radius;
+        const curY = ag.altitude + Math.sin(ag.angle * 2.0) * 1.8;
+
+        ag.group.position.set(curX, curY, curZ);
+        ag.group.rotation.y = -ag.angle + Math.PI / 2;
+        ag.group.rotation.z = 0.15;
+
+        if (ag.mesh) {
+            const flap = Math.sin(Date.now() * 0.001 * ag.flapSpeed) * 0.35;
+            ag.mesh.rotation.x = flap;
+        }
+    }
+}
+
 function animate(now = performance.now()) {
     requestAnimationFrame(animate);
     if (document.hidden) return; // Pause updates when tab inactive
@@ -7276,46 +7829,11 @@ function animate(now = performance.now()) {
         }
     }
 
-    // 3. Animated Mumbai Pedestrian Crowd (Articulated Humanoids, Waypoints & Weather Reactivity)
-    const isRaining = (weatherMode === 'rain' || weatherMode === 'storm');
-    npcs.forEach(npc => {
-        const target = npc.waypoints[npc.wpIdx];
-        const toTarget = new THREE.Vector2(target.x - npc.group.position.x, target.z - npc.group.position.z);
-        const dist = toTarget.length();
-
-        if (dist < 0.6) {
-            npc.wpIdx = (npc.wpIdx + 1) % npc.waypoints.length;
-        } else {
-            toTarget.normalize();
-            npc.group.position.x += toTarget.x * npc.speed * delta;
-            npc.group.position.z += toTarget.y * npc.speed * delta;
-
-            const targetRot = Math.atan2(toTarget.x, toTarget.y);
-            let diff = (targetRot - npc.group.rotation.y) % (Math.PI * 2);
-            if (diff < -Math.PI) diff += Math.PI * 2;
-            if (diff > Math.PI) diff -= Math.PI * 2;
-            npc.group.rotation.y += diff * 0.15;
-        }
-
-        // Articulated Walk Kinematics (Leg and Arm Swings)
-        npc.walkCycle += delta * npc.speed * 4.4;
-        const swing = Math.sin(npc.walkCycle);
-        npc.legL.rotation.x = -swing * 0.52;
-        npc.legR.rotation.x = swing * 0.52;
-        npc.group.position.y = Math.abs(Math.sin(npc.walkCycle * 2)) * 0.06;
-
-        // Dynamic Weather-Reactive Umbrellas
-        npc.umbrellaGroup.visible = isRaining;
-        if (isRaining) {
-            npc.armR.rotation.x = -Math.PI / 3;
-            npc.armR.rotation.z = -0.15;
-            npc.armL.rotation.x = swing * 0.35;
-        } else {
-            npc.armL.rotation.x = swing * 0.45;
-            npc.armR.rotation.x = -swing * 0.45;
-            npc.armR.rotation.z = 0;
-        }
-    });
+        // 3. Mumbai Pedestrian, Aviation, Street Activities & Ambient Simulation (Batch 3)
+    updatePedestrianSimulation(delta);
+    updateAirportSimulation(delta);
+    updateStreetActivities(delta);
+    updateEnvironmentalSimulation(delta);
 
     // 4. Mumbai Transit & Road Infrastructure Simulation (Batch 2)
     updateRailwaySystem(delta);
@@ -7893,6 +8411,16 @@ window.__rickshawVehicle = rickshawVehicle;
 window.__maritimeFerryBoats = maritimeFerryBoats;
 window.__atcRadarDish = atcRadarDish;
 window.__worldColliders = worldColliders;
+window.__allTrains = allTrains;
+window.__railwayStations = railwayStations;
+window.__trafficSignals = trafficSignals;
+window.__trafficVehicles = trafficVehicles;
+window.__publicTransit = publicTransit;
+window.__allPedestrians = allPedestrians;
+window.__allPedestriansCount = allPedestrians.length;
+window.__airportPlanes = airportPlanes;
+window.__streetActivities = streetActivities;
+window.__ambientAgents = ambientAgents;
 
 // Responsive Resize
 window.addEventListener('resize', () => {
