@@ -82,6 +82,47 @@ export function initCyberPhone(camera) {
             teleportToFloor(fIdx, camera);
         });
     });
+
+    // Modal Close Handlers
+    const modalCloseBtn = document.getElementById('modal-close-btn');
+    if (modalCloseBtn) {
+        modalCloseBtn.addEventListener('click', () => {
+            const interactiveModalEl = document.getElementById('interactive-modal');
+            if (interactiveModalEl) interactiveModalEl.classList.remove('active');
+        });
+    }
+
+    const elevatorCloseBtn = document.getElementById('elevator-close-btn');
+    if (elevatorCloseBtn) {
+        elevatorCloseBtn.addEventListener('click', () => {
+            const elevatorModal = document.getElementById('stark-elevator-modal');
+            if (elevatorModal) elevatorModal.classList.remove('active');
+        });
+    }
+
+    const landmarkCloseBtn = document.getElementById('landmark-close-btn');
+    if (landmarkCloseBtn) {
+        landmarkCloseBtn.addEventListener('click', () => {
+            const landmarkModal = document.getElementById('landmark-modal');
+            const landmarkBackdrop = document.getElementById('landmark-modal-backdrop');
+            if (landmarkModal) landmarkModal.classList.remove('active');
+            if (landmarkBackdrop) landmarkBackdrop.classList.remove('active');
+        });
+    }
+
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const interactiveModalEl = document.getElementById('interactive-modal');
+            if (interactiveModalEl) interactiveModalEl.classList.remove('active');
+            const elevatorModal = document.getElementById('stark-elevator-modal');
+            if (elevatorModal) elevatorModal.classList.remove('active');
+            const landmarkModal = document.getElementById('landmark-modal');
+            const landmarkBackdrop = document.getElementById('landmark-modal-backdrop');
+            if (landmarkModal) landmarkModal.classList.remove('active');
+            if (landmarkBackdrop) landmarkBackdrop.classList.remove('active');
+            closeCyberPhone();
+        }
+    });
 }
 
 export function teleportTo(x, z, name, y = 0, camera) {
