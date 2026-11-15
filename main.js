@@ -31,7 +31,7 @@ import { enterFlightMode, exitFlightMode, toggleFlightMode, updateFlightPhysics,
 import { updateMiniMap, setNavigationDestination, toggleMinimapExpanded } from './src/ui/minimapRadar.js';
 import { playSound, toggleAudio, updateTachometerHUD, showPrompt, hidePrompt } from './src/ui/hudOverlay.js';
 import { initCyberPhone, toggleCyberPhone, toggleVehicleMount, handleInteraction, checkProximity, currentInteraction, teleportTo } from './src/ui/cyberPhone.js';
-import { initWorldMap, toggleWorldMap, openWorldMap, closeWorldMap, isWorldMapOpen, drawWorldMap, setMapLayer, getMapLayer, setOverlayNetwork } from './src/ui/worldMapInteractive.js';
+import { initWorldMap, toggleWorldMap, openWorldMap, closeWorldMap, isWorldMapOpen, drawWorldMap, setMapLayer, getMapLayer, setOverlayNetwork, fitMapToView } from './src/ui/worldMapInteractive.js';
 
 // ==========================================
 // RENDERER, SCENE & CAMERA SETUP
@@ -295,6 +295,7 @@ window.__isWorldMapOpen = () => isWorldMapOpen;
 window.__setMapLayer = setMapLayer;
 window.__getMapLayer = getMapLayer;
 window.__setOverlayNetwork = setOverlayNetwork;
+window.__fitMapToView = fitMapToView;
 window.__toggleMinimapExpanded = toggleMinimapExpanded;
 window.__allTrains = allTrains;
 window.__railwayStations = railwayStations;
