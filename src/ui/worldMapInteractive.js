@@ -6,11 +6,80 @@ import { setNavigationDestination, setCustomWaypoint, clearCustomWaypoint, custo
 
 // ==========================================
 // GTA-STYLE INTERACTIVE FULLSCREEN WORLD MAP
-// Satellite Vector Tactical Map, Pan, Zoom, Landmark Teleport,
-// Real-time Player Beacon & Click-to-Place Custom GPS Waypoints
+// Satellite Vector Tactical Map & 3 Authentic Reference Map Modes
+// Pan, Zoom, Landmark Teleport, Real-time Player Beacon & GPS
 // ==========================================
 
 export let isWorldMapOpen = false;
+export let currentMapLayer = 'vector'; // 'vector' | 'geo_master' | 'rail_schematic' | 'road_connectivity'
+export let overlayNetworkEnabled = true;
+
+// Reference Map Pack Configurations & Calibration Bounds
+export const MAP_PACK_CONFIG = {
+    geo_master: {
+        id: 'geo_master',
+        name: "01 Master Geography",
+        mr: "भौगोलिक मास्टर नकाशा",
+        badge: "🗺️ 01 MASTER GEOGRAPHY",
+        src: 'map_pack/01_geographical_master_map.png',
+        desc: "Authentic geographical master map • Locality relationships, coastlines, Mahim Bay, Thane Creek & SGNP",
+        // Calibrated 5km x 5km world bounds matching 1556 x 1819 PNG
+        bounds: { minX: -2514, maxX: 4608, minZ: -2906, maxZ: 4162 },
+        bgColor: '#080d1a'
+    },
+    rail_schematic: {
+        id: 'rail_schematic',
+        name: "02 Railway Schematic",
+        mr: "उपनगरीय रेल्वे नेटवर्क",
+        badge: "🚆 02 RAILWAY SCHEMATIC",
+        src: 'map_pack/02_railway_network_schematic.png',
+        desc: "Mumbai Suburban Railway schematic • Station sequences across Western, Central, Harbour & Trans-Harbour corridors",
+        // Calibrated world bounds matching 1211 x 1843 PNG
+        bounds: { minX: -1116, maxX: 2853, minZ: -2784, maxZ: 6350 },
+        bgColor: '#080d1a'
+    },
+    road_connectivity: {
+        id: 'road_connectivity',
+        name: "03 Road Connectivity",
+        mr: "रस्ता व जिल्हा जोडणी",
+        badge: "🛣️ 03 ROAD CONNECTIVITY",
+        src: 'map_pack/03_road_district_connectivity.png',
+        desc: "Road & District connectivity schematic • Arterial highways, coastal connectors, sea bridges & street mesh",
+        // Calibrated world bounds matching 1171 x 1841 PNG
+        bounds: { minX: -1442, maxX: 2981, minZ: -3351, maxZ: 4124 },
+        bgColor: '#080d1a'
+    }
+};
+
+// Image Cache & Preloading
+const mapImageCache = {};
+
+function preloadMapImages() {
+    if (typeof Image === 'undefined') return;
+    for (const [key, config] of Object.entries(MAP_PACK_CONFIG)) {
+        if (!mapImageCache[key]) {
+            const img = new Image();
+            img.src = config.src;
+            mapImageCache[key] = {
+                img,
+                loaded: false,
+                config
+            };
+            img.onload = () => {
+                mapImageCache[key].loaded = true;
+                if (isWorldMapOpen && currentMapLayer === key) {
+                    drawWorldMap();
+                }
+            };
+            img.onerror = (err) => {
+                console.warn(`[WorldMap] Failed to load map pack image: ${config.src}`, err);
+            };
+        }
+    }
+}
+
+// Start preloading immediately
+preloadMapImages();
 
 // Master Landmark Registry for GTA Map & Directory
 export const MAP_LANDMARKS = [
@@ -193,8 +262,11 @@ export function initWorldMap(camera, characterGroup, teleportFn) {
         mapPanZ = playerGroupRef.position.z;
     }
 
+    preloadMapImages();
     setupMapEventListeners();
     renderLandmarkDirectory();
+    window.__getMapZoom = () => mapZoom;
+    window.__getMapPan = () => ({ x: mapPanX, z: mapPanZ });
 }
 
 function resizeMapCanvas() {
@@ -202,6 +274,55 @@ function resizeMapCanvas() {
     const rect = mapCanvas.parentElement.getBoundingClientRect();
     mapCanvas.width = rect.width * (window.devicePixelRatio > 1.2 ? 1.5 : 1);
     mapCanvas.height = rect.height * (window.devicePixelRatio > 1.2 ? 1.5 : 1);
+}
+
+// Switch between Tactical Vector and the 3 Authentic Map Pack Modes
+export function setMapLayer(layerId) {
+    let target = 'vector';
+    if (layerId === 'geo_master' || layerId === 'geo' || layerId === '01_geo' || layerId === 'master_geography') {
+        target = 'geo_master';
+    } else if (layerId === 'rail_schematic' || layerId === 'rail' || layerId === '02_rail' || layerId === 'railway_schematic') {
+        target = 'rail_schematic';
+    } else if (layerId === 'road_connectivity' || layerId === 'road' || layerId === '03_road' || layerId === 'road_connectivity') {
+        target = 'road_connectivity';
+    }
+
+    currentMapLayer = target;
+
+    // Update active state on layer switcher buttons in DOM
+    const layerButtons = document.querySelectorAll('.map-layer-tab, .map-layer-btn, [data-layer]');
+    layerButtons.forEach(btn => {
+        const btnLayer = btn.getAttribute('data-layer') || btn.getAttribute('data-mode') || btn.id.replace('map-layer-', '');
+        if (btnLayer === target ||
+            (target === 'geo_master' && (btnLayer === 'geo' || btnLayer === '01_geo')) ||
+            (target === 'rail_schematic' && (btnLayer === 'rail' || btnLayer === '02_rail')) ||
+            (target === 'road_connectivity' && (btnLayer === 'road' || btnLayer === '03_road'))) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+
+    updateMapHeaderInfo();
+    playSound('chime');
+    drawWorldMap();
+}
+
+export function getMapLayer() {
+    return currentMapLayer;
+}
+
+export function setOverlayNetwork(enabled) {
+    overlayNetworkEnabled = !!enabled;
+    const checkboxes = document.querySelectorAll('#map-toggle-network-overlay, #map-toggle-overlay-network, #map-toggle-network, .map-toggle-network-input');
+    checkboxes.forEach(cb => {
+        if (cb.checked !== overlayNetworkEnabled) cb.checked = overlayNetworkEnabled;
+    });
+    drawWorldMap();
+}
+
+export function toggleNetworkOverlay() {
+    setOverlayNetwork(!overlayNetworkEnabled);
 }
 
 function setupMapEventListeners() {
@@ -260,7 +381,7 @@ function setupMapEventListeners() {
         const worldBeforeZ = mapPanZ - (mouseCanvasY - mapCanvas.height / 2) / mapZoom;
 
         const zoomFactor = e.deltaY < 0 ? 1.18 : 0.85;
-        mapZoom = Math.max(0.065, Math.min(1.2, mapZoom * zoomFactor));
+        mapZoom = Math.max(0.05, Math.min(1.5, mapZoom * zoomFactor));
 
         // Adjust pan to keep world point under cursor fixed
         mapPanX = worldBeforeX - (mouseCanvasX - mapCanvas.width / 2) / mapZoom;
@@ -293,7 +414,7 @@ function setupMapEventListeners() {
         drawWorldMap();
     }, { passive: true });
 
-    mapCanvas.addEventListener('touchend', (e) => {
+    mapCanvas.addEventListener('touchend', () => {
         if (isDragging) {
             isDragging = false;
         }
@@ -302,13 +423,13 @@ function setupMapEventListeners() {
     // 4. UI Controls (Zoom buttons, Re-center, Clear)
     const btnZoomIn = document.getElementById('map-btn-zoom-in');
     if (btnZoomIn) btnZoomIn.addEventListener('click', () => {
-        mapZoom = Math.min(1.2, mapZoom * 1.25);
+        mapZoom = Math.min(1.5, mapZoom * 1.25);
         drawWorldMap();
     });
 
     const btnZoomOut = document.getElementById('map-btn-zoom-out');
     if (btnZoomOut) btnZoomOut.addEventListener('click', () => {
-        mapZoom = Math.max(0.065, mapZoom * 0.8);
+        mapZoom = Math.max(0.05, mapZoom * 0.8);
         drawWorldMap();
     });
 
@@ -331,6 +452,28 @@ function setupMapEventListeners() {
         playSound('chime');
         drawWorldMap();
     });
+
+    // Layer Switcher Buttons
+    const modalEl = document.getElementById('gta-world-map-modal');
+    if (modalEl) {
+        modalEl.addEventListener('click', (e) => {
+            const layerBtn = e.target.closest('.map-layer-tab, .map-layer-btn, [data-layer]');
+            if (layerBtn) {
+                const layerId = layerBtn.getAttribute('data-layer') || layerBtn.id.replace('map-layer-', '');
+                if (layerId) {
+                    setMapLayer(layerId);
+                }
+            }
+        });
+    }
+
+    // Network Overlay Toggle Checkbox
+    const overlayCheckbox = document.getElementById('map-toggle-network-overlay') || document.getElementById('map-toggle-overlay-network') || document.getElementById('map-toggle-network');
+    if (overlayCheckbox) {
+        overlayCheckbox.addEventListener('change', (e) => {
+            setOverlayNetwork(e.target.checked);
+        });
+    }
 
     // Close button
     const btnClose = document.getElementById('world-map-close-btn');
@@ -386,7 +529,7 @@ function setupMapEventListeners() {
 }
 
 // Convert World Coords to Canvas Screen Coords
-function worldToScreen(wx, wz) {
+export function worldToScreen(wx, wz) {
     const cx = mapCanvas.width / 2;
     const cy = mapCanvas.height / 2;
     return {
@@ -396,7 +539,7 @@ function worldToScreen(wx, wz) {
 }
 
 // Convert Canvas Screen Coords to World Coords
-function screenToWorld(sx, sy) {
+export function screenToWorld(sx, sy) {
     const cx = mapCanvas.width / 2;
     const cy = mapCanvas.height / 2;
     return {
@@ -482,16 +625,45 @@ export function toggleWorldMap() {
 }
 
 function updateMapHeaderInfo() {
-    if (!playerGroupRef) return;
-    const px = Math.round(playerGroupRef.position.x);
-    const py = (playerGroupRef.position.y).toFixed(1);
-    const pz = Math.round(playerGroupRef.position.z);
+    if (playerGroupRef) {
+        const px = Math.round(playerGroupRef.position.x);
+        const py = (playerGroupRef.position.y).toFixed(1);
+        const pz = Math.round(playerGroupRef.position.z);
 
-    const distObj = getDistrictAt(px, pz);
-    const distName = distObj ? distObj.name : "Mumbai Metropolitan";
+        const distObj = getDistrictAt(px, pz);
+        const distName = distObj ? distObj.name : "Mumbai Metropolitan";
 
-    const coordsEl = document.getElementById('map-header-coords');
-    if (coordsEl) coordsEl.textContent = `📍 ${distName} • X: ${px} | Y: ${py}m | Z: ${pz}`;
+        const coordsEl = document.getElementById('map-header-coords');
+        if (coordsEl) coordsEl.textContent = `📍 ${distName} • X: ${px} | Y: ${py}m | Z: ${pz}`;
+    }
+
+    // Update Reference Map Banner elements
+    const bannerSourceEl = document.getElementById('map-banner-source');
+    const bannerTitleEl = document.getElementById('map-banner-title');
+    const bannerSubEl = document.getElementById('map-banner-subtitle');
+    const genericBannerEl = document.getElementById('map-pack-info-banner') || document.getElementById('map-layer-info-banner');
+
+    if (currentMapLayer === 'vector') {
+        if (bannerSourceEl) bannerSourceEl.textContent = "🛰️ TACTICAL VECTOR HUD";
+        if (bannerTitleEl) bannerTitleEl.textContent = "MUMBAI METROPOLITAN REGION • VECTOR RADAR VIEW";
+        if (bannerSubEl) bannerSubEl.textContent = "Real-time GPS Spatial Simulation • 5km x 5km Core Grid ([-2500, +2500]m)";
+        if (genericBannerEl) genericBannerEl.textContent = "🛰️ Tactical Satellite Vector • Real-time live 3D engine physics and road/railway network";
+    } else if (currentMapLayer === 'geo_master') {
+        if (bannerSourceEl) bannerSourceEl.textContent = "🗺️ MAP PACK 01 • MASTER GEOGRAPHY";
+        if (bannerTitleEl) bannerTitleEl.textContent = "MUMBAI GEOGRAPHICAL MASTER MAP • 01 CONCEPTUAL REFERENCE";
+        if (bannerSubEl) bannerSubEl.textContent = "Authentic Map Pack • Locality relationships, coastlines, Mahim Bay, Thane Creek & SGNP";
+        if (genericBannerEl) genericBannerEl.textContent = `${MAP_PACK_CONFIG.geo_master.badge}: ${MAP_PACK_CONFIG.geo_master.desc}`;
+    } else if (currentMapLayer === 'rail_schematic') {
+        if (bannerSourceEl) bannerSourceEl.textContent = "🚆 MAP PACK 02 • RAILWAY SCHEMATIC";
+        if (bannerTitleEl) bannerTitleEl.textContent = "MUMBAI SUBURBAN RAILWAY SCHEMATIC • 5 CORRIDORS (54 STATIONS)";
+        if (bannerSubEl) bannerSubEl.textContent = "Authentic Map Pack • Western, Central, Harbour & Trans-Harbour corridors (Airoli / DMCE College)";
+        if (genericBannerEl) genericBannerEl.textContent = `${MAP_PACK_CONFIG.rail_schematic.badge}: ${MAP_PACK_CONFIG.rail_schematic.desc}`;
+    } else if (currentMapLayer === 'road_connectivity') {
+        if (bannerSourceEl) bannerSourceEl.textContent = "🛣️ MAP PACK 03 • ROAD CONNECTIVITY";
+        if (bannerTitleEl) bannerTitleEl.textContent = "MUMBAI ROAD & DISTRICT CONNECTIVITY • ARTERIAL NETWORK MESH";
+        if (bannerSubEl) bannerSubEl.textContent = "Authentic Map Pack • Highways, expressways, Sea Link, and Airoli/Vashi bridges";
+        if (genericBannerEl) genericBannerEl.textContent = `${MAP_PACK_CONFIG.road_connectivity.badge}: ${MAP_PACK_CONFIG.road_connectivity.desc}`;
+    }
 }
 
 export function drawWorldMap() {
@@ -501,153 +673,209 @@ export function drawWorldMap() {
 
     mapCtx.clearRect(0, 0, w, h);
 
-    // 1. Tactical Military Dark Navy Base
-    mapCtx.fillStyle = '#050914';
-    mapCtx.fillRect(0, 0, w, h);
+    // ==========================================
+    // LAYER RENDERING (VECTOR vs REFERENCE MAPS)
+    // ==========================================
+    if (currentMapLayer === 'vector') {
+        // --- 1. TACTICAL MILITARY DARK NAVY BASE ---
+        mapCtx.fillStyle = '#050914';
+        mapCtx.fillRect(0, 0, w, h);
 
-    // 2. Coordinate Grid Lines
-    mapCtx.strokeStyle = 'rgba(56, 189, 248, 0.08)';
-    mapCtx.lineWidth = 1;
-    const gridSpacing = 500; // 500m grid squares
-    const startX = Math.floor((mapPanX - (w / 2) / mapZoom) / gridSpacing) * gridSpacing;
-    const endX = Math.ceil((mapPanX + (w / 2) / mapZoom) / gridSpacing) * gridSpacing;
-    const startZ = Math.floor((mapPanZ - (h / 2) / mapZoom) / gridSpacing) * gridSpacing;
-    const endZ = Math.ceil((mapPanZ + (h / 2) / mapZoom) / gridSpacing) * gridSpacing;
+        // --- 2. COORDINATE GRID LINES (500m squares) ---
+        mapCtx.strokeStyle = 'rgba(56, 189, 248, 0.08)';
+        mapCtx.lineWidth = 1;
+        const gridSpacing = 500;
+        const startX = Math.floor((mapPanX - (w / 2) / mapZoom) / gridSpacing) * gridSpacing;
+        const endX = Math.ceil((mapPanX + (w / 2) / mapZoom) / gridSpacing) * gridSpacing;
+        const startZ = Math.floor((mapPanZ - (h / 2) / mapZoom) / gridSpacing) * gridSpacing;
+        const endZ = Math.ceil((mapPanZ + (h / 2) / mapZoom) / gridSpacing) * gridSpacing;
 
-    for (let gx = startX; gx <= endX; gx += gridSpacing) {
-        const pt = worldToScreen(gx, 0);
-        mapCtx.beginPath();
-        mapCtx.moveTo(pt.x, 0);
-        mapCtx.lineTo(pt.x, h);
-        mapCtx.stroke();
-    }
-    for (let gz = startZ; gz <= endZ; gz += gridSpacing) {
-        const pt = worldToScreen(0, gz);
-        mapCtx.beginPath();
-        mapCtx.moveTo(0, pt.y);
-        mapCtx.lineTo(w, pt.y);
-        mapCtx.stroke();
-    }
+        for (let gx = startX; gx <= endX; gx += gridSpacing) {
+            const pt = worldToScreen(gx, 0);
+            mapCtx.beginPath();
+            mapCtx.moveTo(pt.x, 0);
+            mapCtx.lineTo(pt.x, h);
+            mapCtx.stroke();
+        }
+        for (let gz = startZ; gz <= endZ; gz += gridSpacing) {
+            const pt = worldToScreen(0, gz);
+            mapCtx.beginPath();
+            mapCtx.moveTo(0, pt.y);
+            mapCtx.lineTo(w, pt.y);
+            mapCtx.stroke();
+        }
 
-    // 3. Water Bodies (Arabian Sea & Thane Creek)
-    // Arabian Sea (West coast: x < -950)
-    const seaScreen = worldToScreen(-950, 0);
-    if (seaScreen.x > 0) {
-        mapCtx.fillStyle = '#0b1e38';
-        mapCtx.fillRect(0, 0, Math.min(w, Math.max(0, seaScreen.x)), h);
+        // --- 3. WATER BODIES (Arabian Sea & Thane Creek) ---
+        const seaScreen = worldToScreen(-950, 0);
+        if (seaScreen.x > 0) {
+            mapCtx.fillStyle = '#0b1e38';
+            mapCtx.fillRect(0, 0, Math.min(w, Math.max(0, seaScreen.x)), h);
 
-        // Coastline Shoreline Glow
-        mapCtx.strokeStyle = '#0284c7';
-        mapCtx.lineWidth = 2.5;
-        mapCtx.beginPath();
-        mapCtx.moveTo(seaScreen.x, 0);
-        mapCtx.lineTo(seaScreen.x, h);
-        mapCtx.stroke();
-    }
+            mapCtx.strokeStyle = '#0284c7';
+            mapCtx.lineWidth = 2.5;
+            mapCtx.beginPath();
+            mapCtx.moveTo(seaScreen.x, 0);
+            mapCtx.lineTo(seaScreen.x, h);
+            mapCtx.stroke();
+        }
 
-    // Thane Creek (East waterway: x > 1150)
-    const creekScreen = worldToScreen(1150, 0);
-    if (creekScreen.x < w) {
-        mapCtx.fillStyle = '#0b1e38';
-        mapCtx.fillRect(Math.max(0, creekScreen.x), 0, w - Math.max(0, creekScreen.x), h);
+        const creekScreen = worldToScreen(1150, 0);
+        if (creekScreen.x < w) {
+            mapCtx.fillStyle = '#0b1e38';
+            mapCtx.fillRect(Math.max(0, creekScreen.x), 0, w - Math.max(0, creekScreen.x), h);
 
-        mapCtx.strokeStyle = '#0284c7';
-        mapCtx.lineWidth = 2.5;
-        mapCtx.beginPath();
-        mapCtx.moveTo(creekScreen.x, 0);
-        mapCtx.lineTo(creekScreen.x, h);
-        mapCtx.stroke();
-    }
+            mapCtx.strokeStyle = '#0284c7';
+            mapCtx.lineWidth = 2.5;
+            mapCtx.beginPath();
+            mapCtx.moveTo(creekScreen.x, 0);
+            mapCtx.lineTo(creekScreen.x, h);
+            mapCtx.stroke();
+        }
 
-    // 4. District Boundary Regions & Names
-    if (DISTRICTS) {
-        for (const [key, d] of Object.entries(DISTRICTS)) {
-            const cen = worldToScreen(d.centroid.x, d.centroid.z);
-            if (cen.x > -200 && cen.x < w + 200 && cen.y > -200 && cen.y < h + 200) {
-                // Subtle district boundary box
-                if (d.bounds) {
-                    const tl = worldToScreen(d.bounds.minX, d.bounds.maxZ);
-                    const br = worldToScreen(d.bounds.maxX, d.bounds.minZ);
-                    mapCtx.strokeStyle = 'rgba(148, 163, 184, 0.12)';
-                    mapCtx.lineWidth = 1;
-                    mapCtx.strokeRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
+        // --- 4. DISTRICT BOUNDARY REGIONS & NAMES ---
+        if (DISTRICTS) {
+            for (const [, d] of Object.entries(DISTRICTS)) {
+                const cen = worldToScreen(d.centroid.x, d.centroid.z);
+                if (cen.x > -200 && cen.x < w + 200 && cen.y > -200 && cen.y < h + 200) {
+                    if (d.bounds) {
+                        const tl = worldToScreen(d.bounds.minX, d.bounds.maxZ);
+                        const br = worldToScreen(d.bounds.maxX, d.bounds.minZ);
+                        mapCtx.strokeStyle = 'rgba(148, 163, 184, 0.12)';
+                        mapCtx.lineWidth = 1;
+                        mapCtx.strokeRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
+                    }
+
+                    const fontSize = Math.max(10, Math.min(18, Math.round(14 * (mapZoom / 0.17))));
+                    mapCtx.font = `bold ${fontSize}px sans-serif`;
+                    mapCtx.fillStyle = 'rgba(226, 232, 240, 0.45)';
+                    mapCtx.textAlign = 'center';
+                    mapCtx.fillText(d.name.toUpperCase(), cen.x, cen.y);
                 }
-
-                // District Name Typography
-                const fontSize = Math.max(10, Math.min(18, Math.round(14 * (mapZoom / 0.17))));
-                mapCtx.font = `bold ${fontSize}px sans-serif`;
-                mapCtx.fillStyle = 'rgba(226, 232, 240, 0.45)';
-                mapCtx.textAlign = 'center';
-                mapCtx.fillText(d.name.toUpperCase(), cen.x, cen.y);
             }
         }
-    }
+    } else {
+        // --- AUTHENTIC REFERENCE MAP MODES (01 Geo, 02 Rail, 03 Road) ---
+        const config = MAP_PACK_CONFIG[currentMapLayer];
+        const cache = mapImageCache[currentMapLayer];
 
-    // 5. Road Network Arterials & Bridges
-    if (mumbaiRoadNetwork && mumbaiRoadNetwork.edges) {
-        const edges = mumbaiRoadNetwork.edges;
-        const nodes = mumbaiRoadNetwork.nodes;
+        // Neutral dark canvas background
+        mapCtx.fillStyle = '#070b14';
+        mapCtx.fillRect(0, 0, w, h);
 
-        for (let i = 0; i < edges.length; i++) {
-            const edge = edges[i];
-            const u = nodes[edge.from];
-            const v = nodes[edge.to];
-            if (!u || !v) continue;
+        if (cache && cache.loaded) {
+            // Draw calibrated reference map image using world bounds
+            const tl = worldToScreen(config.bounds.minX, config.bounds.maxZ);
+            const br = worldToScreen(config.bounds.maxX, config.bounds.minZ);
+            const drawW = br.x - tl.x;
+            const drawH = br.y - tl.y;
 
-            const p1 = worldToScreen(u.x, u.z);
-            const p2 = worldToScreen(v.x, v.z);
+            mapCtx.drawImage(cache.img, tl.x, tl.y, drawW, drawH);
 
-            // Culling
-            if ((p1.x < 0 && p2.x < 0) || (p1.x > w && p2.x > w) || (p1.y < 0 && p2.y < 0) || (p1.y > h && p2.y > h)) continue;
+            // Subtle border around reference map
+            mapCtx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+            mapCtx.lineWidth = 2;
+            mapCtx.strokeRect(tl.x, tl.y, drawW, drawH);
+        } else {
+            // Loading placeholder state
+            mapCtx.font = 'bold 16px sans-serif';
+            mapCtx.fillStyle = '#38bdf8';
+            mapCtx.textAlign = 'center';
+            mapCtx.fillText(`⏳ Loading ${config ? config.name : 'Reference Map'}...`, w / 2, h / 2);
+        }
 
-            const isBridge = edge.bridge || edge.surface === 'sea_bridge' || edge.corridor === 'coastal_bridge';
+        // Faint world grid overlay for spatial alignment cross-referencing
+        mapCtx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+        mapCtx.lineWidth = 1;
+        const gridSpacing = 1000;
+        const startX = Math.floor((mapPanX - (w / 2) / mapZoom) / gridSpacing) * gridSpacing;
+        const endX = Math.ceil((mapPanX + (w / 2) / mapZoom) / gridSpacing) * gridSpacing;
+        const startZ = Math.floor((mapPanZ - (h / 2) / mapZoom) / gridSpacing) * gridSpacing;
+        const endZ = Math.ceil((mapPanZ + (h / 2) / mapZoom) / gridSpacing) * gridSpacing;
 
-            if (isBridge) {
-                // Marine Bridge (Cyan glow)
-                mapCtx.strokeStyle = '#38bdf8';
-                mapCtx.lineWidth = Math.max(3, 4.5 * mapZoom * 4);
-            } else if (edge.lanes >= 4) {
-                // Major Expressway / Freeway (Gold)
-                mapCtx.strokeStyle = '#f59e0b';
-                mapCtx.lineWidth = Math.max(2, 3.5 * mapZoom * 4);
-            } else {
-                // Arterial / Local Street (Slate)
-                mapCtx.strokeStyle = '#475569';
-                mapCtx.lineWidth = Math.max(1.2, 2.2 * mapZoom * 4);
-            }
-
+        for (let gx = startX; gx <= endX; gx += gridSpacing) {
+            const pt = worldToScreen(gx, 0);
             mapCtx.beginPath();
-            mapCtx.moveTo(p1.x, p1.y);
-            mapCtx.lineTo(p2.x, p2.y);
+            mapCtx.moveTo(pt.x, 0);
+            mapCtx.lineTo(pt.x, h);
+            mapCtx.stroke();
+        }
+        for (let gz = startZ; gz <= endZ; gz += gridSpacing) {
+            const pt = worldToScreen(0, gz);
+            mapCtx.beginPath();
+            mapCtx.moveTo(0, pt.y);
+            mapCtx.lineTo(w, pt.y);
             mapCtx.stroke();
         }
     }
 
-    // 6. Railway Corridors (Western, Central & Harbour Lines)
-    mapCtx.strokeStyle = '#f43f5e';
-    mapCtx.lineWidth = Math.max(1.8, 2.5 * mapZoom * 4);
-    mapCtx.setLineDash([6, 4]);
-    if (TRACK_SPLINES) {
-        ['wr', 'cr', 'hr'].forEach(lineKey => {
-            const spline = TRACK_SPLINES[lineKey];
-            if (spline && spline.upLine && spline.upLine.length > 0) {
-                mapCtx.beginPath();
-                const p0 = worldToScreen(spline.upLine[0].x, spline.upLine[0].z);
-                mapCtx.moveTo(p0.x, p0.y);
-                for (let i = 1; i < spline.upLine.length; i++) {
-                    const pt = worldToScreen(spline.upLine[i].x, spline.upLine[i].z);
-                    mapCtx.lineTo(pt.x, pt.y);
+    // ==========================================
+    // OVERLAY: ROAD NETWORK & RAILWAY CORRIDORS
+    // ==========================================
+    if (overlayNetworkEnabled) {
+        // --- ROAD NETWORK ARTERIALS & BRIDGES ---
+        if (mumbaiRoadNetwork && mumbaiRoadNetwork.edges) {
+            const edges = mumbaiRoadNetwork.edges;
+            const nodes = mumbaiRoadNetwork.nodes;
+            const isRefMode = currentMapLayer !== 'vector';
+
+            for (let i = 0; i < edges.length; i++) {
+                const edge = edges[i];
+                const u = nodes[edge.from];
+                const v = nodes[edge.to];
+                if (!u || !v) continue;
+
+                const p1 = worldToScreen(u.x, u.z);
+                const p2 = worldToScreen(v.x, v.z);
+
+                if ((p1.x < 0 && p2.x < 0) || (p1.x > w && p2.x > w) || (p1.y < 0 && p2.y < 0) || (p1.y > h && p2.y > h)) continue;
+
+                const isBridge = edge.bridge || edge.surface === 'sea_bridge' || edge.corridor === 'coastal_bridge';
+
+                if (isBridge) {
+                    mapCtx.strokeStyle = isRefMode ? 'rgba(56, 189, 248, 0.9)' : '#38bdf8';
+                    mapCtx.lineWidth = Math.max(3, 4.5 * mapZoom * 4);
+                } else if (edge.lanes >= 4) {
+                    mapCtx.strokeStyle = isRefMode ? 'rgba(245, 158, 11, 0.85)' : '#f59e0b';
+                    mapCtx.lineWidth = Math.max(2, 3.5 * mapZoom * 4);
+                } else {
+                    mapCtx.strokeStyle = isRefMode ? 'rgba(100, 116, 139, 0.75)' : '#475569';
+                    mapCtx.lineWidth = Math.max(1.2, 2.2 * mapZoom * 4);
                 }
+
+                mapCtx.beginPath();
+                mapCtx.moveTo(p1.x, p1.y);
+                mapCtx.lineTo(p2.x, p2.y);
                 mapCtx.stroke();
             }
-        });
-    }
-    mapCtx.setLineDash([]);
+        }
 
-    // 7. Active GPS Route Ribbon (Glowing Magenta Line)
+        // --- RAILWAY CORRIDORS (Western, Central & Harbour Lines) ---
+        mapCtx.strokeStyle = '#f43f5e';
+        mapCtx.lineWidth = Math.max(2, 2.8 * mapZoom * 4);
+        mapCtx.setLineDash([7, 4]);
+        if (TRACK_SPLINES) {
+            ['wr', 'cr', 'hr'].forEach(lineKey => {
+                const spline = TRACK_SPLINES[lineKey];
+                if (spline && spline.upLine && spline.upLine.length > 0) {
+                    mapCtx.beginPath();
+                    const p0 = worldToScreen(spline.upLine[0].x, spline.upLine[0].z);
+                    mapCtx.moveTo(p0.x, p0.y);
+                    for (let i = 1; i < spline.upLine.length; i++) {
+                        const pt = worldToScreen(spline.upLine[i].x, spline.upLine[i].z);
+                        mapCtx.lineTo(pt.x, pt.y);
+                    }
+                    mapCtx.stroke();
+                }
+            });
+        }
+        mapCtx.setLineDash([]);
+    }
+
+    // ==========================================
+    // OVERLAY: ACTIVE GPS ROUTE RIBBON (A*)
+    // ==========================================
     if (activeGpsRoute && mumbaiRoadNetwork && playerGroupRef) {
         try {
-            // Find path from player nearest node to activeGpsRoute
             const pathResult = mumbaiRoadNetwork.findPathNearest(
                 playerGroupRef.position.x,
                 playerGroupRef.position.z,
@@ -657,7 +885,7 @@ export function drawWorldMap() {
                 const pts = pathResult.waypoints;
 
                 // Outer Magenta Route Glow
-                mapCtx.strokeStyle = 'rgba(236, 72, 153, 0.45)';
+                mapCtx.strokeStyle = 'rgba(236, 72, 153, 0.5)';
                 mapCtx.lineWidth = 8;
                 mapCtx.beginPath();
                 const startScreen = worldToScreen(pts[0].x, pts[0].z);
@@ -676,15 +904,16 @@ export function drawWorldMap() {
         } catch (e) {}
     }
 
-    // 8. Custom GPS Waypoint Marker (if placed)
+    // ==========================================
+    // OVERLAY: CUSTOM GPS WAYPOINT MARKER
+    // ==========================================
     if (customWaypoint) {
         const wpPt = worldToScreen(customWaypoint.x, customWaypoint.z);
-        // Beacon pulse ring
         const timeNow = performance.now() * 0.003;
         const pulseR = 12 + (Math.sin(timeNow * 4) + 1) * 8;
 
-        mapCtx.strokeStyle = 'rgba(244, 63, 94, 0.6)';
-        mapCtx.lineWidth = 2;
+        mapCtx.strokeStyle = 'rgba(244, 63, 94, 0.7)';
+        mapCtx.lineWidth = 2.5;
         mapCtx.beginPath();
         mapCtx.arc(wpPt.x, wpPt.y, pulseR, 0, Math.PI * 2);
         mapCtx.stroke();
@@ -710,7 +939,9 @@ export function drawWorldMap() {
         mapCtx.fillText("CUSTOM GPS WAYPOINT", wpPt.x, wpPt.y - 18);
     }
 
-    // 9. Landmark Blips & Icons
+    // ==========================================
+    // OVERLAY: LANDMARK BLIPS & ICONS
+    // ==========================================
     MAP_LANDMARKS.forEach(lm => {
         if (activeFilter !== 'all' && lm.category !== activeFilter) return;
 
@@ -735,22 +966,29 @@ export function drawWorldMap() {
         mapCtx.fillText(lm.icon, pt.x, pt.y - 10);
 
         // Text Label
-        if (mapZoom > 0.14 || isSelected) {
+        if (mapZoom > 0.12 || isSelected) {
             mapCtx.font = `bold ${isSelected ? 13 : 11}px sans-serif`;
+            // High contrast text with outline for legibility over map images
+            mapCtx.strokeStyle = '#050914';
+            mapCtx.lineWidth = 3;
+            const labelText = lm.name.split('(')[0].trim();
+            mapCtx.strokeText(labelText, pt.x, pt.y + 18);
             mapCtx.fillStyle = isSelected ? '#38bdf8' : '#f8fafc';
-            mapCtx.fillText(lm.name.split('(')[0].trim(), pt.x, pt.y + 18);
+            mapCtx.fillText(labelText, pt.x, pt.y + 18);
         }
     });
 
-    // 10. Player Position & Heading Arrow
+    // ==========================================
+    // OVERLAY: PLAYER POSITION & HEADING ARROW
+    // ==========================================
     if (playerGroupRef) {
         const pPt = worldToScreen(playerGroupRef.position.x, playerGroupRef.position.z);
         const pRot = playerGroupRef.rotation.y;
 
         // Player Pulsing Radar Aura
         const pulse = 10 + (Math.sin(performance.now() * 0.005) + 1) * 6;
-        mapCtx.strokeStyle = 'rgba(6, 182, 212, 0.4)';
-        mapCtx.lineWidth = 2;
+        mapCtx.strokeStyle = 'rgba(6, 182, 212, 0.45)';
+        mapCtx.lineWidth = 2.5;
         mapCtx.beginPath();
         mapCtx.arc(pPt.x, pPt.y, pulse, 0, Math.PI * 2);
         mapCtx.stroke();
@@ -774,12 +1012,37 @@ export function drawWorldMap() {
         mapCtx.stroke();
         mapCtx.restore();
 
-        // Player Label
+        // Player Label with black outline
         mapCtx.font = 'bold 11px sans-serif';
+        mapCtx.strokeStyle = '#050914';
+        mapCtx.lineWidth = 3;
+        mapCtx.strokeText("YOU (DEVARSHI)", pPt.x, pPt.y - 20);
         mapCtx.fillStyle = '#38bdf8';
         mapCtx.textAlign = 'center';
         mapCtx.fillText("YOU (DEVARSHI)", pPt.x, pPt.y - 20);
     }
+
+    // ==========================================
+    // BOTTOM-LEFT HUD BADGE (MODE, OVERLAY, ZOOM)
+    // ==========================================
+    const modeBadge = currentMapLayer === 'vector'
+        ? "🛰️ TACTICAL VECTOR"
+        : (MAP_PACK_CONFIG[currentMapLayer]?.badge || "MAP MODE");
+    const overlayStatus = overlayNetworkEnabled ? "OVERLAY: ON" : "OVERLAY: OFF";
+    const zoomPercent = `${Math.round(mapZoom * 100)}%`;
+    const hudText = `[ ${modeBadge} | ${overlayStatus} | ZOOM: ${zoomPercent} ]`;
+
+    mapCtx.font = 'bold 11px monospace';
+    mapCtx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+    const textWidth = mapCtx.measureText(hudText).width;
+    mapCtx.fillRect(16, h - 36, textWidth + 20, 24);
+    mapCtx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+    mapCtx.lineWidth = 1;
+    mapCtx.strokeRect(16, h - 36, textWidth + 20, 24);
+
+    mapCtx.fillStyle = '#38bdf8';
+    mapCtx.textAlign = 'left';
+    mapCtx.fillText(hudText, 26, h - 20);
 }
 
 // Side Directory Population
@@ -848,4 +1111,14 @@ function showLandmarkDetailCard(item) {
 function hideLandmarkDetailCard() {
     const cardEl = document.getElementById('map-landmark-card');
     if (cardEl) cardEl.classList.remove('active');
+}
+
+// Global browser window bindings for automated testing and dev consoles
+if (typeof window !== 'undefined') {
+    window.setMapLayer = setMapLayer;
+    window.getMapLayer = getMapLayer;
+    window.setOverlayNetwork = setOverlayNetwork;
+    window.toggleNetworkOverlay = toggleNetworkOverlay;
+    window.drawWorldMap = drawWorldMap;
+    window.MAP_PACK_CONFIG = MAP_PACK_CONFIG;
 }
