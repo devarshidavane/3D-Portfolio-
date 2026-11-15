@@ -60,6 +60,23 @@ export function playSound(type = 'chime') {
             gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
             osc.connect(gain); gain.connect(audioCtx.destination);
             osc.start(); osc.stop(now + 1.2);
+        } else if (type === 'waypoint') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(880, now);
+            osc.frequency.setValueAtTime(1320, now + 0.08);
+            osc.frequency.setValueAtTime(1760, now + 0.16);
+            gain.gain.setValueAtTime(0.18, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(now + 0.35);
+        } else if (type === 'teleport') {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(220, now);
+            osc.frequency.exponentialRampToValueAtTime(880, now + 0.35);
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(now + 0.4);
         }
     } catch (e) {}
 }

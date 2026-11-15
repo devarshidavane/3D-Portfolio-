@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
 import { registerBoxCollider } from '../world/worldColliders.js';
 import { DISTRICTS } from '../data/mumbaiGeography.js';
+import { mumbaiRoadNetwork } from '../data/roadGraph.js';
 import {
     createChawlFacadeTexture,
     createApartmentFacadeTexture,
@@ -38,7 +39,50 @@ export function buildGenericBuildings(scene) {
         arr.push(geom);
     }
 
+    function distToSegment(px, pz, x1, z1, x2, z2) {
+        const dx = x2 - x1;
+        const dz = z2 - z1;
+        const lenSq = dx * dx + dz * dz;
+        if (lenSq === 0) return Math.hypot(px - x1, pz - z1);
+        const t = Math.max(0, Math.min(1, ((px - x1) * dx + (pz - z1) * dz) / lenSq));
+        const projX = x1 + t * dx;
+        const projZ = z1 + t * dz;
+        return Math.hypot(px - projX, pz - projZ);
+    }
+
+    function isSiteClear(bx, bz, halfW, halfD) {
+        // 1. Landmark POIs buffer
+        const pois = [
+            { x: 0, z: 0, r: 52 },         // Home HQ & Plaza
+            { x: -1350, z: 520, r: 65 },   // Fr. Agnel School
+            { x: 1850, z: 1450, r: 65 },   // DMCE College
+            { x: -350, z: -2250, r: 70 },  // Gateway of India
+            { x: 150, z: 1200, r: 120 },   // CSMIA Airport Runway
+            { x: 12, z: 242, r: 14 }       // Vada Pav
+        ];
+        for (let i = 0; i < pois.length; i++) {
+            if (Math.hypot(bx - pois[i].x, bz - pois[i].z) < pois[i].r) return false;
+        }
+
+        // 2. Road Network clearance (prevents buildings from spawning on streets)
+        if (mumbaiRoadNetwork && mumbaiRoadNetwork.edges) {
+            const edges = mumbaiRoadNetwork.edges;
+            const nodes = mumbaiRoadNetwork.nodes;
+            const maxRadius = Math.max(halfW, halfD);
+            for (let i = 0; i < edges.length; i++) {
+                const u = nodes[edges[i].from];
+                const v = nodes[edges[i].to];
+                if (!u || !v) continue;
+                const roadW = edges[i].width || (edges[i].lanes ? edges[i].lanes * 3.6 : 18);
+                const d = distToSegment(bx, bz, u.x, u.z, v.x, v.z);
+                if (d < (roadW / 2 + maxRadius + 4.0)) return false;
+            }
+        }
+        return true;
+    }
+
     function buildBatchedChawl(x, z, w, d, storeys, rotY = 0) {
+        if (!isSiteClear(x, z, w / 2, d / 2)) return;
         const storeyH = 3.4;
         const totalH = storeys * storeyH;
         addBox(batchedWallsPlaster, x, totalH / 2, z, w, totalH, d, rotY);
@@ -66,6 +110,7 @@ export function buildGenericBuildings(scene) {
     }
 
     function buildBatchedApartment(x, z, w, d, storeys, rotY = 0) {
+        if (!isSiteClear(x, z, w / 2, d / 2)) return;
         const storeyH = 3.2;
         const totalH = storeys * storeyH;
         addBox(batchedWallsApartments, x, totalH / 2, z, w, totalH, d, rotY);
@@ -88,6 +133,7 @@ export function buildGenericBuildings(scene) {
     }
 
     function buildBatchedCorporateTower(x, z, w, d, storeys, rotY = 0) {
+        if (!isSiteClear(x, z, w / 2, d / 2)) return;
         const storeyH = 4.0;
         const totalH = storeys * storeyH;
         addBox(batchedWallsCorporate, x, totalH / 2, z, w, totalH, d, rotY);

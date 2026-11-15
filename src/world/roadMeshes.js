@@ -44,8 +44,13 @@ export function buildRoadMeshes(scene) {
         const dist = Math.hypot(dx, dz);
         if (dist < 4) continue;
 
+        const isBridge = edge.bridge === true ||
+                         edge.surface === 'sea_bridge' ||
+                         edge.surface === 'flyover' ||
+                         edge.corridor === 'coastal_bridge';
+
         const mx = (u.x + v.x) / 2;
-        const my = (u.y + v.y) / 2 + 0.12;
+        const my = isBridge ? Math.max(8.0, (u.y + v.y) / 2 + 0.12) : 0.15;
         const mz = (u.z + v.z) / 2;
         const rotY = Math.atan2(dx, dz);
         const roadW = edge.width || (edge.lanes ? edge.lanes * 3.6 : 18);
@@ -67,8 +72,8 @@ export function buildRoadMeshes(scene) {
             addBox(markingGeoms, lx2, my + 0.02, lz2, 0.22, 0.25, dist * 0.94, rotY);
         }
 
-        // 3. Bridge Structure (BWSL, Airoli Bridge, Vashi Bridge, Flyovers)
-        if (edge.bridge || my > 8.0) {
+        // 3. Bridge Structure ONLY for designated sea bridges and flyovers
+        if (isBridge) {
             // Concrete Barriers on Road Flanks
             const flankOffset = roadW / 2 + 0.45;
             const bx1 = mx - Math.cos(rotY) * flankOffset;
@@ -78,14 +83,13 @@ export function buildRoadMeshes(scene) {
             addBox(bridgeGeoms, bx1, my + 0.55, bz1, 0.5, 0.9, dist, rotY);
             addBox(bridgeGeoms, bx2, my + 0.55, bz2, 0.5, 0.9, dist, rotY);
 
-            // Pier pillars every 45 meters
+            // Pier pillars every 45 meters down to water level
             const pierCount = Math.max(1, Math.floor(dist / 45));
             for (let p = 1; p <= pierCount; p++) {
                 const t = p / (pierCount + 1);
                 const px = u.x + dx * t;
-                const py = (u.y + v.y) / 2;
                 const pz = u.z + dz * t;
-                const pierH = Math.max(4, py);
+                const pierH = my;
                 addCyl(bridgeGeoms, px, pierH / 2, pz, 1.6, 1.8, pierH, 8);
             }
         }
@@ -97,7 +101,7 @@ export function buildRoadMeshes(scene) {
             for (let l = 0; l <= lampCount; l++) {
                 const t = (l + 0.5) / (lampCount + 1);
                 const lx = u.x + dx * t;
-                const ly = u.y + (v.y - u.y) * t;
+                const ly = my;
                 const lz = u.z + dz * t;
                 const sideOffset = roadW / 2 + 1.2;
                 const poleX = lx + Math.cos(rotY) * sideOffset;

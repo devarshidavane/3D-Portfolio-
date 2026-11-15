@@ -1819,6 +1819,439 @@
                 display: flex !important;
             }
         }
+
+        /* GTA V Interactive World Map & Radar Styles */
+        .gta-radar-card {
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .gta-radar-card:hover {
+            transform: scale(1.02);
+            box-shadow: 0 0 16px rgba(56, 189, 248, 0.4);
+        }
+        .gta-radar-card.expanded .radar-canvas-box {
+            width: 320px;
+            height: 200px;
+        }
+        .gta-radar-card.expanded #minimap-canvas {
+            width: 320px;
+            height: 200px;
+        }
+
+        .world-map-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(3, 7, 18, 0.96);
+            backdrop-filter: blur(12px);
+            z-index: 99999;
+            display: none;
+            flex-direction: column;
+            color: #f8fafc;
+            font-family: 'Rajdhani', sans-serif;
+            overflow: hidden;
+        }
+
+        .world-map-modal.active {
+            display: flex;
+        }
+
+        .world-map-container {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+        }
+
+        .world-map-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 24px;
+            background: rgba(15, 23, 42, 0.85);
+            border-bottom: 1px solid rgba(56, 189, 248, 0.25);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+            z-index: 10;
+        }
+
+        .map-header-left {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .map-header-badge {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            letter-spacing: 1.5px;
+            color: #38bdf8;
+            font-weight: 700;
+        }
+
+        .map-header-title {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: 1.2px;
+            color: #ffffff;
+            text-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+        }
+
+        .map-header-coords {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        .map-filter-pills {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(2, 6, 23, 0.6);
+            padding: 4px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .map-filter-tab {
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .map-filter-tab:hover {
+            color: #f8fafc;
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .map-filter-tab.active {
+            background: #0284c7;
+            color: #ffffff;
+            box-shadow: 0 0 10px rgba(2, 132, 199, 0.6);
+        }
+
+        .map-close-btn {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            color: #ef4444;
+            font-size: 24px;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .map-close-btn:hover {
+            background: #ef4444;
+            color: #ffffff;
+            box-shadow: 0 0 12px rgba(239, 68, 68, 0.6);
+        }
+
+        .world-map-body {
+            display: flex;
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .world-map-sidebar {
+            width: 340px;
+            background: rgba(10, 15, 30, 0.92);
+            border-right: 1px solid rgba(56, 189, 248, 0.18);
+            display: flex;
+            flex-direction: column;
+            z-index: 5;
+            box-shadow: 4px 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .map-search-box {
+            padding: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .map-search-box input {
+            width: 100%;
+            background: rgba(2, 6, 23, 0.8);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: #f8fafc;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 14px;
+            outline: none;
+            box-sizing: border-box;
+            transition: border-color 0.2s ease;
+        }
+
+        .map-search-box input:focus {
+            border-color: #38bdf8;
+            box-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
+        }
+
+        .map-directory-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .map-directory-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .map-directory-item:hover {
+            background: rgba(2, 132, 199, 0.2);
+            border-color: rgba(56, 189, 248, 0.4);
+            transform: translateX(3px);
+        }
+
+        .map-directory-item.selected {
+            background: rgba(2, 132, 199, 0.35);
+            border-color: #38bdf8;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+        }
+
+        .directory-icon {
+            font-size: 20px;
+            min-width: 24px;
+            text-align: center;
+        }
+
+        .directory-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .directory-info strong {
+            font-size: 14px;
+            font-weight: 700;
+            color: #f1f5f9;
+        }
+
+        .directory-info small {
+            font-size: 11px;
+            color: #94a3b8;
+        }
+
+        .directory-category-badge {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9px;
+            font-weight: 800;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .map-controls-hint {
+            padding: 10px 14px;
+            background: rgba(2, 6, 23, 0.7);
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            font-size: 11px;
+            color: #94a3b8;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .world-map-viewport {
+            flex: 1;
+            position: relative;
+            background: #050914;
+            cursor: grab;
+            overflow: hidden;
+        }
+
+        .world-map-viewport:active {
+            cursor: grabbing;
+        }
+
+        #world-map-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .map-viewport-controls {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 8;
+        }
+
+        .map-ctrl-btn {
+            width: 40px;
+            height: 40px;
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(56, 189, 248, 0.4);
+            border-radius: 8px;
+            color: #f8fafc;
+            font-size: 20px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            transition: all 0.15s ease;
+        }
+
+        .map-ctrl-btn:hover {
+            background: #0284c7;
+            color: #ffffff;
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
+            transform: scale(1.05);
+        }
+
+        .map-landmark-card {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 360px;
+            max-width: calc(100% - 40px);
+            background: rgba(15, 23, 42, 0.92);
+            border: 1px solid rgba(56, 189, 248, 0.4);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            display: none;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 9;
+            animation: slideUp 0.25s ease-out;
+        }
+
+        .map-landmark-card.active {
+            display: flex;
+        }
+
+        .map-card-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .map-card-header h3 {
+            margin: 0;
+            font-size: 16px;
+            color: #ffffff;
+            font-weight: 800;
+        }
+
+        .map-card-mr {
+            font-size: 13px;
+            color: #38bdf8;
+            font-weight: 600;
+        }
+
+        .map-card-district {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: #f59e0b;
+            font-weight: 700;
+        }
+
+        .map-card-coords {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: #94a3b8;
+        }
+
+        .map-card-desc {
+            margin: 4px 0 10px 0;
+            font-size: 13px;
+            color: #cbd5e1;
+            line-height: 1.4;
+        }
+
+        .map-card-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .map-card-btn {
+            flex: 1;
+            padding: 9px 12px;
+            border-radius: 6px;
+            border: none;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .map-card-btn.gps {
+            background: #ec4899;
+            color: #ffffff;
+            box-shadow: 0 0 10px rgba(236, 72, 153, 0.4);
+        }
+
+        .map-card-btn.gps:hover {
+            background: #db2777;
+            box-shadow: 0 0 16px rgba(236, 72, 153, 0.7);
+        }
+
+        .map-card-btn.travel {
+            background: #0284c7;
+            color: #ffffff;
+            box-shadow: 0 0 10px rgba(2, 132, 199, 0.4);
+        }
+
+        .map-card-btn.travel:hover {
+            background: #0369a1;
+            box-shadow: 0 0 16px rgba(56, 189, 248, 0.7);
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (max-width: 768px) {
+            .world-map-sidebar {
+                display: none;
+            }
+            .world-map-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            .map-filter-pills {
+                width: 100%;
+                overflow-x: auto;
+            }
+        }
     </style>
 
     <!-- Three.js + Addons Import Map (High-Speed CDN) -->
@@ -1984,6 +2417,7 @@
                 </div>
                 <span class="fps-badge" id="fps-badge">60 FPS</span>
                 <div class="world-controls">
+                    <button class="ctrl-btn" id="btn-toggle-world-map">🗺️ Map [M]</button>
                     <button class="ctrl-btn" id="btn-toggle-time">⏰ Time</button>
                     <button class="ctrl-btn" id="btn-toggle-weather">🌧️ Weather</button>
                     <button class="ctrl-btn" id="btn-tp-gateway">📍 Gateway</button>
@@ -2000,7 +2434,7 @@
 
         <div class="bottom-hud">
             <!-- GTA Rectangular Radar Mini-Map (Bottom Left) -->
-            <div class="gta-radar-card" id="gta-radar-card">
+            <div class="gta-radar-card" id="gta-radar-card" title="Click to Open Full Interactive World Map [M] • Press Z to Expand">
                 <div class="radar-canvas-box">
                     <canvas id="minimap-canvas" width="220" height="140"></canvas>
                 </div>
@@ -2309,6 +2743,78 @@
                             <small>devarshidavane@gmail.com</small>
                         </div>
                     </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- GTA V SATELLITE TACTICAL WORLD MAP MODAL -->
+    <div id="gta-world-map-modal" class="world-map-modal">
+        <div class="world-map-container">
+            <!-- Header Bar -->
+            <div class="world-map-header">
+                <div class="map-header-left">
+                    <span class="map-header-badge">🛰️ TACTICAL SATELLITE SYSTEM</span>
+                    <h2 class="map-header-title">MUMBAI METROPOLITAN REGION</h2>
+                    <span class="map-header-coords" id="map-header-coords">📍 Dharavi Koliwada • X: 0 | Y: 8.5m | Z: 0</span>
+                </div>
+                <!-- Category Filter Pills -->
+                <div class="map-filter-pills">
+                    <button class="map-filter-tab active" data-filter="all">🔘 ALL</button>
+                    <button class="map-filter-tab" data-filter="landmark">⭐ LANDMARKS</button>
+                    <button class="map-filter-tab" data-filter="academic">🏫 ACADEMICS</button>
+                    <button class="map-filter-tab" data-filter="transit">🚆 TRANSIT</button>
+                </div>
+                <div class="map-header-right">
+                    <button class="map-close-btn" id="world-map-close-btn" title="Close Map [ESC / M]">&times;</button>
+                </div>
+            </div>
+
+            <!-- Body: Left Directory & Main Map Canvas -->
+            <div class="world-map-body">
+                <!-- Left Sidebar Directory -->
+                <div class="world-map-sidebar">
+                    <div class="map-search-box">
+                        <input type="text" id="map-search-input" placeholder="🔍 Search location, college, school, station..." autocomplete="off">
+                    </div>
+                    <div class="map-directory-list" id="map-directory-list">
+                        <!-- Populated dynamically by worldMapInteractive.js -->
+                    </div>
+                    <div class="map-controls-hint">
+                        <span>🖱️ <strong>Left/Right Click:</strong> Place GPS Waypoint</span>
+                        <span>🖐️ <strong>Drag:</strong> Pan Map</span>
+                        <span>🔍 <strong>Scroll:</strong> Zoom</span>
+                    </div>
+                </div>
+
+                <!-- Main Interactive Map Canvas Viewport -->
+                <div class="world-map-viewport">
+                    <canvas id="world-map-canvas"></canvas>
+
+                    <!-- Floating Map Action Controls -->
+                    <div class="map-viewport-controls">
+                        <button class="map-ctrl-btn" id="map-btn-zoom-in" title="Zoom In">+</button>
+                        <button class="map-ctrl-btn" id="map-btn-zoom-out" title="Zoom Out">&minus;</button>
+                        <button class="map-ctrl-btn" id="map-btn-recenter" title="Re-center on Player">🎯</button>
+                        <button class="map-ctrl-btn" id="map-btn-clear-waypoint" title="Clear GPS Waypoint">🗑️</button>
+                    </div>
+
+                    <!-- Selected Landmark / Waypoint Inspector Popover Card -->
+                    <div class="map-landmark-card" id="map-landmark-card">
+                        <div class="map-card-header">
+                            <div>
+                                <h3 id="map-card-title">Landmark Name</h3>
+                                <div id="map-card-mr" class="map-card-mr">स्थान नाव</div>
+                            </div>
+                            <span id="map-card-district" class="map-card-district">📍 District</span>
+                        </div>
+                        <div id="map-card-coords" class="map-card-coords">GPS: X: 0 | Y: 0 | Z: 0</div>
+                        <p id="map-card-desc" class="map-card-desc">Description of landmark.</p>
+                        <div class="map-card-actions">
+                            <button class="map-card-btn gps" id="map-card-set-gps-btn">🧭 SET GPS ROUTE</button>
+                            <button class="map-card-btn travel" id="map-card-fast-travel-btn">⚡ FAST TRAVEL</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

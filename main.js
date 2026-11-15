@@ -28,9 +28,10 @@ import { buildEnvironmentalSimulation, updateEnvironmentalSimulation, ambientAge
 import { buildPlayerCharacter, updatePlayerLocomotion, characterGroup, devChar, ironManSuit, shockRing } from './src/character/playerCharacter.js';
 import { enterFlightMode, exitFlightMode, toggleFlightMode, updateFlightPhysics, getIsFlightMode, getFlightSpeed, getFlightVertSpeed, getFlightPitch, getFlightRoll, getFlightHeading, isFlightMode } from './src/character/ironManFlight.js';
 
-import { updateMiniMap, setNavigationDestination } from './src/ui/minimapRadar.js';
+import { updateMiniMap, setNavigationDestination, toggleMinimapExpanded } from './src/ui/minimapRadar.js';
 import { playSound, toggleAudio, updateTachometerHUD, showPrompt, hidePrompt } from './src/ui/hudOverlay.js';
-import { initCyberPhone, toggleCyberPhone, toggleVehicleMount, handleInteraction, checkProximity, currentInteraction } from './src/ui/cyberPhone.js';
+import { initCyberPhone, toggleCyberPhone, toggleVehicleMount, handleInteraction, checkProximity, currentInteraction, teleportTo } from './src/ui/cyberPhone.js';
+import { initWorldMap, toggleWorldMap, openWorldMap, closeWorldMap, isWorldMapOpen, drawWorldMap } from './src/ui/worldMapInteractive.js';
 
 // ==========================================
 // RENDERER, SCENE & CAMERA SETUP
@@ -109,6 +110,7 @@ buildEnvironmentalSimulation(scene);
 
 buildPlayerCharacter(scene);
 initCyberPhone(camera);
+initWorldMap(camera, characterGroup, teleportTo);
 
 // Controls & Keyboard Listeners
 const keys = { w: false, a: false, s: false, d: false, space: false, shift: false, c: false, ctrl: false };
@@ -129,7 +131,12 @@ window.addEventListener('keydown', (e) => {
     if (k === 'e') handleInteraction();
     if (k === 't') cycleTimeOfDay(scene);
     if (k === 'v') toggleCameraMode();
-    if (k === 'p' || k === 'm') toggleCyberPhone();
+    if (k === 'm') toggleWorldMap();
+    if (k === 'p') toggleCyberPhone();
+    if (k === 'z') toggleMinimapExpanded();
+    if (e.key === 'Escape') {
+        if (isWorldMapOpen) closeWorldMap();
+    }
     if (k === 'c') {
         if (isFlightMode) keys.c = true;
         else toggleCameraMode();
@@ -149,6 +156,15 @@ window.addEventListener('keyup', (e) => {
 });
 
 // UI Buttons Wiring
+const btnWorldMap = document.getElementById('btn-toggle-world-map');
+if (btnWorldMap) btnWorldMap.addEventListener('click', toggleWorldMap);
+
+const radarCard = document.getElementById('gta-radar-card');
+if (radarCard) radarCard.addEventListener('click', (e) => {
+    // Only open map if not clicking directly on a child interactive button
+    toggleWorldMap();
+});
+
 const btnFlight = document.getElementById('btn-toggle-flight');
 if (btnFlight) btnFlight.addEventListener('click', () => toggleFlightMode(playSound));
 
@@ -256,6 +272,11 @@ function animate() {
 
     // 4. Render
     renderer.render(scene, camera);
+
+    // 5. Interactive Tactical World Map Realtime Render
+    if (isWorldMapOpen) {
+        drawWorldMap();
+    }
 }
 animate();
 
@@ -267,6 +288,11 @@ window.__scene = scene;
 window.THREE = THREE;
 window.__camera = camera;
 window.__characterGroup = characterGroup;
+window.__toggleWorldMap = toggleWorldMap;
+window.__openWorldMap = openWorldMap;
+window.__closeWorldMap = closeWorldMap;
+window.__isWorldMapOpen = () => isWorldMapOpen;
+window.__toggleMinimapExpanded = toggleMinimapExpanded;
 window.__allTrains = allTrains;
 window.__railwayStations = railwayStations;
 window.__trafficSignals = trafficSignals;

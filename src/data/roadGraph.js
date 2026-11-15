@@ -379,17 +379,17 @@ export const ROAD_NODES = {
     // --------------------------------------------------------------------------
     'node_dharavi_koliwada_nexus': {
         id: 'node_dharavi_koliwada_nexus',
-        name: 'Dharavi Koliwada (Central World Origin 0,0)',
+        name: 'Dharavi Koliwada (South Plaza Ceremonial Boulevard)',
         district: DISTRICTS.DHARAVI_SION,
-        x: 0, y: 8.0, z: 0, // Aligned with home_hq_dharavi
+        x: 0, y: 0.2, z: -48, // South perimeter of Home HQ Plaza
         type: 'arterial_intersection',
         trafficSignalId: 0
     },
     'node_homehq_plaza': {
         id: 'node_homehq_plaza',
-        name: 'Home HQ Plaza & Stark Tower Ceremonial Roundabout',
+        name: 'Home HQ Plaza (East Ceremonial Gate)',
         district: DISTRICTS.DHARAVI_SION,
-        x: 0, y: 8.6, z: 140, // Matches main.js starkPedestal at (0, 140)
+        x: 36, y: 0.2, z: 20, // East perimeter of Home HQ Plaza
         type: 'arterial_intersection',
         trafficSignalId: 2
     },
@@ -397,15 +397,15 @@ export const ROAD_NODES = {
         id: 'node_dharavi_90ft_west',
         name: 'Dharavi 90-Feet Road West (Mahim Phatak)',
         district: DISTRICTS.DHARAVI_SION,
-        x: -180, y: 7.5, z: 42,
+        x: -180, y: 0.2, z: 42,
         type: 'local_junction',
         trafficSignalId: 11
     },
     'node_dharavi_90ft_central': {
         id: 'node_dharavi_90ft_central',
-        name: 'Dharavi 90-Feet Road Central Market',
+        name: 'Dharavi 90-Feet Road Central Market (West Plaza Gate)',
         district: DISTRICTS.DHARAVI_SION,
-        x: 0, y: 8.0, z: 42,
+        x: -36, y: 0.2, z: 20, // West perimeter of Home HQ Plaza
         type: 'arterial_intersection',
         trafficSignalId: 1
     },
@@ -413,7 +413,7 @@ export const ROAD_NODES = {
         id: 'node_dharavi_90ft_east',
         name: 'Dharavi 90-Feet Road East (Kumbharwada Crafts Sector)',
         district: DISTRICTS.DHARAVI_SION,
-        x: +180, y: 8.0, z: 42,
+        x: +180, y: 0.2, z: 42,
         type: 'local_junction',
         trafficSignalId: 47
     },
@@ -421,7 +421,7 @@ export const ROAD_NODES = {
         id: 'node_dharavi_60ft_west',
         name: 'Dharavi 60-Feet Road West (Transit Avenue)',
         district: DISTRICTS.DHARAVI_SION,
-        x: -180, y: 7.5, z: 140,
+        x: -180, y: 0.2, z: 140,
         type: 'local_junction',
         trafficSignalId: 12
     },
@@ -429,7 +429,7 @@ export const ROAD_NODES = {
         id: 'node_dharavi_60ft_east',
         name: 'Dharavi 60-Feet Road East (Recycling & Leather Hub)',
         district: DISTRICTS.DHARAVI_SION,
-        x: +180, y: 8.0, z: 140,
+        x: +180, y: 0.2, z: 140,
         type: 'local_junction',
         trafficSignalId: 17
     },
@@ -445,7 +445,7 @@ export const ROAD_NODES = {
         id: 'node_sion_circle',
         name: 'Sion Circle (EEH / LBS Marg / Dharavi Gateway)',
         district: DISTRICTS.DHARAVI_SION,
-        x: +150, y: 8.0, z: 50,
+        x: +150, y: 0.2, z: 50,
         type: 'arterial_intersection',
         trafficSignalId: 49
     },
@@ -453,7 +453,7 @@ export const ROAD_NODES = {
         id: 'node_dharavi_north_gate',
         name: 'Campus Cross Avenue & North Hub',
         district: DISTRICTS.DHARAVI_SION,
-        x: 0, y: 8.0, z: 240,
+        x: 0, y: 0.2, z: 240,
         type: 'arterial_intersection',
         trafficSignalId: 3
     },
@@ -461,7 +461,7 @@ export const ROAD_NODES = {
         id: 'node_chawls_south',
         name: 'Residential Chawls South Sector',
         district: DISTRICTS.DHARAVI_SION,
-        x: 0, y: 8.0, z: 380,
+        x: 0, y: 0.2, z: 380,
         type: 'local_junction',
         trafficSignalId: 4
     },

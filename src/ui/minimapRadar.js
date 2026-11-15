@@ -9,6 +9,25 @@ import { TRACK_SPLINES } from '../data/railwayDatabase.js';
 
 export let currentNavDestination = null;
 export let activeGpsRoute = null;
+export let customWaypoint = null;
+export let isMinimapExpanded = false;
+
+export function toggleMinimapExpanded() {
+    isMinimapExpanded = !isMinimapExpanded;
+    const container = document.getElementById('gta-radar-card') || document.querySelector('.minimap-container');
+    const canvas = document.getElementById('minimap-canvas');
+    if (container && canvas) {
+        if (isMinimapExpanded) {
+            container.classList.add('expanded');
+            canvas.width = 320;
+            canvas.height = 200;
+        } else {
+            container.classList.remove('expanded');
+            canvas.width = 220;
+            canvas.height = 140;
+        }
+    }
+}
 
 const DESTINATION_NODE_MAP = {
     'school': 'node_fr_agnel_school_gate',
@@ -24,17 +43,45 @@ const DESTINATION_NODE_MAP = {
 };
 
 export function setNavigationDestination(destId) {
+    customWaypoint = null;
     const mapped = DESTINATION_NODE_MAP[destId] || destId;
     if (mumbaiRoadNetwork && mumbaiRoadNetwork.nodes[mapped]) {
         currentNavDestination = mapped;
         activeGpsRoute = mapped;
+        lastRouteCalcTime = 0;
     } else {
         currentNavDestination = null;
         activeGpsRoute = null;
     }
 }
 
+export function setCustomWaypoint(worldX, worldZ, name = "Custom Waypoint") {
+    let nearestNodeId = 'node_homehq_plaza';
+    let minDist = Infinity;
+    if (mumbaiRoadNetwork && mumbaiRoadNetwork.nodes) {
+        for (const [id, node] of Object.entries(mumbaiRoadNetwork.nodes)) {
+            const d = Math.hypot(node.x - worldX, node.z - worldZ);
+            if (d < minDist) {
+                minDist = d;
+                nearestNodeId = id;
+            }
+        }
+    }
+    customWaypoint = { x: worldX, z: worldZ, name };
+    currentNavDestination = nearestNodeId;
+    activeGpsRoute = nearestNodeId;
+    lastRouteCalcTime = 0;
+}
+
+export function clearCustomWaypoint() {
+    customWaypoint = null;
+    currentNavDestination = null;
+    activeGpsRoute = null;
+    cachedRouteData = null;
+}
+
 export function clearNavigationDestination() {
+    customWaypoint = null;
     currentNavDestination = null;
     activeGpsRoute = null;
 }
@@ -87,7 +134,7 @@ export function updateMiniMap(playerX, playerZ, playerRot) {
 
     const cx = width / 2;
     const cy = height / 2;
-    const scale = 0.085; // ~1.5km radar radius view
+    const scale = isMinimapExpanded ? 0.052 : 0.085; // Wider view when expanded
 
     function toMapX(wx) { return cx + (wx - playerX) * scale; }
     function toMapY(wz) { return cy - (wz - playerZ) * scale; }
@@ -200,7 +247,7 @@ export function updateMiniMap(playerX, playerZ, playerRot) {
             }
 
             if (waypointTrackerEl) {
-                const destName = destNode ? (destNode.name || activeGpsRoute) : "Destination";
+                const destName = customWaypoint ? customWaypoint.name : (destNode ? (destNode.name || activeGpsRoute) : "Destination");
                 waypointTrackerEl.textContent = `📍 GPS: ${destName} • ${cachedRouteData.totalDistance}m (${cachedRouteData.totalTimeMinutes}m)`;
             }
         }
@@ -228,6 +275,23 @@ export function updateMiniMap(playerX, playerZ, playerRot) {
         mapCtx.arc(blipX, blipY, 4.5, 0, Math.PI * 2);
         mapCtx.stroke();
     });
+
+    // Custom GPS Waypoint Marker on Radar
+    if (customWaypoint) {
+        const cX = toMapX(customWaypoint.x);
+        const cY = toMapY(customWaypoint.z);
+        mapCtx.fillStyle = '#f43f5e';
+        mapCtx.beginPath();
+        mapCtx.moveTo(cX, cY - 7);
+        mapCtx.lineTo(cX + 5, cY);
+        mapCtx.lineTo(cX, cY + 7);
+        mapCtx.lineTo(cX - 5, cY);
+        mapCtx.closePath();
+        mapCtx.fill();
+        mapCtx.strokeStyle = '#ffffff';
+        mapCtx.lineWidth = 1.2;
+        mapCtx.stroke();
+    }
 
     // 7. Player Heading Arrow at Center
     mapCtx.save();
