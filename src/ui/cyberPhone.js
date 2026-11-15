@@ -246,8 +246,8 @@ function dismountVehicle(scene) {
 }
 
 export function handleInteraction() {
-    const modalTitleEl = document.getElementById('modal-title');
-    const modalBodyEl = document.getElementById('modal-body');
+    const modalTitleEl = document.getElementById('modal-title-text') || document.getElementById('modal-title');
+    const modalBodyEl = document.getElementById('modal-body-text') || document.getElementById('modal-body');
     const modalCodePreviewEl = document.getElementById('modal-code-preview');
     const interactiveModalEl = document.getElementById('interactive-modal');
 
@@ -299,6 +299,16 @@ const developer = {
             `;
         }
         if (interactiveModalEl) interactiveModalEl.classList.add('active');
+    } else if (currentInteraction === 'gatewayArch') {
+        if (modalTitleEl) modalTitleEl.innerHTML = "🏛️ Gateway of India (Colaba Waterfront)";
+        if (modalBodyEl) modalBodyEl.innerHTML = `
+            <strong>Historic Basalt Waterfront Monument (1924):</strong><br><br>
+            • <strong>Location:</strong> Apollo Bunder, Colaba, South Mumbai (Arabian Sea Harbor)<br>
+            • <strong>Architecture:</strong> Indo-Saracenic triumphal arch with 16th-century Gujarati architectural influences<br>
+            • <strong>Symbolism:</strong> The ceremonial entrance to Mumbai and India, looking out across the Arabian Sea.
+        `;
+        if (modalCodePreviewEl) modalCodePreviewEl.style.display = 'none';
+        if (interactiveModalEl) interactiveModalEl.classList.add('active');
     } else if (currentInteraction === 'vadapav') {
         if (modalTitleEl) modalTitleEl.innerHTML = "🍔 Dev's Mumbai Vada Pav Cart";
         if (modalBodyEl) modalBodyEl.innerHTML = `
@@ -315,27 +325,34 @@ export function checkProximity() {
     const p = characterGroup.position;
 
     // 1. Fr. Agnel School Check (-1350, 32.0, 520)
-    if (Math.hypot(p.x - poiSchool.x, p.z - poiSchool.z) < 25) {
+    if (Math.hypot(p.x - poiSchool.x, p.z - poiSchool.z) < 42) {
         currentInteraction = 'schoolBoard';
         showPrompt('E', 'Inspect Fr. Agnel School 🏫');
         return;
     }
 
     // 2. DMCE College Check (1850, 12.0, 1450)
-    if (Math.hypot(p.x - poiCollege.x, p.z - poiCollege.z) < 25) {
+    if (Math.hypot(p.x - poiCollege.x, p.z - poiCollege.z) < 45) {
         currentInteraction = 'collegeBoard';
         showPrompt('E', 'Inspect DMCE College 🎓');
         return;
     }
 
     // 3. Home HQ Check (0, 8.0, 0)
-    if (Math.hypot(p.x - poiHome.x, p.z - poiHome.z) < 24) {
+    if (Math.hypot(p.x - poiHome.x, p.z - poiHome.z) < 32) {
         currentInteraction = 'homeHQ';
         showPrompt('E', 'Access Home HQ Terminal 💻');
         return;
     }
 
-    // 4. Vada Pav Cart Check
+    // 4. Gateway of India Check (-350, 2.5, -2250)
+    if (Math.hypot(p.x - poiGateway.x, p.z - poiGateway.z) < 45) {
+        currentInteraction = 'gatewayArch';
+        showPrompt('E', 'Inspect Gateway of India 🏛️');
+        return;
+    }
+
+    // 5. Vada Pav Cart Check
     if (Math.hypot(p.x - 12, p.z - 242) < 5) {
         currentInteraction = 'vadapav';
         showPrompt('E', 'Order Vada Pav 🍔');
