@@ -12,8 +12,8 @@ import { resolveCollision, getSurfaceElevationAt } from '../world/worldColliders
 export let bikeVehicle = {
     type: 'bike',
     mesh: null,
-    x: -5,
-    z: 4,
+    x: -6,
+    z: -24,
     rotation: 0,
     speed: 0,
     maxSpeed: 26,
@@ -23,8 +23,8 @@ export let bikeVehicle = {
 export let carVehicle = {
     type: 'car',
     mesh: null,
-    x: 5,
-    z: 4,
+    x: 6,
+    z: -24,
     rotation: 0,
     speed: 0,
     maxSpeed: 38,
@@ -35,8 +35,8 @@ export let carVehicle = {
 export let rickshawVehicle = {
     type: 'rickshaw',
     mesh: null,
-    x: 8.5,
-    z: 22,
+    x: 12,
+    z: -24,
     rotation: 0,
     speed: 0,
     maxSpeed: 32,

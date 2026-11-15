@@ -1,17 +1,17 @@
 import * as THREE from 'three';
 import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
 import { registerBoxCollider } from '../world/worldColliders.js';
+import { DISTRICTS } from '../data/mumbaiGeography.js';
 import {
     createChawlFacadeTexture,
     createApartmentFacadeTexture,
     createCorporateGlassTexture
 } from '../world/textures.js';
-import { registerLODItem } from '../world/chunkManager.js';
 
 // ==========================================
-// PROCEDURAL MUMBAI URBAN ARCHITECTURE BATCH
-// 4 Building Families (Chawls, Art-Deco Apartments, Corporate Glass, Kirana Shops)
-// Highly Batched Draw-Call Optimization
+// PROCEDURAL 5KM MUMBAI METROPOLITAN URBAN ARCHITECTURE
+// Comprehensive City Districts (South Mumbai, Central, Western, Eastern, Thane & Navi Mumbai)
+// Over 350+ Authentically Batched Buildings in 7 Unified Draw Calls
 // ==========================================
 
 export const cityBuildings = [];
@@ -65,13 +65,19 @@ export function buildGenericBuildings(scene) {
         cityBuildings.push({ minX, maxX, minZ, maxZ, type: 'chawl' });
     }
 
-    function buildBatchedApartment(x, z, w, d, storeys) {
+    function buildBatchedApartment(x, z, w, d, storeys, rotY = 0) {
         const storeyH = 3.2;
         const totalH = storeys * storeyH;
-        addBox(batchedWallsApartments, x, totalH / 2, z, w, totalH, d);
-        addBox(batchedConcreteTrim, x, totalH + 0.4, z, w + 0.4, 0.8, d + 0.4);
+        addBox(batchedWallsApartments, x, totalH / 2, z, w, totalH, d, rotY);
+        addBox(batchedConcreteTrim, x, totalH + 0.4, z, w + 0.4, 0.8, d + 0.4, rotY);
         addCylinder(batchedMetal, x - w / 4, totalH + 1.2, z - d / 4, 1.1, 1.1, 2.0);
         addCylinder(batchedMetal, x + w / 4, totalH + 1.2, z + d / 4, 1.1, 1.1, 2.0);
+
+        // Window frames / balconies
+        for (let s = 1; s < storeys; s++) {
+            const fy = s * storeyH;
+            addBox(batchedConcreteTrim, x, fy, z + d / 2 + 0.2, w * 0.8, 0.2, 0.5, rotY);
+        }
 
         const minX = x - w / 2;
         const maxX = x + w / 2;
@@ -81,12 +87,14 @@ export function buildGenericBuildings(scene) {
         cityBuildings.push({ minX, maxX, minZ, maxZ, type: 'apartment' });
     }
 
-    function buildBatchedCorporateTower(x, z, w, d, storeys) {
+    function buildBatchedCorporateTower(x, z, w, d, storeys, rotY = 0) {
         const storeyH = 4.0;
         const totalH = storeys * storeyH;
-        addBox(batchedWallsCorporate, x, totalH / 2, z, w, totalH, d);
-        addBox(batchedGlass, x, totalH / 2, z, w + 0.2, totalH - 0.4, d + 0.2);
-        addBox(batchedConcreteTrim, x, totalH + 0.5, z, w + 0.4, 1.0, d + 0.4);
+        addBox(batchedWallsCorporate, x, totalH / 2, z, w, totalH, d, rotY);
+        addBox(batchedGlass, x, totalH / 2, z, w + 0.3, totalH - 0.4, d + 0.3, rotY);
+        addBox(batchedConcreteTrim, x, totalH + 0.5, z, w + 0.4, 1.0, d + 0.4, rotY);
+        // Rooftop antenna spire
+        addCylinder(batchedMetal, x, totalH + 4.0, z, 0.15, 0.35, 8.0);
 
         const minX = x - w / 2;
         const maxX = x + w / 2;
@@ -96,21 +104,126 @@ export function buildGenericBuildings(scene) {
         cityBuildings.push({ minX, maxX, minZ, maxZ, type: 'corporate' });
     }
 
-    // Grid placements across suburban Mumbai districts
-    // Bandra East & Dharavi Koliwada residential chawls
-    [[-80, 180], [-120, 220], [80, 180], [120, 220], [-60, 260], [60, 260]].forEach(([bx, bz]) => {
-        buildBatchedChawl(bx, bz, 18, 10, 3);
-    });
+    // ====================================================
+    // DISTRICT-BY-DISTRICT PROCEDURAL URBAN POPULATION
+    // ====================================================
+    for (const [key, d] of Object.entries(DISTRICTS)) {
+        if (key === 'sgnp_highlands') continue; // Protected national park forest reserve
 
-    // Lower Parel / Dadar residential apartments
-    [[-160, -180], [-220, -220], [160, -180], [220, -220], [-180, 480], [180, 480]].forEach(([ax, az]) => {
-        buildBatchedApartment(ax, az, 22, 14, 6);
-    });
+        const cx = d.centroid.x;
+        const cz = d.centroid.z;
+        const zone = d.zone;
 
-    // BKC / Worli corporate glass towers
-    [[-140, 360], [-200, 400], [140, 360], [200, 400], [-80, -320], [80, -320]].forEach(([cx, cz]) => {
-        buildBatchedCorporateTower(cx, cz, 26, 20, 12);
-    });
+        // Skip exact world origin (Home HQ Plaza already has Stark Tower)
+        const isHomeHQ = Math.hypot(cx, cz) < 60;
+
+        // Generate street blocks based on zone character
+        if (zone === 'south_mumbai') {
+            // Victorian Gothic, colonial stone blocks and Art-Deco waterfront apartments
+            const offsets = [
+                [-80, -60], [-80, 60], [80, -60], [80, 60],
+                [-140, 0], [140, 0], [-100, -120], [100, 120]
+            ];
+            offsets.forEach(([ox, oz], idx) => {
+                const bx = cx + ox;
+                const bz = cz + oz;
+                if (idx % 2 === 0) {
+                    buildBatchedApartment(bx, bz, 24, 16, 5 + (idx % 3));
+                } else {
+                    buildBatchedChawl(bx, bz, 20, 12, 4);
+                }
+            });
+        } else if (zone === 'central_nexus') {
+            // High-density mix: mill towers, chawl settlements, artisan workshops
+            const offsets = [
+                [-90, -90], [-90, 90], [90, -90], [90, 90],
+                [-150, -40], [150, 40], [-50, 160], [50, -160]
+            ];
+            offsets.forEach(([ox, oz], idx) => {
+                const bx = cx + ox;
+                const bz = cz + oz;
+                if (Math.hypot(bx, bz) < 45) return; // Keep Home HQ Plaza clear
+                if (idx % 3 === 0) {
+                    buildBatchedCorporateTower(bx, bz, 26, 22, 10 + (idx % 4));
+                } else if (idx % 3 === 1) {
+                    buildBatchedApartment(bx, bz, 22, 15, 6);
+                } else {
+                    buildBatchedChawl(bx, bz, 18, 12, 3);
+                }
+            });
+        } else if (zone === 'western_suburbs') {
+            // High-rise apartments, commercial retail boulevards, Bandra/Andheri towers
+            const offsets = [
+                [-100, -80], [-100, 80], [100, -80], [100, 80],
+                [-160, -30], [160, 30], [-70, 140], [70, -140],
+                [-140, 110], [140, -110]
+            ];
+            offsets.forEach(([ox, oz], idx) => {
+                const bx = cx + ox;
+                const bz = cz + oz;
+                // Leave buffer around Fr. Agnel school gate
+                if (Math.hypot(bx - (-1350), bz - 520) < 45) return;
+                if (idx % 3 === 0) {
+                    buildBatchedCorporateTower(bx, bz, 28, 20, 11 + (idx % 5));
+                } else {
+                    buildBatchedApartment(bx, bz, 24, 16, 7 + (idx % 4));
+                }
+            });
+        } else if (zone === 'eastern_suburbs') {
+            // Industrial tech parks, housing colonies, chawls along LBS & EEH
+            const offsets = [
+                [-85, -75], [-85, 75], [85, -75], [85, 75],
+                [-130, -30], [130, 30], [-60, 130], [60, -130],
+                [-120, 100], [120, -100]
+            ];
+            offsets.forEach(([ox, oz], idx) => {
+                const bx = cx + ox;
+                const bz = cz + oz;
+                if (idx % 3 === 0) {
+                    buildBatchedCorporateTower(bx, bz, 25, 20, 9 + (idx % 4));
+                } else if (idx % 3 === 1) {
+                    buildBatchedApartment(bx, bz, 22, 14, 6);
+                } else {
+                    buildBatchedChawl(bx, bz, 19, 11, 4);
+                }
+            });
+        } else if (zone === 'navi_mumbai') {
+            // Sprawling Mindspace IT campuses (surrounding DMCE College in Airoli), Vashi commercial sectors
+            const offsets = [
+                [-110, -90], [-110, 90], [110, -90], [110, 90],
+                [-160, -40], [160, 40], [-70, 150], [70, -150],
+                [-150, 120], [150, -120], [-60, -160], [60, 160]
+            ];
+            offsets.forEach(([ox, oz], idx) => {
+                const bx = cx + ox;
+                const bz = cz + oz;
+                // Leave clear buffer around DMCE college campus (1850, 1450)
+                if (Math.hypot(bx - 1850, bz - 1450) < 55) return;
+                if (idx % 2 === 0) {
+                    // Modern sprawling glass IT campus tower
+                    buildBatchedCorporateTower(bx, bz, 32, 24, 12 + (idx % 6));
+                } else {
+                    // Planned residential tower
+                    buildBatchedApartment(bx, bz, 26, 18, 8 + (idx % 4));
+                }
+            });
+        } else if (zone === 'thane') {
+            // Thane lakeside high-rises and commercial towers
+            const offsets = [
+                [-95, -80], [-95, 80], [95, -80], [95, 80],
+                [-140, 0], [140, 0], [-80, 130], [80, -130]
+            ];
+            offsets.forEach(([ox, oz], idx) => {
+                const bx = cx + ox;
+                const bz = cz + oz;
+                if (idx % 2 === 0) {
+                    buildBatchedCorporateTower(bx, bz, 28, 22, 10 + (idx % 4));
+                } else {
+                    buildBatchedApartment(bx, bz, 24, 16, 7);
+                }
+            });
+        }
+    }
 
     // Materials
     const chawlTex = createChawlFacadeTexture();
@@ -130,11 +243,35 @@ export function buildGenericBuildings(scene) {
     const roofMat = new THREE.MeshStandardMaterial({ color: 0x713f12, roughness: 0.9 });
     const glassMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.1, metalness: 0.9, transparent: true, opacity: 0.7 });
 
-    if (batchedWallsPlaster.length > 0) scene.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(batchedWallsPlaster), plasterMat));
-    if (batchedWallsApartments.length > 0) scene.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(batchedWallsApartments), aptMat));
-    if (batchedWallsCorporate.length > 0) scene.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(batchedWallsCorporate), corpMat));
-    if (batchedConcreteTrim.length > 0) scene.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(batchedConcreteTrim), trimMat));
-    if (batchedMetal.length > 0) scene.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(batchedMetal), metalMat));
-    if (batchedRoofs.length > 0) scene.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(batchedRoofs), roofMat));
-    if (batchedGlass.length > 0) scene.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(batchedGlass), glassMat));
+    if (batchedWallsPlaster.length > 0) {
+        const m = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(batchedWallsPlaster), plasterMat);
+        m.name = "MumbaiBatchedChawls";
+        scene.add(m);
+    }
+    if (batchedWallsApartments.length > 0) {
+        const m = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(batchedWallsApartments), aptMat);
+        m.name = "MumbaiBatchedApartments";
+        scene.add(m);
+    }
+    if (batchedWallsCorporate.length > 0) {
+        const m = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(batchedWallsCorporate), corpMat);
+        m.name = "MumbaiBatchedCorporateTowers";
+        scene.add(m);
+    }
+    if (batchedConcreteTrim.length > 0) {
+        const m = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(batchedConcreteTrim), trimMat);
+        scene.add(m);
+    }
+    if (batchedMetal.length > 0) {
+        const m = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(batchedMetal), metalMat);
+        scene.add(m);
+    }
+    if (batchedRoofs.length > 0) {
+        const m = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(batchedRoofs), roofMat);
+        scene.add(m);
+    }
+    if (batchedGlass.length > 0) {
+        const m = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(batchedGlass), glassMat);
+        scene.add(m);
+    }
 }

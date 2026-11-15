@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 // Domain Systems Architecture
 import { buildEnvironment, updateEnvironment, cycleTimeOfDay, cycleWeather, WORLD_CONFIG, timeOfDay, weatherMode, streetLamps } from './src/world/worldEnvironment.js';
+import { buildRoadMeshes } from './src/world/roadMeshes.js';
 import { worldColliders, spatialGrid, resolveCollision, getSurfaceElevationAt, currentFloorElevation } from './src/world/worldColliders.js';
 import { ChunkManager, registerLODItem, updateLevelOfDetail, lodRegistry } from './src/world/chunkManager.js';
 
@@ -40,7 +41,7 @@ scene.background = new THREE.Color(0x0c1427);
 scene.fog = new THREE.FogExp2(0x0c1427, 0.0016);
 
 const camera = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.1, 1400);
-camera.position.set(0, 7.5, -18);
+camera.position.set(0, 7.5, -42);
 
 const isMobileDevice = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent) || (window.innerWidth <= 768);
 const getOptimalPixelRatio = () => isMobileDevice ? Math.min(window.devicePixelRatio, 1.25) : Math.min(window.devicePixelRatio, 1.5);
@@ -84,6 +85,7 @@ const chunkManager = new ChunkManager(scene, 500);
 // INITIALIZE 5KM MUMBAI WORLD SYSTEMS
 // ==========================================
 buildEnvironment(scene);
+buildRoadMeshes(scene);
 buildSchoolDistrict(scene);
 buildCollegeDistrict(scene);
 buildStarkTower(scene, cityBuildings);

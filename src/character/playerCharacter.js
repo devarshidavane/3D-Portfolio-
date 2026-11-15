@@ -108,8 +108,8 @@ export function buildPlayerCharacter(scene) {
     devChar.group.visible = true;
     ironManSuit.visible = false;
 
-    // Spawn at Gateway / South Waterfront
-    characterGroup.position.set(0, 0.1, -4);
+    // Spawn at Home HQ Plaza (outside canopy facing plaza)
+    characterGroup.position.set(0, 0.1, -28);
     scene.add(characterGroup);
 }
 

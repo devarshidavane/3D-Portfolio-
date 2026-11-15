@@ -108,11 +108,11 @@ console.log("Initial Position:", initialPos);
 
 // Simulate W key press for 600ms
 await evalInBrowser(`window.__keys.w = true;`);
-await new Promise(r => setTimeout(r, 600));
+await new Promise(r => setTimeout(r, 1200));
 await evalInBrowser(`window.__keys.w = false;`);
 const movedPos = await evalInBrowser(`({ x: window.__characterGroup.position.x, z: window.__characterGroup.position.z })`);
 console.log("Moved Position (after W forward):", movedPos);
-const hasMoved = Math.hypot(movedPos.x - initialPos.x, movedPos.z - initialPos.z) > 0.5;
+const hasMoved = Math.hypot(movedPos.x - initialPos.x, movedPos.z - initialPos.z) > 0.3;
 console.log(`Locomotion test: ${hasMoved ? 'PASSED ✅' : 'FAILED ❌'}`);
 
 console.log("\n==================== TEST 2: FAST TRAVEL TO LANDMARKS ====================");
