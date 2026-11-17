@@ -151,27 +151,97 @@ export function hidePrompt() {
     if (interactionPromptEl) interactionPromptEl.classList.remove('show');
 }
 
-export function updateTachometerHUD(speed, isReversing) {
-    const speedoVal = document.getElementById('speedo-val');
-    const speedoUnit = document.getElementById('speedo-unit');
-    const gearIndicator = document.getElementById('hud-gear');
+export function updateTachometerHUD(speed, isReversing, isVehicle = false) {
+    const tachometerCard = document.getElementById('tachometer-card');
+    if (tachometerCard) {
+        if (!isVehicle) {
+            tachometerCard.style.display = 'none';
+            return;
+        }
+        tachometerCard.style.display = 'flex';
+    } else if (!isVehicle) {
+        return;
+    }
 
+    const kmh = Math.round(Math.abs(speed) * 3.6);
+
+    const tachoSpeedVal = document.getElementById('tacho-speed-value');
+    if (tachoSpeedVal) {
+        tachoSpeedVal.textContent = kmh;
+    }
+    const speedoVal = document.getElementById('speedo-val');
     if (speedoVal) {
-        speedoVal.textContent = Math.round(Math.abs(speed) * 3.6);
+        speedoVal.textContent = kmh;
     }
-    if (speedoUnit && isReversing) {
-        speedoUnit.textContent = 'REV';
-    } else if (speedoUnit) {
-        speedoUnit.textContent = 'KM/H';
+    const speedoUnit = document.getElementById('speedo-unit');
+    if (speedoUnit) {
+        speedoUnit.textContent = isReversing ? 'REV' : 'KM/H';
     }
-    if (gearIndicator) {
-        const absSpeed = Math.abs(speed) * 3.6;
-        if (isReversing) gearIndicator.textContent = 'R';
-        else if (absSpeed < 1) gearIndicator.textContent = 'N';
-        else if (absSpeed < 20) gearIndicator.textContent = '1';
-        else if (absSpeed < 45) gearIndicator.textContent = '2';
-        else if (absSpeed < 75) gearIndicator.textContent = '3';
-        else if (absSpeed < 110) gearIndicator.textContent = '4';
-        else gearIndicator.textContent = '5';
+
+    // Needle rotation angle for #tacho-needle-pivot (-125deg to +125deg, 0 to 180 km/h)
+    const maxDialSpeed = 180;
+    const clampedSpeed = Math.min(Math.max(kmh, 0), maxDialSpeed);
+    const needleAngle = -125 + (clampedSpeed / maxDialSpeed) * 250;
+    const needlePivot = document.getElementById('tacho-needle-pivot');
+    if (needlePivot) {
+        needlePivot.style.transform = `rotate(${needleAngle.toFixed(1)}deg)`;
     }
+
+    const tachoActiveArc = document.getElementById('tacho-active-arc');
+    if (tachoActiveArc) {
+        const arcOffset = 356 - (clampedSpeed / maxDialSpeed) * 356;
+        tachoActiveArc.style.strokeDashoffset = `${arcOffset.toFixed(1)}`;
+    }
+
+    // Gear indicator logic
+    let gearText = 'N';
+    let gearBadge = 'NEUTRAL';
+    if (isReversing) {
+        gearText = 'R';
+        gearBadge = 'REVERSE';
+    } else if (kmh < 1) {
+        gearText = 'N';
+        gearBadge = 'NEUTRAL';
+    } else if (kmh < 25) {
+        gearText = '1';
+        gearBadge = '1ST GEAR';
+    } else if (kmh < 50) {
+        gearText = '2';
+        gearBadge = '2ND GEAR';
+    } else if (kmh < 80) {
+        gearText = '3';
+        gearBadge = '3RD GEAR';
+    } else if (kmh < 115) {
+        gearText = '4';
+        gearBadge = '4TH GEAR';
+    } else {
+        gearText = '5';
+        gearBadge = '5TH GEAR';
+    }
+
+    let hudGear = document.getElementById('hud-gear');
+    if (!hudGear && tachometerCard) {
+        hudGear = document.createElement('span');
+        hudGear.id = 'hud-gear';
+        hudGear.style.display = 'none';
+        tachometerCard.appendChild(hudGear);
+    }
+    if (hudGear) {
+        hudGear.textContent = gearText;
+    }
+
+    const tachoGearBadge = document.getElementById('tacho-gear-badge');
+    if (tachoGearBadge) {
+        tachoGearBadge.textContent = gearBadge;
+    }
+
+    const tachoModeLabel = document.getElementById('tacho-mode-label');
+    if (tachoModeLabel) {
+        tachoModeLabel.textContent = isReversing ? 'SPEED | REVERSE' : 'SPEED | SPORT MODE';
+    }
+}
+
+if (typeof window !== 'undefined') {
+    window.updateTachometerHUD = updateTachometerHUD;
+    window.__updateTachometerHUD = updateTachometerHUD;
 }

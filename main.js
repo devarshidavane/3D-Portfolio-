@@ -14,7 +14,7 @@ import { buildIconicLandmarks, poiGateway } from './src/landmarks/iconicLandmark
 import { buildAirportDistrict, updateAirportSimulation, poiAirport, atcRadarDish, airportPlanes } from './src/landmarks/airportDistrict.js';
 import { buildGenericBuildings, cityBuildings } from './src/landmarks/genericBuildings.js';
 
-import { buildPlayerVehicles, updateVehiclePhysics, bikeVehicle, carVehicle, rickshawVehicle, activeVehicle } from './src/vehicles/playerVehicles.js';
+import { buildPlayerVehicles, updateVehiclePhysics, bikeVehicle, carVehicle, rickshawVehicle, activeVehicle, setActiveVehicle } from './src/vehicles/playerVehicles.js';
 import { buildRoadTrafficSystem, buildPublicTransitSystem, buildTrafficSignalSystem, updateRoadTraffic, updatePublicTransit, updateTrafficSignals, trafficVehicles, trafficSignals, publicTransit } from './src/vehicles/trafficCars.js';
 import { buildGatewayMaritime, updateMaritimeFerryBoats, maritimeFerryBoats } from './src/vehicles/maritimeTransit.js';
 
@@ -134,6 +134,10 @@ window.addEventListener('keydown', (e) => {
     if (k === 'm') toggleWorldMap();
     if (k === 'p') toggleCyberPhone();
     if (k === 'z') toggleMinimapExpanded();
+    if (k === 'h') {
+        const controlsCard = document.getElementById('controls-card');
+        if (controlsCard) controlsCard.classList.toggle('open');
+    }
     if (e.key === 'Escape') {
         if (isWorldMapOpen) closeWorldMap();
     }
@@ -180,6 +184,14 @@ if (btnAudio) btnAudio.addEventListener('click', toggleAudio);
 const btnCam = document.getElementById('btn-toggle-camera');
 if (btnCam) btnCam.addEventListener('click', toggleCameraMode);
 
+const controlsToggleBtn = document.getElementById('controls-toggle-btn');
+if (controlsToggleBtn) {
+    controlsToggleBtn.addEventListener('click', () => {
+        const controlsCard = document.getElementById('controls-card');
+        if (controlsCard) controlsCard.classList.toggle('open');
+    });
+}
+
 // Precompile WebGL shader pipelines upfront to prevent runtime stutter
 try {
     renderer.compile(scene, camera);
@@ -210,6 +222,7 @@ function animate() {
     // 2. Traversal & Player state
     if (isFlightMode) {
         updateFlightPhysics(delta, keys, camera, playSound);
+        updateTachometerHUD(0, false, false);
         updateMiniMap(characterGroup.position.x, characterGroup.position.z, characterGroup.rotation.y);
         checkProximity();
     } else if (activeVehicle === 'train') {
@@ -220,11 +233,12 @@ function animate() {
             camera.position.y = THREE.MathUtils.lerp(camera.position.y, 6.5, 0.08);
             camera.lookAt(c1.position.x, 2.5, c1.position.z + 4);
         }
+        updateTachometerHUD(0, false, false);
         updateMiniMap(c1.position.x, c1.position.z, c1.rotation.y);
         checkTrainProximity(showPrompt);
     } else if (activeVehicle) {
         updateVehiclePhysics(activeVehicle, delta, keys);
-        updateTachometerHUD(activeVehicle.speed, activeVehicle.speed < -0.2);
+        updateTachometerHUD(activeVehicle.speed, activeVehicle.speed < -0.2, true);
 
         if (cameraMode === 'chase' || cameraMode === 'cinematic') {
             const isCar = (activeVehicle.type === 'car');
@@ -238,7 +252,7 @@ function animate() {
         updateMiniMap(activeVehicle.mesh.position.x, activeVehicle.mesh.position.z, activeVehicle.rotation);
     } else {
         updatePlayerLocomotion(delta, keys, camera, keys.shift);
-        updateTachometerHUD(keys.w || keys.a || keys.s || keys.d ? (keys.shift ? 16.0 : 9.0) : 0, false);
+        updateTachometerHUD(0, false, false);
 
         if (cameraMode === 'chase') {
             const distToHQ = Math.hypot(characterGroup.position.x - poiHome.x, characterGroup.position.z - poiHome.z);
@@ -337,6 +351,9 @@ window.__carVehicle = carVehicle;
 window.__rickshawVehicle = rickshawVehicle;
 window.__maritimeFerryBoats = maritimeFerryBoats;
 window.__atcRadarDish = atcRadarDish;
+window.__setActiveVehicle = setActiveVehicle;
+window.updateTachometerHUD = updateTachometerHUD;
+window.__updateTachometerHUD = updateTachometerHUD;
 
 // Responsive Window Resize
 window.addEventListener('resize', () => {
