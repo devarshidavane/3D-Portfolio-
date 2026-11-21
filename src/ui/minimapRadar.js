@@ -90,7 +90,7 @@ export function clearNavigationDestination() {
 const WAYPOINTS = [
     { id: 'school', name: "Fr. Agnel School (Bandra West)", x: -1350, z: 520, color: '#06b6d4', icon: '🏫', nodeId: 'node_fr_agnel_school_gate' },
     { id: 'college', name: "DMCE College (Airoli)", x: 1850, z: 1450, color: '#22c55e', icon: '🎓', nodeId: 'node_dmce_main_gate' },
-    { id: 'home', name: "Home HQ (Dharavi Koliwada)", x: 0, z: 0, color: '#f59e0b', icon: '🏠', nodeId: 'node_homehq_plaza' },
+    { id: 'home', name: "Home HQ (Dharavi Koliwada)", x: 6, z: -14, color: '#f59e0b', icon: '🏠', nodeId: 'node_homehq_plaza' },
     { id: 'gateway', name: "Gateway of India (Colaba)", x: -350, z: -2250, color: '#a855f7', icon: '🏛️', nodeId: 'node_gateway_waterfront' },
     { id: 'airport', name: "CSMIA International Airport", x: 150, z: 1200, color: '#fbbf24', icon: '✈️', nodeId: 'node_airport_parkway_east' }
 ];

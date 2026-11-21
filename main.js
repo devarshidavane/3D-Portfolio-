@@ -256,16 +256,14 @@ function animate() {
         updateTachometerHUD(0, false, false);
 
         if (cameraMode === 'chase') {
-            const distToHQ = Math.hypot(characterGroup.position.x - poiHome.x, characterGroup.position.z - poiHome.z);
-            const isInsideTower = distToHQ < 17.5 && characterGroup.position.y < 144 && characterGroup.position.z > -12.5;
-            const followDist = isInsideTower ? 5.2 : 14.0;
-            const camHeight = isInsideTower ? 2.1 : 7.5;
-            const lookAhead = isInsideTower ? 3.0 : 4.0;
+            const followDist = 14.0;
+            const camHeight = 7.5;
+            const lookAhead = 4.0;
 
             camera.position.x = THREE.MathUtils.lerp(camera.position.x, characterGroup.position.x, 0.12);
             camera.position.z = THREE.MathUtils.lerp(camera.position.z, characterGroup.position.z - followDist, 0.12);
             camera.position.y = THREE.MathUtils.lerp(camera.position.y, characterGroup.position.y + camHeight, 0.12);
-            camera.lookAt(characterGroup.position.x, characterGroup.position.y + (isInsideTower ? 1.5 : 2.0), characterGroup.position.z + lookAhead);
+            camera.lookAt(characterGroup.position.x, characterGroup.position.y + 2.0, characterGroup.position.z + lookAhead);
         } else if (cameraMode === 'cinematic') {
             camera.position.x = THREE.MathUtils.lerp(camera.position.x, characterGroup.position.x, 0.08);
             camera.position.z = THREE.MathUtils.lerp(camera.position.z, characterGroup.position.z - 34, 0.08);
@@ -334,6 +332,7 @@ window.__poiGateway = poiGateway;
 window.__poiAirport = poiAirport;
 window.__poiVadaPav = poiVadaPav;
 window.__worldColliders = worldColliders;
+window.__getSurfaceElevationAt = getSurfaceElevationAt;
 window.__isFlightMode = getIsFlightMode;
 window.__getIsFlightMode = getIsFlightMode;
 window.__enterFlightMode = enterFlightMode;

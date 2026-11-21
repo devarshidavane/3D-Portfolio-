@@ -75,28 +75,12 @@ export function initCyberPhone(camera) {
         });
     });
 
-    // Stark elevator buttons
-    document.querySelectorAll('.floor-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const fIdx = parseInt(btn.getAttribute('data-floor'), 10);
-            teleportToFloor(fIdx, camera);
-        });
-    });
-
     // Modal Close Handlers
     const modalCloseBtn = document.getElementById('modal-close-btn');
     if (modalCloseBtn) {
         modalCloseBtn.addEventListener('click', () => {
             const interactiveModalEl = document.getElementById('interactive-modal');
             if (interactiveModalEl) interactiveModalEl.classList.remove('active');
-        });
-    }
-
-    const elevatorCloseBtn = document.getElementById('elevator-close-btn');
-    if (elevatorCloseBtn) {
-        elevatorCloseBtn.addEventListener('click', () => {
-            const elevatorModal = document.getElementById('stark-elevator-modal');
-            if (elevatorModal) elevatorModal.classList.remove('active');
         });
     }
 
@@ -114,8 +98,6 @@ export function initCyberPhone(camera) {
         if (e.key === 'Escape') {
             const interactiveModalEl = document.getElementById('interactive-modal');
             if (interactiveModalEl) interactiveModalEl.classList.remove('active');
-            const elevatorModal = document.getElementById('stark-elevator-modal');
-            if (elevatorModal) elevatorModal.classList.remove('active');
             const landmarkModal = document.getElementById('landmark-modal');
             const landmarkBackdrop = document.getElementById('landmark-modal-backdrop');
             if (landmarkModal) landmarkModal.classList.remove('active');
@@ -140,40 +122,7 @@ export function teleportTo(x, z, name, y = 0, camera) {
     }, 450);
 }
 
-export function teleportToFloor(floorIdx, camera) {
-    const altitudes = [
-        0.15,  // F01 Grand Atrium & Fountain Lobby
-        20.0,  // F06 Observation & Sky Garden
-        34.0,  // F11 Living Quarters & Suites
-        48.0,  // F16 Sky Lounge & Cocktail Bar
-        62.0,  // F21 Gym & Wellness Suite
-        76.0,  // F26 Meeting & Boardroom
-        90.0,  // F31 Innovation Lab
-        104.0, // F36 Cybersecurity Command Center
-        118.0, // F41 R&D AI & Robotics Lab
-        132.0, // F46 Master Penthouse & Armor Suite
-        140.0, // F48 Sky Dining & Chef Terrace
-        145.0  // F50 Rooftop Flight Deck & Helipad
-    ];
-    const alt = altitudes[floorIdx] !== undefined ? altitudes[floorIdx] : 0.15;
-    const fade = document.getElementById('fade-overlay');
-    if (fade) fade.style.opacity = '1';
-    playSound('chime');
 
-    const elevatorModal = document.getElementById('stark-elevator-modal');
-    if (elevatorModal) elevatorModal.classList.remove('active');
-
-    setTimeout(() => {
-        const targetZ = (floorIdx === 11) ? (poiHome.z - 4.5) : (poiHome.z - 3.0);
-        characterGroup.position.set(poiHome.x, alt + 0.1, targetZ);
-        characterGroup.rotation.set(0, 0, 0);
-        if (camera) {
-            camera.position.set(poiHome.x, alt + 2.2, targetZ - 5.0);
-            camera.lookAt(poiHome.x, alt + 1.6, targetZ + 3.0);
-        }
-        if (fade) fade.style.opacity = '0';
-    }, 450);
-}
 
 export function toggleVehicleMount(scene) {
     if (isFlightMode) exitFlightMode(false);
@@ -271,12 +220,6 @@ export function handleInteraction() {
     if (!currentInteraction) return;
     playSound('chime');
 
-    if (currentInteraction === 'homeElevator') {
-        const elevatorModal = document.getElementById('stark-elevator-modal');
-        if (elevatorModal) elevatorModal.classList.add('active');
-        return;
-    }
-
     if (currentInteraction === 'schoolBoard') {
         if (modalTitleEl) modalTitleEl.innerHTML = "🏫 Fr. Agnel Technical High School & Junior College";
         if (modalBodyEl) modalBodyEl.innerHTML = `
@@ -302,18 +245,11 @@ export function handleInteraction() {
     } else if (currentInteraction === 'homeHQ') {
         if (modalTitleEl) modalTitleEl.innerHTML = "💻 Devarshi Davane — Home HQ & Research Lab";
         if (modalBodyEl) modalBodyEl.innerHTML = `
-            <strong>150m Cyber Command Skyscraper • 12 Walkable Explorable Levels</strong><br><br>
-            • <strong>F50 (145m):</strong> Rooftop Flight Deck & Supersonic VTOL Jet<br>
-            • <strong>F46 (132m):</strong> Master Penthouse & Iron Man Armor Suite<br>
-            • <strong>F41 (118m):</strong> R&D AI & Robotics Lab (Articulated Arms)<br>
-            • <strong>F36 (104m):</strong> Cybersecurity Command Center (Tactical Threat Wall)<br>
-            • <strong>F31 (90m):</strong> Innovation Lab (3D Holographic Projector)<br>
-            • <strong>F26 (76m):</strong> Executive Strategy Boardroom<br>
-            • <strong>F21 (62m):</strong> High-Tech Gym & Wellness Center<br>
-            • <strong>F16 (48m):</strong> Sky Lounge & Illuminated Cocktail Bar<br>
-            • <strong>F11 (34m):</strong> Living Quarters & Suites<br>
-            • <strong>F06 (20m):</strong> Observation Mezzanine & Sky Garden<br>
-            • <strong>F01 (0m):</strong> Grand Atrium Lobby & Arc Water Fountain
+            <strong>Full-Stack 3D, Systems & Engineering Portfolio Hub</strong><br><br>
+            • <strong>Location:</strong> Dharavi Koliwada (Mahim East), Central World Origin (0,0)<br>
+            • <strong>Discipline:</strong> Systems Programming, WebGL Graphics, Distributed Systems & Autonomous Simulation<br>
+            • <strong>Education:</strong> B.E. Computer Engineering (DMCE Airoli) • Fr. Agnel Technical High School (Bandra West)<br>
+            • <strong>Architecture:</strong> Cyber Tower Headquarters with Real-Time PBR Rendering
         `;
         if (modalCodePreviewEl) {
             modalCodePreviewEl.style.display = 'block';
@@ -368,13 +304,8 @@ export function checkProximity() {
         return;
     }
 
-    // 3. Home HQ Elevator & Terminal Check
-    if (Math.hypot(p.x - poiHome.x, p.z - (poiHome.z + 6.0)) < 5.5) {
-        currentInteraction = 'homeElevator';
-        showPrompt('E', 'Take Turbo-Lift ⚡');
-        return;
-    }
-    if (Math.hypot(p.x - poiHome.x, p.z - poiHome.z) < 32) {
+    // 3. Home HQ Terminal Check
+    if (Math.hypot(p.x - poiHome.x, p.z - poiHome.z) < 26) {
         currentInteraction = 'homeHQ';
         showPrompt('E', 'Access Home HQ Terminal 💻');
         return;

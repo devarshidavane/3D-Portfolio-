@@ -27,7 +27,7 @@ export let weatherMode = 'clear';
 export const streetLamps = [];
 export const waterUniforms = { uTime: { value: 0 } };
 
-let sunLight, ambientLight, skyDome, skyCtx, skyTex, starsMesh, starMat, celestialMesh;
+let sunLight, ambientLight, skyDome, skyCtx, skyTex, starsMesh, starMat;
 let rainParticles, rainMat, rainPositions;
 
 export function buildEnvironment(scene) {
@@ -72,13 +72,6 @@ export function buildEnvironment(scene) {
     starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 1.5, transparent: true, opacity: 0.1 });
     starsMesh = new THREE.Points(starGeom, starMat);
     scene.add(starsMesh);
-
-    // 5. Celestial Mesh (Sun / Moon)
-    const sunGeom = new THREE.CircleGeometry(32, 32);
-    const sunMat = new THREE.MeshBasicMaterial({ color: 0xffeedd, side: THREE.DoubleSide });
-    celestialMesh = new THREE.Mesh(sunGeom, sunMat);
-    celestialMesh.position.set(120, 80, -320);
-    scene.add(celestialMesh);
 
     // 6. Water Surface (Arabian Sea & Thane Creek 6km vast expanse)
     const waterGeom = new THREE.PlaneGeometry(6400, 6400, 80, 80);
@@ -169,7 +162,6 @@ export function updateTimeOfDay(mode, scene) {
         }
         if (scene && scene.fog) scene.fog.color.setHex(0x1e152d);
         if (starMat) starMat.opacity = 0.1;
-        if (celestialMesh) celestialMesh.material.color.setHex(0xffeedd);
         streetLamps.forEach(l => { if (l.light) l.light.intensity = 2.2; });
     } else if (mode === 'night') {
         if (timeIcon) timeIcon.textContent = '🌙';
@@ -188,7 +180,6 @@ export function updateTimeOfDay(mode, scene) {
         }
         if (scene && scene.fog) scene.fog.color.setHex(0x060913);
         if (starMat) starMat.opacity = 0.95;
-        if (celestialMesh) celestialMesh.material.color.setHex(0x93c5fd);
         streetLamps.forEach(l => { if (l.light) l.light.intensity = 4.2; });
     } else if (mode === 'sunrise') {
         if (timeIcon) timeIcon.textContent = '🌅';
@@ -208,7 +199,6 @@ export function updateTimeOfDay(mode, scene) {
         }
         if (scene && scene.fog) scene.fog.color.setHex(0x2e1065);
         if (starMat) starMat.opacity = 0.12;
-        if (celestialMesh) celestialMesh.material.color.setHex(0xffedd5);
         streetLamps.forEach(l => { if (l.light) l.light.intensity = 1.0; });
     } else if (mode === 'day') {
         if (timeIcon) timeIcon.textContent = '☀️';
@@ -227,7 +217,6 @@ export function updateTimeOfDay(mode, scene) {
         }
         if (scene && scene.fog) scene.fog.color.setHex(0xbae6fd);
         if (starMat) starMat.opacity = 0.0;
-        if (celestialMesh) celestialMesh.material.color.setHex(0xfffae6);
         streetLamps.forEach(l => { if (l.light) l.light.intensity = 0.2; });
     }
 
