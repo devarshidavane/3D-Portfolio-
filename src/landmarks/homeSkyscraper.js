@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { registerBoxCollider } from '../world/worldColliders.js';
 import { createCorporateGlassTexture } from '../world/textures.js';
 import { registerLODItem } from '../world/chunkManager.js';
@@ -150,68 +151,60 @@ export function buildStarkTower(scene, cityBuildings = []) {
     });
 
     // ========================================================================
-    // 2. SCULPTED CATENARY TITANIUM RIBS & EXTERIOR SHELL (150m HEIGHT)
+    // 2. SCULPTED CATENARY ARCHITECTURE & EXTERIOR SHELL (150m HEIGHT)
+    // Loaded from high-fidelity sample.glb (Home HQ 3D Model)
     // ========================================================================
+    const gltfLoader = new GLTFLoader();
+    gltfLoader.load('./public/models/homeHQ.glb', (gltf) => {
+        const hqModel = gltf.scene;
+        hqModel.name = "HomeHQ_GLB_Structure";
 
-    // 4 Sweeping Parabolic Aerodynamic Titanium Structural Spine Ribs
-    // Rib profile: Bows outwards at base (R ~ 16.5m) and tapers to crown (R ~ 6.0m) at Y = 150m
-    const ribHeights = 30; // Segment count for ultra-smooth catenary curvature
-    const ribAngles = [Math.PI * 0.25, Math.PI * 0.75, Math.PI * 1.25, Math.PI * 1.75];
+        const box = new THREE.Box3().setFromObject(hqModel);
+        const size = box.getSize(new THREE.Vector3());
+        const scale = 150.0 / size.y;
+        hqModel.scale.set(scale, scale, scale);
 
-    ribAngles.forEach((ang, ribIdx) => {
-        for (let s = 0; s < ribHeights; s++) {
-            const y1 = s * 5.0;
-            const y2 = (s + 1) * 5.0;
-            const midY = (y1 + y2) / 2;
-            const progress = midY / 150.0;
+        // Recompute bounding box after scale
+        box.setFromObject(hqModel);
+        const scaledMin = box.min;
+        const scaledCenter = box.getCenter(new THREE.Vector3());
 
-            // Parabolic tapering formula
-            const radius = 16.5 - 10.5 * Math.pow(progress, 0.75);
-            const nextRadius = 16.5 - 10.5 * Math.pow((s + 1) / ribHeights, 0.75);
-            const dr = nextRadius - radius;
+        // Center on plaza coordinates and align base to tY (0.15)
+        hqModel.position.x = tX - scaledCenter.x;
+        hqModel.position.y = tY - scaledMin.y;
+        hqModel.position.z = tZ - scaledCenter.z;
 
-            const rx = tX + Math.sin(ang) * radius;
-            const rz = tZ + Math.cos(ang) * radius;
+        // Enhance PBR materials and enable shadows
+        hqModel.traverse((child) => {
+            if (child.isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+                if (child.material) {
+                    child.material.metalness = 0.15;
+                    child.material.roughness = 0.55;
+                    child.material.needsUpdate = true;
+                }
+            }
+        });
 
-            // Sculpted Titanium Spine Segment
-            const ribWidth = 1.2 * (1.0 - progress * 0.45);
-            const ribDepth = 2.2 * (1.0 - progress * 0.4);
-            addBox(titaniumGeoms, rx, midY, rz, ribWidth, 5.1, ribDepth, 0, ang, -dr * 0.18);
+        // Architectural Facade Uplights illuminating the 150m tower
+        [-20, 20].forEach(lx => {
+            const uplight = new THREE.DirectionalLight(0x38bdf8, 0.9);
+            uplight.position.set(tX + lx, tY + 4, tZ - 15);
+            uplight.target.position.set(tX, 75, tZ);
+            towerGroup.add(uplight);
+            towerGroup.add(uplight.target);
+        });
+        const backLight = new THREE.DirectionalLight(0xffeedd, 0.8);
+        backLight.position.set(tX, tY + 4, tZ + 25);
+        backLight.target.position.set(tX, 75, tZ);
+        towerGroup.add(backLight);
+        towerGroup.add(backLight.target);
 
-            // Integrated Cyan LED Edge Strip running the full 150m height
-            const glowDist = radius + 0.85 * (1.0 - progress * 0.4);
-            const gx = tX + Math.sin(ang) * glowDist;
-            const gz = tZ + Math.cos(ang) * glowDist;
-            addBox(glowCyanGeoms, gx, midY, gz, 0.18, 5.05, 0.18, 0, ang, 0);
-        }
-    });
-
-    // Outer Recessed Modular Curtain Wall Facade Tiers (Floors 1 to 50)
-    // Generates 10 stepped architectural shaft tiers matching the concept elevations
-    const exteriorTiers = [
-        { yBot: 0,   yTop: 16,  rBot: 16.0, rTop: 15.4, zOff: 0.0 },
-        { yBot: 16,  yTop: 32,  rBot: 15.4, rTop: 14.6, zOff: 0.3 },
-        { yBot: 32,  yTop: 48,  rBot: 14.6, rTop: 13.8, zOff: 0.6 },
-        { yBot: 48,  yTop: 64,  rBot: 13.8, rTop: 13.0, zOff: 0.9 },
-        { yBot: 64,  yTop: 80,  rBot: 13.0, rTop: 12.2, zOff: 1.2 },
-        { yBot: 80,  yTop: 96,  rBot: 12.2, rTop: 11.4, zOff: 1.5 },
-        { yBot: 96,  yTop: 112, rBot: 11.4, rTop: 10.6, zOff: 1.8 },
-        { yBot: 112, yTop: 128, rBot: 10.6, rTop: 9.8,  zOff: 2.1 },
-        { yBot: 128, yTop: 142, rBot: 9.8,  rTop: 8.8,  zOff: 2.4 },
-        { yBot: 142, yTop: 150, rBot: 8.8,  rTop: 7.5,  zOff: 2.7 }
-    ];
-
-    exteriorTiers.forEach(tier => {
-        const h = tier.yTop - tier.yBot;
-        const cy = tier.yBot + h / 2;
-        const cz = tZ + tier.zOff;
-
-        // Recessed Glass Curtain Wall Core (Faceted Cylinder)
-        addCyl(glassGeoms, tX, cy, cz, tier.rTop, tier.rBot, h, 28);
-
-        // Titanium Spandrel Rings & Floor Demarcation Mullions
-        addCyl(titaniumGeoms, tX, tier.yBot, cz, tier.rBot + 0.35, tier.rBot + 0.35, 0.7, 28);
-        addCyl(darkMetalGeoms, tX, tier.yTop, cz, tier.rTop + 0.35, tier.rTop + 0.35, 0.7, 28);
+        towerGroup.add(hqModel);
+        console.log("⚡ [Home HQ] High-fidelity Stark Tower GLB integrated into scene at 150m scale.");
+    }, undefined, (err) => {
+        console.warn("[Home HQ] GLTF load error for homeHQ.glb:", err);
     });
 
     // 4 Vertical Exterior Glass Elevator Shafts (Running up the South-East & South-West Facade)

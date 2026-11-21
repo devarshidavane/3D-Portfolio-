@@ -367,3 +367,7 @@ export function updateVehiclePhysics(v, delta, keys) {
 export function setActiveVehicle(v) {
     activeVehicle = v;
 }
+
+export function getActiveVehicle() {
+    return activeVehicle;
+}

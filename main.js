@@ -14,7 +14,7 @@ import { buildIconicLandmarks, poiGateway } from './src/landmarks/iconicLandmark
 import { buildAirportDistrict, updateAirportSimulation, poiAirport, atcRadarDish, airportPlanes } from './src/landmarks/airportDistrict.js';
 import { buildGenericBuildings, cityBuildings } from './src/landmarks/genericBuildings.js';
 
-import { buildPlayerVehicles, updateVehiclePhysics, bikeVehicle, carVehicle, rickshawVehicle, activeVehicle, setActiveVehicle } from './src/vehicles/playerVehicles.js';
+import { buildPlayerVehicles, updateVehiclePhysics, bikeVehicle, carVehicle, rickshawVehicle, activeVehicle, setActiveVehicle, getActiveVehicle } from './src/vehicles/playerVehicles.js';
 import { buildRoadTrafficSystem, buildPublicTransitSystem, buildTrafficSignalSystem, updateRoadTraffic, updatePublicTransit, updateTrafficSignals, trafficVehicles, trafficSignals, publicTransit } from './src/vehicles/trafficCars.js';
 import { buildGatewayMaritime, updateMaritimeFerryBoats, maritimeFerryBoats } from './src/vehicles/maritimeTransit.js';
 

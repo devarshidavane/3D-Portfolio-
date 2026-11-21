@@ -32,6 +32,7 @@ const server = Bun.serve({
             else if (urlPath.endsWith('.json')) contentType = 'application/json';
             else if (urlPath.endsWith('.png')) contentType = 'image/png';
             else if (urlPath.endsWith('.svg')) contentType = 'image/svg+xml';
+            else if (urlPath.endsWith('.glb')) contentType = 'model/gltf-binary';
             else if (urlPath.endsWith('.woff2')) contentType = 'font/woff2';
             else if (urlPath.endsWith('.ico')) contentType = 'image/x-icon';
             return new Response(file, { headers: { 'Content-Type': contentType } });
@@ -278,16 +279,17 @@ const vehicleTachoRes = await send("Runtime.evaluate", {
         const tacho = document.getElementById('tachometer-card');
         const speedVal = document.getElementById('tacho-speed-value');
         
-        // Simulate driving vehicle by mounting carVehicle via setActiveVehicle
+        // Mount vehicle to trigger vehicle mode in render loop
         if (window.__carVehicle && typeof window.__setActiveVehicle === 'function') {
             const car = window.__carVehicle;
             car.speed = 15;
             window.__setActiveVehicle(car);
-        } else if (typeof window.__updateTachometerHUD === 'function') {
+        }
+        if (typeof window.__updateTachometerHUD === 'function') {
             window.__updateTachometerHUD(15, false, true);
         }
         
-        // Wait 150ms for render loop frames to execute
+        // Wait 150ms
         await new Promise(r => setTimeout(r, 150));
         
         const compInVehicle = tacho ? window.getComputedStyle(tacho) : null;
@@ -297,7 +299,8 @@ const vehicleTachoRes = await send("Runtime.evaluate", {
         // Return to on foot
         if (typeof window.__setActiveVehicle === 'function') {
             window.__setActiveVehicle(null);
-        } else if (typeof window.__updateTachometerHUD === 'function') {
+        }
+        if (typeof window.__updateTachometerHUD === 'function') {
             window.__updateTachometerHUD(0, false, false);
         }
         
