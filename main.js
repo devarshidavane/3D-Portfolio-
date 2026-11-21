@@ -220,12 +220,13 @@ function animate() {
     updateLevelOfDetail(camera.position);
 
     // 2. Traversal & Player state
+    const curVehicle = getActiveVehicle();
     if (isFlightMode) {
         updateFlightPhysics(delta, keys, camera, playSound);
         updateTachometerHUD(0, false, false);
         updateMiniMap(characterGroup.position.x, characterGroup.position.z, characterGroup.rotation.y);
         checkProximity();
-    } else if (activeVehicle === 'train') {
+    } else if (curVehicle === 'train') {
         const c1 = trainState.coach1 || { position: characterGroup.position, rotation: { y: 0 } };
         if (cameraMode === 'chase' || cameraMode === 'cinematic') {
             camera.position.x = THREE.MathUtils.lerp(camera.position.x, c1.position.x - 12, 0.08);
@@ -236,20 +237,20 @@ function animate() {
         updateTachometerHUD(0, false, false);
         updateMiniMap(c1.position.x, c1.position.z, c1.rotation.y);
         checkTrainProximity(showPrompt);
-    } else if (activeVehicle) {
-        updateVehiclePhysics(activeVehicle, delta, keys);
-        updateTachometerHUD(activeVehicle.speed, activeVehicle.speed < -0.2, true);
+    } else if (curVehicle) {
+        updateVehiclePhysics(curVehicle, delta, keys);
+        updateTachometerHUD(curVehicle.speed, curVehicle.speed < -0.2, true);
 
         if (cameraMode === 'chase' || cameraMode === 'cinematic') {
-            const isCar = (activeVehicle.type === 'car');
+            const isCar = (curVehicle.type === 'car');
             const followDist = isCar ? 7.8 : 9.5;
             const camElevation = isCar ? 2.5 : 3.6;
-            camera.position.x = THREE.MathUtils.lerp(camera.position.x, activeVehicle.mesh.position.x - Math.sin(activeVehicle.rotation) * followDist, 0.14);
-            camera.position.z = THREE.MathUtils.lerp(camera.position.z, activeVehicle.mesh.position.z - Math.cos(activeVehicle.rotation) * followDist, 0.14);
+            camera.position.x = THREE.MathUtils.lerp(camera.position.x, curVehicle.mesh.position.x - Math.sin(curVehicle.rotation) * followDist, 0.14);
+            camera.position.z = THREE.MathUtils.lerp(camera.position.z, curVehicle.mesh.position.z - Math.cos(curVehicle.rotation) * followDist, 0.14);
             camera.position.y = THREE.MathUtils.lerp(camera.position.y, camElevation, 0.14);
-            camera.lookAt(activeVehicle.mesh.position.x + Math.sin(activeVehicle.rotation) * 8, 1.4, activeVehicle.mesh.position.z + Math.cos(activeVehicle.rotation) * 8);
+            camera.lookAt(curVehicle.mesh.position.x + Math.sin(curVehicle.rotation) * 8, 1.4, curVehicle.mesh.position.z + Math.cos(curVehicle.rotation) * 8);
         }
-        updateMiniMap(activeVehicle.mesh.position.x, activeVehicle.mesh.position.z, activeVehicle.rotation);
+        updateMiniMap(curVehicle.mesh.position.x, curVehicle.mesh.position.z, curVehicle.rotation);
     } else {
         updatePlayerLocomotion(delta, keys, camera, keys.shift);
         updateTachometerHUD(0, false, false);
