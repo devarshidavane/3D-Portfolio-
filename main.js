@@ -284,12 +284,7 @@ function animate() {
     const curVehicle = getActiveVehicle();
 
     // Auto-swap mobile control layouts between on-foot, vehicle, and flight
-    let desiredControlMode = 'foot';
-    if (isFlightMode) {
-        desiredControlMode = 'flight';
-    } else if (curVehicle) {
-        desiredControlMode = 'vehicle';
-    }
+    let desiredControlMode = isFlightMode ? 'flight' : (curVehicle ? 'vehicle' : (controlStates.mode === 'flight' ? 'flight' : 'foot'));
     if (currentControlMode !== desiredControlMode) {
         currentControlMode = desiredControlMode;
         setMobileControlMode(currentControlMode);

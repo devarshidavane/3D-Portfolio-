@@ -1612,10 +1612,15 @@ export function handleScreenClick(x, y) {
             const ty = cardY + idx * (cardH + gap);
             // Travel button (360, ty + 24, 112, 40)
             if (x >= 350 && x <= 475 && y >= ty + 15 && y <= ty + 70) {
+                console.log(`[DIEGETIC PHONE] Contact Travel Clicked: ${c.name} (${c.x}, ${c.z})`);
                 playPhoneSound('ring');
                 closeDiegeticPhone();
                 if (onFastTravelCallback) {
                     onFastTravelCallback(c.x, c.z, c.name, c.y);
+                } else if (typeof window !== 'undefined' && window.__startFastTravel) {
+                    window.__startFastTravel(c.x, c.z, c.name, c.y);
+                } else if (typeof window !== 'undefined' && window.__characterGroup) {
+                    window.__characterGroup.position.set(c.x, (c.y || 0) + 0.5, c.z);
                 }
             }
         });

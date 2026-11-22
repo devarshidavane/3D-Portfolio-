@@ -105,11 +105,17 @@ export function initCyberPhone(camera, scene, renderer) {
 }
 
 export function teleportTo(x, z, name, y = 0, camera) {
+    console.log(`[TELEPORT TO] Target: ${name} (${x}, ${z}, ${y})`);
     const fade = document.getElementById('fade-overlay');
     if (fade) fade.style.opacity = '1';
     playSound('chime');
 
     const cam = camera || mainCameraRef;
+    // Set immediate position and trigger camera framing
+    characterGroup.position.set(x, y + 0.5, z);
+    if (typeof window !== 'undefined' && window.__characterGroup) {
+        window.__characterGroup.position.set(x, y + 0.5, z);
+    }
     setTimeout(() => {
         characterGroup.position.set(x, y + 0.5, z);
         if (cam) {
