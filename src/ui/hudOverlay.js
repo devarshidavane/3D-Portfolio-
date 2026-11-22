@@ -151,46 +151,77 @@ export function hidePrompt() {
     if (interactionPromptEl) interactionPromptEl.classList.remove('show');
 }
 
+let lastTachoDisplay = null;
+let lastKmh = -1;
+let lastReversing = null;
+let lastNeedleAngle = null;
+let lastArcOffset = null;
+let lastGearText = null;
+let lastGearBadge = null;
+
 export function updateTachometerHUD(speed, isReversing, isVehicle = false) {
     const tachometerCard = document.getElementById('tachometer-card');
     if (tachometerCard) {
         if (!isVehicle) {
-            tachometerCard.style.display = 'none';
+            if (lastTachoDisplay !== 'none') {
+                tachometerCard.style.display = 'none';
+                lastTachoDisplay = 'none';
+            }
             return;
         }
-        tachometerCard.style.display = 'flex';
+        if (lastTachoDisplay !== 'flex') {
+            tachometerCard.style.display = 'flex';
+            lastTachoDisplay = 'flex';
+        }
     } else if (!isVehicle) {
         return;
     }
 
     const kmh = Math.round(Math.abs(speed) * 3.6);
 
-    const tachoSpeedVal = document.getElementById('tacho-speed-value');
-    if (tachoSpeedVal) {
-        tachoSpeedVal.textContent = kmh;
+    if (kmh !== lastKmh) {
+        lastKmh = kmh;
+        const tachoSpeedVal = document.getElementById('tacho-speed-value');
+        if (tachoSpeedVal) {
+            tachoSpeedVal.textContent = kmh;
+        }
+        const speedoVal = document.getElementById('speedo-val');
+        if (speedoVal) {
+            speedoVal.textContent = kmh;
+        }
     }
-    const speedoVal = document.getElementById('speedo-val');
-    if (speedoVal) {
-        speedoVal.textContent = kmh;
-    }
-    const speedoUnit = document.getElementById('speedo-unit');
-    if (speedoUnit) {
-        speedoUnit.textContent = isReversing ? 'REV' : 'KM/H';
+
+    if (isReversing !== lastReversing) {
+        lastReversing = isReversing;
+        const speedoUnit = document.getElementById('speedo-unit');
+        if (speedoUnit) {
+            speedoUnit.textContent = isReversing ? 'REV' : 'KM/H';
+        }
+        const tachoModeLabel = document.getElementById('tacho-mode-label');
+        if (tachoModeLabel) {
+            tachoModeLabel.textContent = isReversing ? 'SPEED | REVERSE' : 'SPEED | SPORT MODE';
+        }
     }
 
     // Needle rotation angle for #tacho-needle-pivot (-125deg to +125deg, 0 to 180 km/h)
     const maxDialSpeed = 180;
     const clampedSpeed = Math.min(Math.max(kmh, 0), maxDialSpeed);
-    const needleAngle = -125 + (clampedSpeed / maxDialSpeed) * 250;
-    const needlePivot = document.getElementById('tacho-needle-pivot');
-    if (needlePivot) {
-        needlePivot.style.transform = `rotate(${needleAngle.toFixed(1)}deg)`;
+    const needleAngle = (-125 + (clampedSpeed / maxDialSpeed) * 250).toFixed(1);
+    if (needleAngle !== lastNeedleAngle) {
+        lastNeedleAngle = needleAngle;
+        const needlePivot = document.getElementById('tacho-needle-pivot');
+        if (needlePivot) {
+            needlePivot.style.transform = `rotate(${needleAngle}deg)`;
+        }
     }
 
-    const tachoActiveArc = document.getElementById('tacho-active-arc');
-    if (tachoActiveArc) {
-        const arcOffset = 356 - (clampedSpeed / maxDialSpeed) * 356;
-        tachoActiveArc.style.strokeDashoffset = `${arcOffset.toFixed(1)}`;
+    const arcOffset = (356 - (clampedSpeed / maxDialSpeed) * 356).toFixed(1);
+    if (arcOffset !== lastArcOffset) {
+        lastArcOffset = arcOffset;
+        const tachoActiveArc = document.getElementById('tacho-active-arc');
+        if (tachoActiveArc) {
+            tachoActiveArc.style.strokeDashoffset = arcOffset;
+        }
     }
 
     // Gear indicator logic
@@ -219,29 +250,82 @@ export function updateTachometerHUD(speed, isReversing, isVehicle = false) {
         gearBadge = '5TH GEAR';
     }
 
-    let hudGear = document.getElementById('hud-gear');
-    if (!hudGear && tachometerCard) {
-        hudGear = document.createElement('span');
-        hudGear.id = 'hud-gear';
-        hudGear.style.display = 'none';
-        tachometerCard.appendChild(hudGear);
-    }
-    if (hudGear) {
-        hudGear.textContent = gearText;
-    }
-
-    const tachoGearBadge = document.getElementById('tacho-gear-badge');
-    if (tachoGearBadge) {
-        tachoGearBadge.textContent = gearBadge;
+    if (gearText !== lastGearText) {
+        lastGearText = gearText;
+        let hudGear = document.getElementById('hud-gear');
+        if (!hudGear && tachometerCard) {
+            hudGear = document.createElement('span');
+            hudGear.id = 'hud-gear';
+            hudGear.style.display = 'none';
+            tachometerCard.appendChild(hudGear);
+        }
+        if (hudGear) {
+            hudGear.textContent = gearText;
+        }
     }
 
-    const tachoModeLabel = document.getElementById('tacho-mode-label');
-    if (tachoModeLabel) {
-        tachoModeLabel.textContent = isReversing ? 'SPEED | REVERSE' : 'SPEED | SPORT MODE';
+    if (gearBadge !== lastGearBadge) {
+        lastGearBadge = gearBadge;
+        const tachoGearBadge = document.getElementById('tacho-gear-badge');
+        if (tachoGearBadge) {
+            tachoGearBadge.textContent = gearBadge;
+        }
     }
+}
+
+// ==========================================
+// REAL-TIME PERFORMANCE TELEMETRY (FPS, CALLS, TRIS)
+// ==========================================
+let fpsTimer = null;
+let frameCounter = 0;
+let lastFpsTime = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+let activeRenderer = null;
+
+export function recordFrame() {
+    frameCounter++;
+}
+
+export function updatePerformanceHUD() {
+    const badge = document.getElementById('fps-badge');
+    if (!badge) return;
+
+    const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    const elapsed = (now - lastFpsTime) / 1000;
+    const fps = (elapsed > 0 && frameCounter > 0) ? Math.round(frameCounter / elapsed) : 60;
+    frameCounter = 0;
+    lastFpsTime = now;
+
+    const rend = activeRenderer || (typeof window !== 'undefined' ? window.__renderer : null);
+    const calls = rend?.info?.render?.calls ?? 0;
+    const tris = rend?.info?.render?.triangles ?? 0;
+    const trisK = Number((tris / 1000).toFixed(1));
+
+    badge.textContent = `${fps} FPS | Calls: ${calls} | Tris: ${trisK}k`;
+}
+
+export function initPerformanceHUD(renderer) {
+    if (renderer) activeRenderer = renderer;
+    const badge = document.getElementById('fps-badge');
+    if (badge) {
+        badge.style.display = 'inline-flex';
+    }
+
+    lastFpsTime = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    frameCounter = 0;
+
+    // Initial immediate snapshot
+    updatePerformanceHUD();
+
+    if (fpsTimer) clearInterval(fpsTimer);
+    fpsTimer = setInterval(updatePerformanceHUD, 500);
 }
 
 if (typeof window !== 'undefined') {
     window.updateTachometerHUD = updateTachometerHUD;
     window.__updateTachometerHUD = updateTachometerHUD;
+    window.initPerformanceHUD = initPerformanceHUD;
+    window.__initPerformanceHUD = initPerformanceHUD;
+    window.recordFrame = recordFrame;
+    window.__recordFrame = recordFrame;
+    window.updatePerformanceHUD = updatePerformanceHUD;
 }

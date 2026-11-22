@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
 import { mumbaiRoadNetwork } from '../data/roadGraph.js';
 import { createAsphaltTexture } from './textures.js';
+import { registerCylinderCollider } from '../world/worldColliders.js';
 
 // ==========================================
 // 5KM MUMBAI ARTERIAL ROAD NETWORK 3D MESHES
@@ -109,6 +110,7 @@ export function buildRoadMeshes(scene) {
 
                 // Vertical pole (8.5m high)
                 addCyl(lampPostGeoms, poleX, ly + 4.25, poleZ, 0.12, 0.18, 8.5, 6);
+                registerCylinderCollider(poleX, poleZ, 0.25, 'StreetLampPost', ly, ly + 8.5);
                 // Horizontal arm curving toward road
                 addBox(lampPostGeoms, poleX - Math.cos(rotY) * 1.0, ly + 8.4, poleZ + Math.sin(rotY) * 1.0, 2.0, 0.15, 0.15, rotY);
                 // Glowing LED luminaire

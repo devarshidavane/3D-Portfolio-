@@ -289,6 +289,8 @@ function buildAutoRickshaw(scene) {
 export function updateVehiclePhysics(v, delta, keys) {
     if (!v || !v.mesh) return;
 
+    const dt = Math.min(delta, 1 / 30);
+
     const isCar = (v.type === 'car');
     const isRickshaw = (v.type === 'rickshaw');
     const isBike = (v.type === 'bike');
@@ -311,7 +313,8 @@ export function updateVehiclePhysics(v, delta, keys) {
             v.speed = THREE.MathUtils.lerp(v.speed, maxReverse, accelRate * 0.8);
         }
     } else {
-        v.speed = THREE.MathUtils.lerp(v.speed, 0, naturalDrag);
+        const mu = isCar ? 1.4 : (isRickshaw ? 1.8 : 1.6);
+        v.speed *= Math.exp(-mu * dt);
         if (Math.abs(v.speed) < 0.05) v.speed = 0;
     }
 
@@ -326,12 +329,12 @@ export function updateVehiclePhysics(v, delta, keys) {
     const effectiveTurn = baseTurnSpeed * steerAuthority * steerDamping;
 
     const steerDir = (v.speed >= 0 ? 1 : -1);
-    v.rotation += steerInput * effectiveTurn * steerDir * delta;
+    v.rotation += steerInput * effectiveTurn * steerDir * dt;
 
     const prevX = v.mesh.position.x;
     const prevZ = v.mesh.position.z;
-    v.mesh.position.x += Math.sin(v.rotation) * v.speed * delta;
-    v.mesh.position.z += Math.cos(v.rotation) * v.speed * delta;
+    v.mesh.position.x += Math.sin(v.rotation) * v.speed * dt;
+    v.mesh.position.z += Math.cos(v.rotation) * v.speed * dt;
     v.mesh.rotation.y = v.rotation;
 
     // Follow natural ground terrain elevation
@@ -350,17 +353,35 @@ export function updateVehiclePhysics(v, delta, keys) {
     }
 
     if (v.wheels && v.wheels.length > 0) {
-        const angularDelta = (v.speed / wheelRadius) * delta;
+        const angularDelta = (v.speed / wheelRadius) * dt;
         for (let i = 0; i < v.wheels.length; i++) {
             v.wheels[i].rotation.x += angularDelta;
         }
     }
 
+    const preColX = v.mesh.position.x;
+    const preColZ = v.mesh.position.z;
     resolveCollision(v.mesh.position, colRadius);
+    const pushX = v.mesh.position.x - preColX;
+    const pushZ = v.mesh.position.z - preColZ;
+    const fwdX = Math.sin(v.rotation);
+    const fwdZ = Math.cos(v.rotation);
+    const pushAgainstForward = pushX * fwdX + pushZ * fwdZ;
+
+    if (Math.hypot(pushX, pushZ) > 0.001) {
+        if (v.speed > 0 && pushAgainstForward < -0.005) {
+            v.speed *= 0.1;
+            if (v.speed < 0.1) v.speed = 0;
+        } else if (v.speed < 0 && pushAgainstForward > 0.005) {
+            v.speed *= 0.1;
+            if (Math.abs(v.speed) < 0.1) v.speed = 0;
+        }
+    }
+
     const movedDist = Math.hypot(v.mesh.position.x - prevX, v.mesh.position.z - prevZ);
-    const expectedDist = Math.abs(v.speed * delta);
+    const expectedDist = Math.abs(v.speed * dt);
     if (expectedDist > 0.06 && movedDist < expectedDist * 0.3) {
-        v.speed *= 0.5;
+        v.speed *= 0.1;
     }
 }
 

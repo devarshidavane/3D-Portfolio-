@@ -29,7 +29,7 @@ import { buildPlayerCharacter, updatePlayerLocomotion, characterGroup, devChar, 
 import { enterFlightMode, exitFlightMode, toggleFlightMode, updateFlightPhysics, getIsFlightMode, getFlightSpeed, getFlightVertSpeed, getFlightPitch, getFlightRoll, getFlightHeading, isFlightMode } from './src/character/ironManFlight.js';
 
 import { updateMiniMap, setNavigationDestination, toggleMinimapExpanded } from './src/ui/minimapRadar.js';
-import { playSound, toggleAudio, updateTachometerHUD, showPrompt, hidePrompt } from './src/ui/hudOverlay.js';
+import { playSound, toggleAudio, updateTachometerHUD, showPrompt, hidePrompt, initPerformanceHUD, recordFrame } from './src/ui/hudOverlay.js';
 import { initCyberPhone, toggleCyberPhone, toggleVehicleMount, handleInteraction, checkProximity, currentInteraction, teleportTo } from './src/ui/cyberPhone.js';
 import { initWorldMap, toggleWorldMap, openWorldMap, closeWorldMap, isWorldMapOpen, drawWorldMap, setMapLayer, getMapLayer, setOverlayNetwork, fitMapToView } from './src/ui/worldMapInteractive.js';
 
@@ -54,6 +54,9 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.15;
+
+// Initialize Real-time Performance HUD (FPS, Calls, Tris)
+initPerformanceHUD(renderer);
 
 // Camera view mode: 'chase', 'cinematic', 'orbit'
 let cameraMode = 'chase';
@@ -110,7 +113,7 @@ buildEnvironmentalSimulation(scene);
 
 buildPlayerCharacter(scene);
 initCyberPhone(camera);
-initWorldMap(camera, characterGroup, teleportTo);
+initWorldMap(camera, characterGroup, teleportTo, chunkManager, setCameraOverride);
 
 // Controls & Keyboard Listeners
 const keys = { w: false, a: false, s: false, d: false, space: false, shift: false, c: false, ctrl: false };
@@ -208,11 +211,28 @@ if (ls) {
 // 60 FPS MAIN SIMULATION & GAME ENGINE LOOP
 // ==========================================
 const clock = new THREE.Clock();
+const _scratchCamLookAt = new THREE.Vector3();
+const _fallbackTrainCoach = { position: new THREE.Vector3(), rotation: { y: 0 } };
+
+let cameraOverrideActive = false;
+export function setCameraOverride(active) {
+    cameraOverrideActive = !!active;
+}
 
 function animate() {
     requestAnimationFrame(animate);
+    recordFrame();
     const delta = Math.min(clock.getDelta(), 0.08);
     const time = performance.now() * 0.001;
+
+    // If external cinematic camera controller (e.g. GSAP fast travel) owns camera
+    if (cameraOverrideActive) {
+        updateEnvironment(delta, time, camera);
+        chunkManager.update(camera.position);
+        updateLevelOfDetail(camera.position);
+        renderer.render(scene, camera);
+        return;
+    }
 
     // 1. World streaming & environment
     updateEnvironment(delta, time, camera);
@@ -227,12 +247,17 @@ function animate() {
         updateMiniMap(characterGroup.position.x, characterGroup.position.z, characterGroup.rotation.y);
         checkProximity();
     } else if (curVehicle === 'train') {
-        const c1 = trainState.coach1 || { position: characterGroup.position, rotation: { y: 0 } };
+        let c1 = trainState.coach1;
+        if (!c1) {
+            _fallbackTrainCoach.position.copy(characterGroup.position);
+            c1 = _fallbackTrainCoach;
+        }
         if (cameraMode === 'chase' || cameraMode === 'cinematic') {
             camera.position.x = THREE.MathUtils.lerp(camera.position.x, c1.position.x - 12, 0.08);
             camera.position.z = THREE.MathUtils.lerp(camera.position.z, c1.position.z - 8, 0.08);
             camera.position.y = THREE.MathUtils.lerp(camera.position.y, 6.5, 0.08);
-            camera.lookAt(c1.position.x, 2.5, c1.position.z + 4);
+            _scratchCamLookAt.set(c1.position.x, 2.5, c1.position.z + 4);
+            camera.lookAt(_scratchCamLookAt);
         }
         updateTachometerHUD(0, false, false);
         updateMiniMap(c1.position.x, c1.position.z, c1.rotation.y);
@@ -248,7 +273,8 @@ function animate() {
             camera.position.x = THREE.MathUtils.lerp(camera.position.x, curVehicle.mesh.position.x - Math.sin(curVehicle.rotation) * followDist, 0.14);
             camera.position.z = THREE.MathUtils.lerp(camera.position.z, curVehicle.mesh.position.z - Math.cos(curVehicle.rotation) * followDist, 0.14);
             camera.position.y = THREE.MathUtils.lerp(camera.position.y, camElevation, 0.14);
-            camera.lookAt(curVehicle.mesh.position.x + Math.sin(curVehicle.rotation) * 8, 1.4, curVehicle.mesh.position.z + Math.cos(curVehicle.rotation) * 8);
+            _scratchCamLookAt.set(curVehicle.mesh.position.x + Math.sin(curVehicle.rotation) * 8, 1.4, curVehicle.mesh.position.z + Math.cos(curVehicle.rotation) * 8);
+            camera.lookAt(_scratchCamLookAt);
         }
         updateMiniMap(curVehicle.mesh.position.x, curVehicle.mesh.position.z, curVehicle.rotation);
     } else {
@@ -263,12 +289,14 @@ function animate() {
             camera.position.x = THREE.MathUtils.lerp(camera.position.x, characterGroup.position.x, 0.12);
             camera.position.z = THREE.MathUtils.lerp(camera.position.z, characterGroup.position.z - followDist, 0.12);
             camera.position.y = THREE.MathUtils.lerp(camera.position.y, characterGroup.position.y + camHeight, 0.12);
-            camera.lookAt(characterGroup.position.x, characterGroup.position.y + 2.0, characterGroup.position.z + lookAhead);
+            _scratchCamLookAt.set(characterGroup.position.x, characterGroup.position.y + 2.0, characterGroup.position.z + lookAhead);
+            camera.lookAt(_scratchCamLookAt);
         } else if (cameraMode === 'cinematic') {
             camera.position.x = THREE.MathUtils.lerp(camera.position.x, characterGroup.position.x, 0.08);
             camera.position.z = THREE.MathUtils.lerp(camera.position.z, characterGroup.position.z - 34, 0.08);
             camera.position.y = THREE.MathUtils.lerp(camera.position.y, characterGroup.position.y + 4.5, 0.08);
-            camera.lookAt(characterGroup.position.x, characterGroup.position.y + 60.0, characterGroup.position.z + 30);
+            _scratchCamLookAt.set(characterGroup.position.x, characterGroup.position.y + 60.0, characterGroup.position.z + 30);
+            camera.lookAt(_scratchCamLookAt);
         }
         updateMiniMap(characterGroup.position.x, characterGroup.position.z, characterGroup.rotation.y);
         checkProximity();
@@ -354,6 +382,10 @@ window.__atcRadarDish = atcRadarDish;
 window.__setActiveVehicle = setActiveVehicle;
 window.updateTachometerHUD = updateTachometerHUD;
 window.__updateTachometerHUD = updateTachometerHUD;
+window.initPerformanceHUD = initPerformanceHUD;
+window.__initPerformanceHUD = initPerformanceHUD;
+window.recordFrame = recordFrame;
+window.__recordFrame = recordFrame;
 
 // Responsive Window Resize
 window.addEventListener('resize', () => {

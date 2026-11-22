@@ -20,6 +20,8 @@ const server = Bun.serve({
             else if (urlPath.endsWith('.wav')) contentType = 'audio/wav';
             else if (urlPath.endsWith('.glb')) contentType = 'model/gltf-binary';
             else if (urlPath.endsWith('.gltf')) contentType = 'model/gltf+json';
+            else if (urlPath.endsWith('.woff2')) contentType = 'font/woff2';
+            else if (urlPath.endsWith('.woff')) contentType = 'font/woff';
             return new Response(file, { headers: { 'Content-Type': contentType } });
         }
         return new Response("Not Found: " + urlPath, { status: 404 });

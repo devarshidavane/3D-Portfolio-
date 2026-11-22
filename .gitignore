@@ -2,6 +2,9 @@
 node_modules/
 bun.lock
 
+# Reference images (private references, never committed or redistributed)
+/refs/
+
 # Local Three.js library clone
 three.js/
 
@@ -14,12 +17,14 @@ graphify-out/
 *.md
 
 # Testing & Scratch Scripts
+scratch/
 *.mjs
 inspect_glb.js
 take_screenshot.mjs
 scratch_*.json
 scratch_*.mjs
 *.log
+*.pdf
 
 # Screenshots & Scratch Images
 screenshots/

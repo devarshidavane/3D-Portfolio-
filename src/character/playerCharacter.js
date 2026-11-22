@@ -199,6 +199,7 @@ function createArticulatedDeveloper() {
 }
 
 export function updatePlayerLocomotion(delta, keys, camera, isSprinting) {
+    const dt = Math.min(delta, 1 / 30);
     const moveSpeed = isSprinting ? 16.0 : 9.0;
 
     const camForward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
@@ -217,8 +218,10 @@ export function updatePlayerLocomotion(delta, keys, camera, isSprinting) {
     const moving = inputVec.lengthSq() > 0.001;
     if (moving) {
         inputVec.normalize();
-        characterGroup.position.x += inputVec.x * moveSpeed * delta;
-        characterGroup.position.z += inputVec.z * moveSpeed * delta;
+        characterGroup.position.x += inputVec.x * moveSpeed * dt;
+        characterGroup.position.z += inputVec.z * moveSpeed * dt;
+
+        resolveCollision(characterGroup.position, 0.6);
 
         const targetRot = Math.atan2(inputVec.x, inputVec.z) + Math.PI;
         let diff = (targetRot - characterGroup.rotation.y) % (Math.PI * 2);
@@ -226,7 +229,7 @@ export function updatePlayerLocomotion(delta, keys, camera, isSprinting) {
         if (diff > Math.PI) diff -= Math.PI * 2;
         characterGroup.rotation.y += diff * 0.25;
 
-        walkCycle += delta * (isSprinting ? 9.5 : 6.5);
+        walkCycle += dt * (isSprinting ? 9.5 : 6.5);
         const stride = Math.sin(walkCycle);
 
         if (devChar) {
@@ -247,7 +250,7 @@ export function updatePlayerLocomotion(delta, keys, camera, isSprinting) {
         characterGroup.rotation.z = THREE.MathUtils.lerp(characterGroup.rotation.z, targetRoll, 0.15);
         characterGroup.rotation.x = THREE.MathUtils.lerp(characterGroup.rotation.x, targetPitch, 0.15);
     } else {
-        idleTimer += delta * 2.2;
+        idleTimer += dt * 2.2;
         if (devChar) {
             devChar.legL.rotation.x = THREE.MathUtils.lerp(devChar.legL.rotation.x, 0, 0.2);
             devChar.legR.rotation.x = THREE.MathUtils.lerp(devChar.legR.rotation.x, 0, 0.2);
