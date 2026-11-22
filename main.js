@@ -30,8 +30,11 @@ import { enterFlightMode, exitFlightMode, toggleFlightMode, updateFlightPhysics,
 
 import { updateMiniMap, setNavigationDestination, toggleMinimapExpanded } from './src/ui/minimapRadar.js';
 import { playSound, toggleAudio, updateTachometerHUD, showPrompt, hidePrompt, initPerformanceHUD, recordFrame } from './src/ui/hudOverlay.js';
-import { initCyberPhone, toggleCyberPhone, toggleVehicleMount, handleInteraction, checkProximity, currentInteraction, teleportTo } from './src/ui/cyberPhone.js';
+import { initCyberPhone, toggleCyberPhone, toggleVehicleMount, handleInteraction, checkProximity, currentInteraction, teleportTo, updateDiegeticPhone, isPhoneOpen, closeCyberPhone, openCyberPhone, phoneGroup, phoneScreenMesh } from './src/ui/cyberPhone.js';
 import { initWorldMap, toggleWorldMap, openWorldMap, closeWorldMap, isWorldMapOpen, drawWorldMap, setMapLayer, getMapLayer, setOverlayNetwork, fitMapToView } from './src/ui/worldMapInteractive.js';
+import { initMobileControls, updateMobileControls, setMobileControlMode, controlStates, applyCameraLook, getCameraLookDelta } from './src/ui/mobileController.js';
+import { initMobileSettings, getMobileSettings, openMobileSettings, closeMobileSettings, setMobileSetting, getMobileSetting } from './src/ui/mobileSettings.js';
+import { initMobilePerformance, updateMobilePerformance, isTabSleep, isTouchDevice, applyQualityTier, getQualityTier, setQualityTier } from './src/ui/mobilePerformance.js';
 
 // ==========================================
 // RENDERER, SCENE & CAMERA SETUP
@@ -44,7 +47,7 @@ scene.fog = new THREE.FogExp2(0x0c1427, 0.0016);
 const camera = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.1, 1400);
 camera.position.set(0, 7.5, -42);
 
-const isMobileDevice = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent) || (window.innerWidth <= 768);
+const isMobileDevice = (typeof navigator !== 'undefined' && ((navigator.maxTouchPoints && navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints && navigator.msMaxTouchPoints > 0) || /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent)));
 const getOptimalPixelRatio = () => isMobileDevice ? Math.min(window.devicePixelRatio, 1.25) : Math.min(window.devicePixelRatio, 1.5);
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
@@ -112,23 +115,48 @@ buildStreetActivities(scene);
 buildEnvironmentalSimulation(scene);
 
 buildPlayerCharacter(scene);
-initCyberPhone(camera);
+initCyberPhone(camera, scene, renderer);
 initWorldMap(camera, characterGroup, teleportTo, chunkManager, setCameraOverride);
 
 // Controls & Keyboard Listeners
 const keys = { w: false, a: false, s: false, d: false, space: false, shift: false, c: false, ctrl: false };
 
+// ==========================================
+// MOBILE SUBSYSTEMS INITIALIZATION
+// Controls, Settings & Performance Benchmark
+// ==========================================
+initMobileSettings();
+initMobilePerformance({ renderer, scene, camera });
+initMobileControls({
+    canvas,
+    camera,
+    characterGroup,
+    keys,
+    forceTouch: isMobileDevice,
+    onInteraction: handleInteraction,
+    onVehicleMount: () => toggleVehicleMount(scene),
+    onFlightToggle: () => toggleFlightMode(playSound),
+    getActiveVehicle,
+    getIsFlightMode,
+    playSound
+});
+
 window.addEventListener('keydown', (e) => {
     const k = e.key.toLowerCase();
-    if (k === 'w' || k === 'arrowup') keys.w = true;
-    if (k === 's' || k === 'arrowdown') keys.s = true;
-    if (k === 'a' || k === 'arrowleft') keys.a = true;
-    if (k === 'd' || k === 'arrowright') keys.d = true;
-    if (k === ' ' || e.key === 'Spacebar') { keys.space = true; e.preventDefault(); }
+    if (!isPhoneOpen || activeVehicle) {
+        if (k === 'w' || (k === 'arrowup' && !isPhoneOpen)) keys.w = true;
+        if (k === 's' || (k === 'arrowdown' && !isPhoneOpen)) keys.s = true;
+        if (k === 'a' || (k === 'arrowleft' && !isPhoneOpen)) keys.a = true;
+        if (k === 'd' || (k === 'arrowright' && !isPhoneOpen)) keys.d = true;
+    }
+    if (k === ' ' || e.key === 'Spacebar') { if (!isPhoneOpen) { keys.space = true; e.preventDefault(); } }
     if (e.key === 'Shift') keys.shift = true;
     if (e.key === 'Control') keys.ctrl = true;
     if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) e.preventDefault();
 
+    if (e.key === 'ArrowUp' && !isPhoneOpen && !keys.w && !activeVehicle) {
+        openCyberPhone();
+    }
     if (k === 'f') toggleVehicleMount(scene);
     if (k === 'g') toggleFlightMode(playSound);
     if (k === 'e') handleInteraction();
@@ -142,7 +170,8 @@ window.addEventListener('keydown', (e) => {
         if (controlsCard) controlsCard.classList.toggle('open');
     }
     if (e.key === 'Escape') {
-        if (isWorldMapOpen) closeWorldMap();
+        if (isPhoneOpen) closeCyberPhone();
+        else if (isWorldMapOpen) closeWorldMap();
     }
     if (k === 'c') {
         if (isFlightMode) keys.c = true;
@@ -219,11 +248,23 @@ export function setCameraOverride(active) {
     cameraOverrideActive = !!active;
 }
 
+let currentControlMode = 'foot';
+
 function animate() {
     requestAnimationFrame(animate);
+
+    // Tab sleep: pause Three.js requestAnimationFrame rendering when document.hidden === true
+    if (document.hidden) {
+        return;
+    }
+
     recordFrame();
     const delta = Math.min(clock.getDelta(), 0.08);
     const time = performance.now() * 0.001;
+
+    // Mobile systems update (touch controls, camera inertia & dynamic resolution scaling)
+    updateMobileControls(delta);
+    updateMobilePerformance(delta);
 
     // If external cinematic camera controller (e.g. GSAP fast travel) owns camera
     if (cameraOverrideActive) {
@@ -241,6 +282,18 @@ function animate() {
 
     // 2. Traversal & Player state
     const curVehicle = getActiveVehicle();
+
+    // Auto-swap mobile control layouts between on-foot, vehicle, and flight
+    let desiredControlMode = 'foot';
+    if (isFlightMode) {
+        desiredControlMode = 'flight';
+    } else if (curVehicle) {
+        desiredControlMode = 'vehicle';
+    }
+    if (currentControlMode !== desiredControlMode) {
+        currentControlMode = desiredControlMode;
+        setMobileControlMode(currentControlMode);
+    }
     if (isFlightMode) {
         updateFlightPhysics(delta, keys, camera, playSound);
         updateTachometerHUD(0, false, false);
@@ -278,25 +331,34 @@ function animate() {
         }
         updateMiniMap(curVehicle.mesh.position.x, curVehicle.mesh.position.z, curVehicle.rotation);
     } else {
-        updatePlayerLocomotion(delta, keys, camera, keys.shift);
+        if (!isPhoneOpen) {
+            updatePlayerLocomotion(delta, keys, camera, keys.shift);
+        }
         updateTachometerHUD(0, false, false);
 
-        if (cameraMode === 'chase') {
-            const followDist = 14.0;
-            const camHeight = 7.5;
-            const lookAhead = 4.0;
+        if (!isPhoneOpen) {
+            if (cameraMode === 'chase') {
+                const followDist = 14.0;
+                const camHeight = 7.5;
+                const lookAhead = 4.0;
 
-            camera.position.x = THREE.MathUtils.lerp(camera.position.x, characterGroup.position.x, 0.12);
-            camera.position.z = THREE.MathUtils.lerp(camera.position.z, characterGroup.position.z - followDist, 0.12);
-            camera.position.y = THREE.MathUtils.lerp(camera.position.y, characterGroup.position.y + camHeight, 0.12);
-            _scratchCamLookAt.set(characterGroup.position.x, characterGroup.position.y + 2.0, characterGroup.position.z + lookAhead);
-            camera.lookAt(_scratchCamLookAt);
-        } else if (cameraMode === 'cinematic') {
-            camera.position.x = THREE.MathUtils.lerp(camera.position.x, characterGroup.position.x, 0.08);
-            camera.position.z = THREE.MathUtils.lerp(camera.position.z, characterGroup.position.z - 34, 0.08);
-            camera.position.y = THREE.MathUtils.lerp(camera.position.y, characterGroup.position.y + 4.5, 0.08);
-            _scratchCamLookAt.set(characterGroup.position.x, characterGroup.position.y + 60.0, characterGroup.position.z + 30);
-            camera.lookAt(_scratchCamLookAt);
+                const lookDelta = getCameraLookDelta();
+                if (lookDelta && (lookDelta.orbitYaw !== 0 || lookDelta.orbitPitch !== 0)) {
+                    applyCameraLook(camera, characterGroup.position, followDist, camHeight);
+                } else {
+                    camera.position.x = THREE.MathUtils.lerp(camera.position.x, characterGroup.position.x, 0.12);
+                    camera.position.z = THREE.MathUtils.lerp(camera.position.z, characterGroup.position.z - followDist, 0.12);
+                    camera.position.y = THREE.MathUtils.lerp(camera.position.y, characterGroup.position.y + camHeight, 0.12);
+                    _scratchCamLookAt.set(characterGroup.position.x, characterGroup.position.y + 2.0, characterGroup.position.z + lookAhead);
+                    camera.lookAt(_scratchCamLookAt);
+                }
+            } else if (cameraMode === 'cinematic') {
+                camera.position.x = THREE.MathUtils.lerp(camera.position.x, characterGroup.position.x, 0.08);
+                camera.position.z = THREE.MathUtils.lerp(camera.position.z, characterGroup.position.z - 34, 0.08);
+                camera.position.y = THREE.MathUtils.lerp(camera.position.y, characterGroup.position.y + 4.5, 0.08);
+                _scratchCamLookAt.set(characterGroup.position.x, characterGroup.position.y + 60.0, characterGroup.position.z + 30);
+                camera.lookAt(_scratchCamLookAt);
+            }
         }
         updateMiniMap(characterGroup.position.x, characterGroup.position.z, characterGroup.rotation.y);
         checkProximity();
@@ -305,6 +367,9 @@ function animate() {
     if (cameraMode === 'orbit') {
         orbitControls.update();
     }
+
+    // Update Diegetic 3D CyberPhone (Animation & Screen Render)
+    updateDiegeticPhone(delta, camera, curVehicle !== null);
 
     // 3. Autonomous Living World Subsystems
     updateRailwayTrains(delta, playSound);
@@ -338,6 +403,12 @@ window.__characterGroup = characterGroup;
 window.__toggleWorldMap = toggleWorldMap;
 window.__openWorldMap = openWorldMap;
 window.__closeWorldMap = closeWorldMap;
+window.__toggleCyberPhone = toggleCyberPhone;
+window.__openCyberPhone = openCyberPhone;
+window.__closeCyberPhone = closeCyberPhone;
+window.__isPhoneOpen = () => isPhoneOpen;
+window.__phoneGroup = phoneGroup;
+window.__phoneScreenMesh = phoneScreenMesh;
 window.__isWorldMapOpen = () => isWorldMapOpen;
 window.__setMapLayer = setMapLayer;
 window.__getMapLayer = getMapLayer;
@@ -379,7 +450,30 @@ window.__carVehicle = carVehicle;
 window.__rickshawVehicle = rickshawVehicle;
 window.__maritimeFerryBoats = maritimeFerryBoats;
 window.__atcRadarDish = atcRadarDish;
+window.setMobileControlMode = setMobileControlMode;
+window.__setMobileControlMode = setMobileControlMode;
+window.openMobileSettings = openMobileSettings;
+window.closeMobileSettings = closeMobileSettings;
+window.setMobileSetting = setMobileSetting;
+window.getMobileSetting = getMobileSetting;
 window.__setActiveVehicle = setActiveVehicle;
+window.__getActiveVehicle = getActiveVehicle;
+window.__mobileController = {
+    setMobileControlMode,
+    updateMobileControls,
+    controlStates
+};
+window.__mobileSettings = {
+    get: getMobileSettings
+};
+window.__mobilePerformance = {
+    isTouchDevice,
+    isTabSleep,
+    getQualityTier,
+    setQualityTier,
+    applyQualityTier,
+    updateMobilePerformance
+};
 window.updateTachometerHUD = updateTachometerHUD;
 window.__updateTachometerHUD = updateTachometerHUD;
 window.initPerformanceHUD = initPerformanceHUD;

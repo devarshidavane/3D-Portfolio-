@@ -10,72 +10,69 @@ import { poiHome } from '../landmarks/homeSkyscraper.js';
 import { poiGateway } from '../landmarks/iconicLandmarks.js';
 import { poiAirport } from '../landmarks/airportDistrict.js';
 
+// Diegetic GTA V-Style 3D Phone Subsystem
+import {
+    buildDiegeticPhone,
+    updateDiegeticPhone,
+    openDiegeticPhone,
+    closeDiegeticPhone,
+    toggleDiegeticPhone,
+    isPhoneOpen,
+    activeApp,
+    phoneGroup,
+    phoneScreenMesh,
+    playPhoneSound
+} from './diegeticPhone.js';
+
+export {
+    buildDiegeticPhone,
+    updateDiegeticPhone,
+    openDiegeticPhone,
+    closeDiegeticPhone,
+    toggleDiegeticPhone,
+    isPhoneOpen,
+    activeApp,
+    phoneGroup,
+    phoneScreenMesh,
+    playPhoneSound
+};
+
 // ==========================================
-// CYBER-SMARTPHONE DRAWER, FAST TRAVEL & MODALS
+// CYBERPHONE / DIEGETIC GTA V SMARTPHONE INTEGRATION
 // ==========================================
 
 export let currentInteraction = null;
 let boardableTrain = null;
+let mainCameraRef = null;
 
 export function openCyberPhone() {
-    const phoneOverlay = document.getElementById('cyber-phone-overlay');
-    if (phoneOverlay) phoneOverlay.classList.add('open');
-    const phoneClock = document.getElementById('phone-clock');
-    if (phoneClock) {
-        const d = new Date();
-        phoneClock.textContent = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-    }
-    playSound('chime');
+    openDiegeticPhone();
 }
 
 export function closeCyberPhone() {
-    const phoneOverlay = document.getElementById('cyber-phone-overlay');
-    if (phoneOverlay) phoneOverlay.classList.remove('open');
+    closeDiegeticPhone();
 }
 
 export function toggleCyberPhone() {
-    const phoneOverlay = document.getElementById('cyber-phone-overlay');
-    if (phoneOverlay && phoneOverlay.classList.contains('open')) {
-        closeCyberPhone();
-    } else {
-        openCyberPhone();
-    }
+    toggleDiegeticPhone();
 }
 
-export function initCyberPhone(camera) {
-    const btnMobileOptions = document.getElementById('btn-mobile-options');
-    const btnPhoneClose = document.getElementById('btn-phone-close');
-    const phoneTabs = document.querySelectorAll('.phone-tab-btn');
-    const phoneTabContents = document.querySelectorAll('.phone-tab-content');
+export function initCyberPhone(camera, scene, renderer) {
+    mainCameraRef = camera;
 
-    if (btnMobileOptions) btnMobileOptions.addEventListener('click', toggleCyberPhone);
-    if (btnPhoneClose) btnPhoneClose.addEventListener('click', closeCyberPhone);
-
-    phoneTabs.forEach(btn => {
-        btn.addEventListener('click', () => {
-            phoneTabs.forEach(b => b.classList.remove('active'));
-            phoneTabContents.forEach(c => c.classList.remove('active'));
-            btn.classList.add('active');
-            const targetId = btn.getAttribute('data-tab');
-            const targetContent = document.getElementById(targetId);
-            if (targetContent) targetContent.classList.add('active');
-            playSound('chime');
-        });
-    });
-
-    // Fast travel cards
-    document.querySelectorAll('.transit-card').forEach(card => {
-        card.addEventListener('click', () => {
-            const x = parseFloat(card.getAttribute('data-x'));
-            const z = parseFloat(card.getAttribute('data-z'));
-            const y = parseFloat(card.getAttribute('data-y') || 0);
-            const name = card.getAttribute('data-name');
-            closeCyberPhone();
+    // Build 3D Diegetic Phone in scene if scene & renderer are provided
+    if (scene && renderer) {
+        buildDiegeticPhone(scene, camera, renderer, (x, z, name, y) => {
             teleportTo(x, z, name, y, camera);
         });
-    });
+    }
 
-    // Modal Close Handlers
+    const btnMobileOptions = document.getElementById('btn-mobile-options');
+    if (btnMobileOptions) {
+        btnMobileOptions.addEventListener('click', toggleDiegeticPhone);
+    }
+
+    // Modal Close Handlers (for backward compatibility)
     const modalCloseBtn = document.getElementById('modal-close-btn');
     if (modalCloseBtn) {
         modalCloseBtn.addEventListener('click', () => {
@@ -102,7 +99,7 @@ export function initCyberPhone(camera) {
             const landmarkBackdrop = document.getElementById('landmark-modal-backdrop');
             if (landmarkModal) landmarkModal.classList.remove('active');
             if (landmarkBackdrop) landmarkBackdrop.classList.remove('active');
-            closeCyberPhone();
+            if (isPhoneOpen) closeDiegeticPhone();
         }
     });
 }
@@ -112,17 +109,16 @@ export function teleportTo(x, z, name, y = 0, camera) {
     if (fade) fade.style.opacity = '1';
     playSound('chime');
 
+    const cam = camera || mainCameraRef;
     setTimeout(() => {
         characterGroup.position.set(x, y + 0.5, z);
-        if (camera) {
-            camera.position.set(x, y + 6.5, z - 14);
-            camera.lookAt(x, y + 2, z + 4);
+        if (cam) {
+            cam.position.set(x, y + 6.5, z - 14);
+            cam.lookAt(x, y + 2, z + 4);
         }
         if (fade) fade.style.opacity = '0';
     }, 450);
 }
-
-
 
 export function toggleVehicleMount(scene) {
     if (isFlightMode) exitFlightMode(false);
@@ -212,77 +208,20 @@ function dismountVehicle(scene) {
 }
 
 export function handleInteraction() {
-    const modalTitleEl = document.getElementById('modal-title-text') || document.getElementById('modal-title');
-    const modalBodyEl = document.getElementById('modal-body-text') || document.getElementById('modal-body');
-    const modalCodePreviewEl = document.getElementById('modal-code-preview');
-    const interactiveModalEl = document.getElementById('interactive-modal');
-
+    // Open Portfolio app on Home HQ or landmark trigger
     if (!currentInteraction) return;
     playSound('chime');
 
     if (currentInteraction === 'schoolBoard') {
-        if (modalTitleEl) modalTitleEl.innerHTML = "🏫 Fr. Agnel Technical High School & Junior College";
-        if (modalBodyEl) modalBodyEl.innerHTML = `
-            <strong>Academic Foundation & Technical Education:</strong><br><br>
-            • <strong>Campus:</strong> Bandra West, Mount Mary Bandstand Ridge (Mumbai)<br>
-            • <strong>Stream:</strong> Science, Mathematics & Technical Vocational Stream (Engineering Drawing, Fitting, Workshop Technology & Electronics)<br>
-            • <strong>Credentials:</strong> SSC with Distinction<br>
-            • <strong>Legacy:</strong> Early foundations in technical computing, electronics, and rigorous engineering discipline.
-        `;
-        if (modalCodePreviewEl) modalCodePreviewEl.style.display = 'none';
-        if (interactiveModalEl) interactiveModalEl.classList.add('active');
+        openDiegeticPhone();
     } else if (currentInteraction === 'collegeBoard') {
-        if (modalTitleEl) modalTitleEl.innerHTML = "🎓 Datta Meghe College of Engineering (DMCE)";
-        if (modalBodyEl) modalBodyEl.innerHTML = `
-            <strong>Higher Education & Engineering Degree:</strong><br><br>
-            • <strong>Degree:</strong> Bachelor of Engineering (B.E.) in Computer Engineering (2019 – 2023)<br>
-            • <strong>Campus:</strong> Airoli, Navi Mumbai (Near Airoli Creek & Mindspace)<br>
-            • <strong>Core Focus:</strong> Distributed Operating Systems, Network Security & Cryptography, Analysis of Algorithms, Artificial Intelligence & WebGL Graphics.<br>
-            • <strong>Leadership:</strong> Cybersecurity Core Team Lead, Tech Fest Hackathon Finalist, Open-Source WebGL Developer.
-        `;
-        if (modalCodePreviewEl) modalCodePreviewEl.style.display = 'none';
-        if (interactiveModalEl) interactiveModalEl.classList.add('active');
+        openDiegeticPhone();
     } else if (currentInteraction === 'homeHQ') {
-        if (modalTitleEl) modalTitleEl.innerHTML = "💻 Devarshi Davane — Home HQ & Research Lab";
-        if (modalBodyEl) modalBodyEl.innerHTML = `
-            <strong>Full-Stack 3D, Systems & Engineering Portfolio Hub</strong><br><br>
-            • <strong>Location:</strong> Dharavi Koliwada (Mahim East), Central World Origin (0,0)<br>
-            • <strong>Discipline:</strong> Systems Programming, WebGL Graphics, Distributed Systems & Autonomous Simulation<br>
-            • <strong>Education:</strong> B.E. Computer Engineering (DMCE Airoli) • Fr. Agnel Technical High School (Bandra West)<br>
-            • <strong>Architecture:</strong> Cyber Tower Headquarters with Real-Time PBR Rendering
-        `;
-        if (modalCodePreviewEl) {
-            modalCodePreviewEl.style.display = 'block';
-            modalCodePreviewEl.innerHTML = `
-const developer = {
-    name: "Devarshi Davane",
-    role: "Computer Engineer & Full-Stack 3D / Systems Developer",
-    school: "Fr. Agnel Technical High School (Bandra West)",
-    college: "Datta Meghe College of Engineering (Airoli)",
-    homeHQ: "Dharavi Koliwada (Mahim East)",
-    stack: ["Three.js r160", "WebGL", "TypeScript", "Python", "Docker", "Linux Kernel"]
-};
-            `;
-        }
-        if (interactiveModalEl) interactiveModalEl.classList.add('active');
+        openDiegeticPhone();
     } else if (currentInteraction === 'gatewayArch') {
-        if (modalTitleEl) modalTitleEl.innerHTML = "🏛️ Gateway of India (Colaba Waterfront)";
-        if (modalBodyEl) modalBodyEl.innerHTML = `
-            <strong>Historic Basalt Waterfront Monument (1924):</strong><br><br>
-            • <strong>Location:</strong> Apollo Bunder, Colaba, South Mumbai (Arabian Sea Harbor)<br>
-            • <strong>Architecture:</strong> Indo-Saracenic triumphal arch with 16th-century Gujarati architectural influences<br>
-            • <strong>Symbolism:</strong> The ceremonial entrance to Mumbai and India, looking out across the Arabian Sea.
-        `;
-        if (modalCodePreviewEl) modalCodePreviewEl.style.display = 'none';
-        if (interactiveModalEl) interactiveModalEl.classList.add('active');
+        openDiegeticPhone();
     } else if (currentInteraction === 'vadapav') {
-        if (modalTitleEl) modalTitleEl.innerHTML = "🍔 Dev's Mumbai Vada Pav Cart";
-        if (modalBodyEl) modalBodyEl.innerHTML = `
-            <strong>The fuel behind every late-night coding session!</strong><br><br>
-            Fresh Mumbai batata vada golden-fried with mustard seeds and curry leaves, tucked into warm pav with fiery dry garlic chutney.
-        `;
-        if (modalCodePreviewEl) modalCodePreviewEl.style.display = 'none';
-        if (interactiveModalEl) interactiveModalEl.classList.add('active');
+        openDiegeticPhone();
     }
 }
 
@@ -325,7 +264,7 @@ export function checkProximity() {
         return;
     }
 
-    // 5. Vehicles Proximity Check
+    // 6. Vehicles Proximity Check
     if (bikeVehicle.mesh && p.distanceTo(bikeVehicle.mesh.position) < 4.5) {
         showPrompt('F', 'Ride Cyber Motorbike 🏍️');
         return;
