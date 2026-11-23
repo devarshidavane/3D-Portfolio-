@@ -144,11 +144,31 @@ export function createArticulatedPedestrian(cfg) {
     return { group, armL, armR, legL, legR, umbrellaGroup, walkCycle: Math.random() * Math.PI * 2 };
 }
 
-/**
- * Builds a unified archetype geometry with vertex colors for instanced crowd rendering.
- */
-function createArchetypeGeometry(skinHex, shirtHex, pantsHex, hairHex) {
+// ==========================================
+// 12 MUMBAI NPC ARCHETYPES (refs/characters/mumbai_npc_archetypes.jpg)
+// Authentic Cultural Signatures, Attire, Colors & Props
+// ==========================================
+export const MUMBAI_ARCHETYPES = [
+    { id: 'chaiwala', name: 'Chai Tapri Vendor', skin: 0xc68642, shirt: 0x38bdf8, pants: 0x334155, hair: 0x020617, prop: 'chai_rack' },
+    { id: 'commuter', name: 'Local Commuter', skin: 0xe0ac69, shirt: 0xbae6fd, pants: 0x1e293b, hair: 0x1e1b4b, prop: 'laptop_bag' },
+    { id: 'cab_driver', name: 'Kaali Peeli Cab Driver', skin: 0x8d5524, shirt: 0xd97706, pants: 0x92400e, hair: 0x020617, prop: 'cab_meter' },
+    { id: 'gamer', name: 'College Gamer', skin: 0xf5cba7, shirt: 0x6366f1, pants: 0x475569, hair: 0x1e1b4b, prop: 'headphones' },
+    { id: 'dabbawala', name: 'Old-School Dabbawala', skin: 0x8d5524, shirt: 0xf8fafc, pants: 0xf8fafc, hair: 0x020617, prop: 'dabba' },
+    { id: 'bhau', name: 'Streetwise Bhau', skin: 0xc68642, shirt: 0xeab308, pants: 0x1e3a8a, hair: 0x020617, prop: 'gold_chain' },
+    { id: 'police_havildar', name: 'Mumbai Police Havildar', skin: 0x8d5524, shirt: 0xc28846, pants: 0xb4793b, hair: 0x020617, prop: 'police_gear' },
+    { id: 'aunty_saree', name: 'Tech-Savvy Aunty', skin: 0xe0ac69, shirt: 0xdb2777, pants: 0xdb2777, hair: 0x020617, prop: 'saree_pallu' },
+    { id: 'influencer', name: 'Bandra Influencer', skin: 0xf5cba7, shirt: 0xc084fc, pants: 0xf1f5f9, hair: 0x3b2518, prop: 'phone_gimbal' },
+    { id: 'food_vendor', name: 'Street Food Vendor', skin: 0x8d5524, shirt: 0xf8fafc, pants: 0x1e293b, hair: 0x020617, prop: 'chef_ladle' },
+    { id: 'tech_tinkerer', name: 'Dharavi Tech-Tinkerer', skin: 0x8d5524, shirt: 0x64748b, pants: 0x334155, hair: 0x020617, prop: 'utility_goggles' },
+    { id: 'corporate_townie', name: 'Corporate Townie', skin: 0xf5cba7, shirt: 0x1e3a8a, pants: 0x334155, hair: 0x1e1b4b, prop: 'tablet' }
+];
+
+export function createMumbaiArchetypeGeometry(arch) {
     const geoms = [];
+    const skinHex = arch.skin;
+    const shirtHex = arch.shirt;
+    const pantsHex = arch.pants;
+    const hairHex = arch.hair;
 
     // Torso
     const torso = applyVertexColor(new THREE.BoxGeometry(0.42, 0.62, 0.24), shirtHex);
@@ -185,7 +205,181 @@ function createArchetypeGeometry(skinHex, shirtHex, pantsHex, hairHex) {
     legR.translate(0.13, 0.47, 0);
     geoms.push(legR);
 
+    // Signature Props & Cultural Accessories per archetype
+    switch (arch.prop) {
+        case 'chai_rack': {
+            const apron = applyVertexColor(new THREE.BoxGeometry(0.43, 0.35, 0.25), 0xb45309);
+            apron.translate(0, 0.95, 0.01);
+            geoms.push(apron);
+            const rack = applyVertexColor(new THREE.BoxGeometry(0.20, 0.14, 0.14), 0x94a3b8);
+            rack.translate(0.34, 0.85, 0.16);
+            geoms.push(rack);
+            [-0.05, 0.05].forEach(gx => {
+                const cup = applyVertexColor(new THREE.CylinderGeometry(0.02, 0.02, 0.06, 6), 0x67e8f9);
+                cup.translate(0.34 + gx, 0.90, 0.16);
+                geoms.push(cup);
+            });
+            break;
+        }
+        case 'laptop_bag': {
+            const strap = applyVertexColor(new THREE.BoxGeometry(0.04, 0.65, 0.26), 0x78350f);
+            strap.rotateZ(0.35);
+            strap.translate(0.02, 1.22, 0.01);
+            geoms.push(strap);
+            const bag = applyVertexColor(new THREE.BoxGeometry(0.10, 0.28, 0.34), 0x451a03);
+            bag.translate(0.24, 0.78, 0.04);
+            geoms.push(bag);
+            const lanyard = applyVertexColor(new THREE.BoxGeometry(0.06, 0.22, 0.02), 0xef4444);
+            lanyard.translate(0, 1.35, 0.13);
+            geoms.push(lanyard);
+            break;
+        }
+        case 'cab_meter': {
+            const cap = applyVertexColor(new THREE.CylinderGeometry(0.20, 0.20, 0.07, 10), 0x78350f);
+            cap.translate(0, 1.77, 0.02);
+            const visor = applyVertexColor(new THREE.BoxGeometry(0.16, 0.02, 0.10), 0x451a03);
+            visor.translate(0, 1.74, 0.15);
+            geoms.push(cap, visor);
+            const meter = applyVertexColor(new THREE.BoxGeometry(0.08, 0.09, 0.05), 0x0f172a);
+            meter.translate(0.15, 0.90, 0.13);
+            const led = applyVertexColor(new THREE.BoxGeometry(0.04, 0.03, 0.01), 0x22c55e);
+            led.translate(0.15, 0.92, 0.16);
+            geoms.push(meter, led);
+            break;
+        }
+        case 'headphones': {
+            const hood = applyVertexColor(new THREE.BoxGeometry(0.38, 0.16, 0.14), 0x4f46e5);
+            hood.translate(0, 1.48, -0.14);
+            geoms.push(hood);
+            const band = applyVertexColor(new THREE.BoxGeometry(0.28, 0.03, 0.22), 0x0f172a);
+            band.translate(0, 1.54, 0.02);
+            const cupL = applyVertexColor(new THREE.CylinderGeometry(0.04, 0.04, 0.04, 8), 0x10b981);
+            cupL.rotateZ(Math.PI / 2);
+            cupL.translate(-0.14, 1.52, 0.05);
+            const cupR = applyVertexColor(new THREE.CylinderGeometry(0.04, 0.04, 0.04, 8), 0x10b981);
+            cupR.rotateZ(Math.PI / 2);
+            cupR.translate(0.14, 1.52, 0.05);
+            geoms.push(band, cupL, cupR);
+            break;
+        }
+        case 'dabba': {
+            const topi = applyVertexColor(new THREE.BoxGeometry(0.13, 0.09, 0.24), 0xffffff);
+            topi.translate(0, 1.79, 0.01);
+            geoms.push(topi);
+            const dabba = applyVertexColor(new THREE.CylinderGeometry(0.09, 0.09, 0.34, 10), 0xcbd5e1);
+            dabba.translate(0.32, 0.76, 0.12);
+            const carrier = applyVertexColor(new THREE.BoxGeometry(0.02, 0.38, 0.02), 0x94a3b8);
+            carrier.translate(0.32, 0.88, 0.12);
+            geoms.push(dabba, carrier);
+            break;
+        }
+        case 'gold_chain': {
+            const chain = applyVertexColor(new THREE.CylinderGeometry(0.016, 0.016, 0.18, 8), 0xfbbf24);
+            chain.rotateZ(Math.PI / 2);
+            chain.translate(0, 1.45, 0.13);
+            const locket = applyVertexColor(new THREE.BoxGeometry(0.04, 0.05, 0.02), 0xf59e0b);
+            locket.translate(0, 1.38, 0.135);
+            const shades = applyVertexColor(new THREE.BoxGeometry(0.16, 0.04, 0.03), 0x09090b);
+            shades.translate(0, 1.70, 0.18);
+            geoms.push(chain, locket, shades);
+            break;
+        }
+        case 'police_gear': {
+            const cap = applyVertexColor(new THREE.CylinderGeometry(0.20, 0.20, 0.08, 10), 0x1e3a8a);
+            cap.translate(0, 1.77, 0.02);
+            const redBand = applyVertexColor(new THREE.CylinderGeometry(0.205, 0.205, 0.02, 10), 0xb91c1c);
+            redBand.translate(0, 1.74, 0.02);
+            const belt = applyVertexColor(new THREE.BoxGeometry(0.05, 0.64, 0.26), 0x451a03);
+            belt.rotateZ(0.35);
+            belt.translate(0.02, 1.20, 0.01);
+            const radio = applyVertexColor(new THREE.BoxGeometry(0.06, 0.10, 0.05), 0x18181b);
+            radio.translate(-0.18, 1.48, 0.02);
+            const ant = applyVertexColor(new THREE.CylinderGeometry(0.008, 0.008, 0.12, 4), 0x0f172a);
+            ant.translate(-0.18, 1.58, 0.02);
+            geoms.push(cap, redBand, belt, radio, ant);
+            break;
+        }
+        case 'saree_pallu': {
+            const zari = applyVertexColor(new THREE.BoxGeometry(0.44, 0.04, 0.26), 0xfbbf24);
+            zari.translate(0, 0.89, 0);
+            const pallu = applyVertexColor(new THREE.BoxGeometry(0.14, 0.60, 0.12), 0xdb2777);
+            pallu.rotateZ(0.35);
+            pallu.translate(-0.08, 1.25, 0.08);
+            const zariEdge = applyVertexColor(new THREE.BoxGeometry(0.04, 0.60, 0.02), 0xfbbf24);
+            zariEdge.rotateZ(0.35);
+            zariEdge.translate(-0.14, 1.25, 0.14);
+            const bag = applyVertexColor(new THREE.BoxGeometry(0.08, 0.20, 0.22), 0x7c2d12);
+            bag.translate(0.32, 0.88, 0.05);
+            geoms.push(zari, pallu, zariEdge, bag);
+            break;
+        }
+        case 'phone_gimbal': {
+            const hood = applyVertexColor(new THREE.BoxGeometry(0.38, 0.16, 0.14), 0xa855f7);
+            hood.translate(0, 1.48, -0.14);
+            const kickL = applyVertexColor(new THREE.BoxGeometry(0.18, 0.10, 0.24), 0xffffff);
+            kickL.translate(-0.13, 0.08, 0.03);
+            const kickR = applyVertexColor(new THREE.BoxGeometry(0.18, 0.10, 0.24), 0xffffff);
+            kickR.translate(0.13, 0.08, 0.03);
+            const shades = applyVertexColor(new THREE.BoxGeometry(0.16, 0.04, 0.03), 0x09090b);
+            shades.translate(0, 1.70, 0.18);
+            const pole = applyVertexColor(new THREE.CylinderGeometry(0.012, 0.012, 0.22, 6), 0x1e293b);
+            pole.translate(0.32, 1.15, 0.18);
+            const phone = applyVertexColor(new THREE.BoxGeometry(0.08, 0.14, 0.02), 0x38bdf8);
+            phone.translate(0.32, 1.28, 0.18);
+            geoms.push(hood, kickL, kickR, shades, pole, phone);
+            break;
+        }
+        case 'chef_ladle': {
+            const apron = applyVertexColor(new THREE.BoxGeometry(0.43, 0.38, 0.25), 0xdc2626);
+            apron.translate(0, 0.92, 0.01);
+            const band = applyVertexColor(new THREE.BoxGeometry(0.38, 0.04, 0.38), 0xf8fafc);
+            band.translate(0, 1.74, 0);
+            const handle = applyVertexColor(new THREE.CylinderGeometry(0.01, 0.01, 0.40, 6), 0x94a3b8);
+            handle.translate(0.34, 1.10, 0.12);
+            const paddle = applyVertexColor(new THREE.BoxGeometry(0.10, 0.12, 0.01), 0xcbd5e1);
+            paddle.translate(0.34, 1.32, 0.12);
+            geoms.push(apron, band, handle, paddle);
+            break;
+        }
+        case 'utility_goggles': {
+            const vest = applyVertexColor(new THREE.BoxGeometry(0.44, 0.58, 0.26), 0x4d7c0f);
+            vest.translate(0, 1.18, 0);
+            const p1 = applyVertexColor(new THREE.BoxGeometry(0.12, 0.10, 0.04), 0x3f6212);
+            p1.translate(-0.12, 1.12, 0.14);
+            const p2 = applyVertexColor(new THREE.BoxGeometry(0.12, 0.10, 0.04), 0x3f6212);
+            p2.translate(0.12, 1.12, 0.14);
+            const goggles = applyVertexColor(new THREE.BoxGeometry(0.18, 0.06, 0.08), 0x0284c7);
+            goggles.translate(0, 1.76, 0.16);
+            const pouch = applyVertexColor(new THREE.BoxGeometry(0.08, 0.16, 0.12), 0x78350f);
+            pouch.translate(0.24, 0.88, 0);
+            geoms.push(vest, p1, p2, goggles, pouch);
+            break;
+        }
+        case 'tablet': {
+            const blazer = applyVertexColor(new THREE.BoxGeometry(0.46, 0.64, 0.26), 0x1e3a8a);
+            blazer.translate(0, 1.18, 0);
+            const collar = applyVertexColor(new THREE.BoxGeometry(0.12, 0.14, 0.04), 0xffffff);
+            collar.translate(0, 1.45, 0.12);
+            const tab = applyVertexColor(new THREE.BoxGeometry(0.02, 0.24, 0.18), 0x0f172a);
+            tab.translate(0.32, 0.95, 0.12);
+            const screen = applyVertexColor(new THREE.BoxGeometry(0.025, 0.22, 0.16), 0x38bdf8);
+            screen.translate(0.32, 0.95, 0.12);
+            geoms.push(blazer, collar, tab, screen);
+            break;
+        }
+    }
+
     return BufferGeometryUtils.mergeGeometries(geoms, false);
+}
+
+function createArchetypeGeometry(skinHex, shirtHex, pantsHex, hairHex) {
+    return createMumbaiArchetypeGeometry({
+        skin: skinHex,
+        shirt: shirtHex,
+        pants: pantsHex,
+        hair: hairHex,
+        prop: 'laptop_bag'
+    });
 }
 
 function createUmbrellaGeometry() {
@@ -276,26 +470,19 @@ export function buildPedestrianSimulation(scene) {
         { skin: 0, shirt: 4, pants: 1, hair: 0, type: 'dmce_researcher', wps: [{x: 1838, z: 1445}, {x: 1838, z: 1480}, {x: 1860, z: 1480}, {x: 1860, z: 1445}] }
     ];
 
-    // 1. Create 3 Archetype InstancedMeshes (10 instances each = 30 detailed pedestrians)
-    // Draw call count: 3 draw calls total for all 30 detailed pedestrians!
-    const archetypeConfigs = [
-        // Archetype 0: Formal White shirt, Dark Navy trousers, Golden skin, Jet Black hair
-        { skin: skinColors[1], shirt: shirtColors[0], pants: pantsColors[0], hair: hairColors[0] },
-        // Archetype 1: Sky Blue shirt, Denim jeans, Fair skin, Deep Charcoal hair
-        { skin: skinColors[0], shirt: shirtColors[1], pants: pantsColors[4], hair: hairColors[1] },
-        // Archetype 2: Saffron Kurta, White Dhoti/Pajama, Bronze skin, Salt & Pepper hair
-        { skin: skinColors[3], shirt: shirtColors[2], pants: pantsColors[3], hair: hairColors[3] }
-    ];
-
+    // 1. Create 12 Archetype InstancedMeshes (matching refs/characters/mumbai_npc_archetypes.jpg)
+    // Draw call count: 12 draw calls total for all detailed pedestrians with rich cultural accessories!
     const archetypeMat = new THREE.MeshStandardMaterial({
         vertexColors: true,
         roughness: 0.8
     });
 
-    for (let a = 0; a < 3; a++) {
-        const cfg = archetypeConfigs[a];
-        const geom = createArchetypeGeometry(cfg.skin, cfg.shirt, cfg.pants, cfg.hair);
-        const instMesh = new THREE.InstancedMesh(geom, archetypeMat, 10);
+    const capacityPerArchetype = Math.ceil(detailedConfigs.length / MUMBAI_ARCHETYPES.length) + 2;
+
+    for (let a = 0; a < MUMBAI_ARCHETYPES.length; a++) {
+        const arch = MUMBAI_ARCHETYPES[a];
+        const geom = createMumbaiArchetypeGeometry(arch);
+        const instMesh = new THREE.InstancedMesh(geom, archetypeMat, capacityPerArchetype);
         instMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
         instMesh.castShadow = true;
         scene.add(instMesh);
@@ -326,8 +513,8 @@ export function buildPedestrianSimulation(scene) {
         const startWp = cfg.wps[0];
         p.group.position.set(startWp.x, 0, startWp.z);
 
-        const archetypeIdx = idx % 3;
-        const slotIdx = Math.floor(idx / 3);
+        const archetypeIdx = idx % MUMBAI_ARCHETYPES.length;
+        const slotIdx = Math.floor(idx / MUMBAI_ARCHETYPES.length);
 
         // Initialize instance matrix in archetype mesh
         _scratchPos.set(startWp.x, 0, startWp.z);
@@ -366,7 +553,7 @@ export function buildPedestrianSimulation(scene) {
         allPedestrians.push(npcObj);
     });
 
-    for (let a = 0; a < 3; a++) {
+    for (let a = 0; a < archetypeMeshes.length; a++) {
         archetypeMeshes[a].instanceMatrix.needsUpdate = true;
     }
     instancedUmbrellas.instanceMatrix.needsUpdate = true;
@@ -432,7 +619,7 @@ export function updatePedestrianSimulation(delta, weatherMode = 'clear', camera 
         camZ = camPos.z;
     }
 
-    const archetypeNeedsUpdate = [false, false, false];
+    const archetypeNeedsUpdate = new Array(archetypeMeshes.length).fill(false);
     let umbrellaNeedsUpdate = false;
 
     // 1. Detailed Pedestrians Simulation (30)
@@ -524,7 +711,7 @@ export function updatePedestrianSimulation(delta, weatherMode = 'clear', camera 
         }
     }
 
-    for (let a = 0; a < 3; a++) {
+    for (let a = 0; a < archetypeMeshes.length; a++) {
         if (archetypeNeedsUpdate[a] && archetypeMeshes[a]) {
             archetypeMeshes[a].instanceMatrix.needsUpdate = true;
         }

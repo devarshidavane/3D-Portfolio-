@@ -117,82 +117,200 @@ function createArticulatedDeveloper() {
     const group = new THREE.Group();
     group.name = "ArticulatedDeveloper";
 
-    const skinColor = 0xc68652;
-    const shirtColor = 0x18181b;
-    const pantsColor = 0x1e293b;
-    const shoeColor = 0x09090b;
-    const soleColor = 0xf8fafc;
-    const hairColor = 0x171717;
+    // Palette locked to refs/characters/player_character_sheet.jpg
+    const skinColor = 0xc68652;          // Warm Indian skin tone
+    const flannelPrimary = 0x7f1d1d;     // Maroon flannel overshirt
+    const flannelPlaidDark = 0x450a0a;   // Deep maroon check stripes
+    const flannelPlaidLight = 0x991b1b;  // Crimson check stripes
+    const innerTeeColor = 0x18181b;      // Black crewneck tee
+    const chainSilver = 0xe2e8f0;        // Metallic silver chain necklace
+    const pantsKhaki = 0xa38c6b;         // Khaki chinos
+    const sneakersNavy = 0x1e3a8a;       // Navy blue sneakers
+    const sneakersSole = 0xf8fafc;       // Crisp white sole base
+    const sneakersAccent = 0xffffff;     // White side slash
+    const watchCasing = 0x0f172a;        // Smartwatch casing
+    const watchFace = 0x38bdf8;          // Cyan smartwatch glass
+    const wristband = 0x18181b;          // Black woven wristband
+    const hairColor = 0x171717;          // Styled fade hair, mustache, beard
 
     const devMat = new THREE.MeshStandardMaterial({ roughness: 0.65, vertexColors: true });
 
-    // Torso, Neck, Head, Hair
+    // 1. Torso, Flannel Overshirt, Inner Tee, Silver Chain, Neck, Head & Face Hair
     const bodyGeoms = [];
-    const torso = applyVertexColor(new THREE.BoxGeometry(0.48, 0.65, 0.26), shirtColor);
-    torso.translate(0, 1.25, 0);
-    bodyGeoms.push(torso);
 
+    // Inner Black Crewneck Tee
+    const innerTee = applyVertexColor(new THREE.BoxGeometry(0.26, 0.46, 0.22), innerTeeColor);
+    innerTee.translate(0, 1.28, 0.03);
+    bodyGeoms.push(innerTee);
+
+    // Maroon Flannel Overshirt - Back & Side Panels
+    const flannelBack = applyVertexColor(new THREE.BoxGeometry(0.48, 0.65, 0.12), flannelPrimary);
+    flannelBack.translate(0, 1.25, -0.07);
+    bodyGeoms.push(flannelBack);
+
+    const flannelLeft = applyVertexColor(new THREE.BoxGeometry(0.13, 0.65, 0.16), flannelPrimary);
+    flannelLeft.translate(-0.18, 1.25, 0.05);
+    bodyGeoms.push(flannelLeft);
+
+    const flannelRight = applyVertexColor(new THREE.BoxGeometry(0.13, 0.65, 0.16), flannelPrimary);
+    flannelRight.translate(0.18, 1.25, 0.05);
+    bodyGeoms.push(flannelRight);
+
+    // Flannel Plaid Accent Lines (Horizontal and Vertical check stripes)
+    const plaidH1 = applyVertexColor(new THREE.BoxGeometry(0.49, 0.04, 0.27), flannelPlaidDark);
+    plaidH1.translate(0, 1.36, 0);
+    bodyGeoms.push(plaidH1);
+
+    const plaidH2 = applyVertexColor(new THREE.BoxGeometry(0.49, 0.04, 0.27), flannelPlaidLight);
+    plaidH2.translate(0, 1.12, 0);
+    bodyGeoms.push(plaidH2);
+
+    const plaidV1 = applyVertexColor(new THREE.BoxGeometry(0.04, 0.654, 0.27), flannelPlaidDark);
+    plaidV1.translate(-0.13, 1.25, 0);
+    bodyGeoms.push(plaidV1);
+
+    const plaidV2 = applyVertexColor(new THREE.BoxGeometry(0.04, 0.654, 0.27), flannelPlaidDark);
+    plaidV2.translate(0.13, 1.25, 0);
+    bodyGeoms.push(plaidV2);
+
+    // Open Flannel V-Collar Lapels
+    const lapelL = applyVertexColor(new THREE.BoxGeometry(0.08, 0.14, 0.05), flannelPlaidDark);
+    lapelL.rotateZ(0.25);
+    lapelL.translate(-0.09, 1.54, 0.10);
+    bodyGeoms.push(lapelL);
+
+    const lapelR = applyVertexColor(new THREE.BoxGeometry(0.08, 0.14, 0.05), flannelPlaidDark);
+    lapelR.rotateZ(-0.25);
+    lapelR.translate(0.09, 1.54, 0.10);
+    bodyGeoms.push(lapelR);
+
+    // Flannel Bottom Tail Hem
+    const flannelHem = applyVertexColor(new THREE.BoxGeometry(0.49, 0.06, 0.27), flannelPrimary);
+    flannelHem.translate(0, 0.94, 0);
+    bodyGeoms.push(flannelHem);
+
+    // Silver Chain Necklace & Pendant
+    const chain = applyVertexColor(new THREE.CylinderGeometry(0.012, 0.012, 0.18, 8), chainSilver);
+    chain.rotateZ(Math.PI / 2);
+    chain.translate(0, 1.48, 0.12);
+    bodyGeoms.push(chain);
+
+    const pendant = applyVertexColor(new THREE.BoxGeometry(0.025, 0.035, 0.015), chainSilver);
+    pendant.translate(0, 1.42, 0.125);
+    bodyGeoms.push(pendant);
+
+    // Neck
     const neck = applyVertexColor(new THREE.CylinderGeometry(0.08, 0.09, 0.12, 10), skinColor);
     neck.translate(0, 1.62, 0);
     bodyGeoms.push(neck);
 
-    const head = applyVertexColor(new THREE.SphereGeometry(0.18, 12, 12), skinColor);
+    // Head, Nose, Mustache, Beard, Hair Fade
+    const head = applyVertexColor(new THREE.SphereGeometry(0.18, 14, 14), skinColor);
     head.translate(0, 1.76, 0);
     bodyGeoms.push(head);
 
-    const hairTop = applyVertexColor(new THREE.SphereGeometry(0.19, 12, 12, 0, Math.PI * 2, 0, Math.PI * 0.58), hairColor);
+    const nose = applyVertexColor(new THREE.BoxGeometry(0.035, 0.06, 0.04), skinColor);
+    nose.translate(0, 1.74, 0.18);
+    bodyGeoms.push(nose);
+
+    const mustache = applyVertexColor(new THREE.BoxGeometry(0.10, 0.025, 0.03), hairColor);
+    mustache.translate(0, 1.68, 0.178);
+    bodyGeoms.push(mustache);
+
+    const beardJaw = applyVertexColor(new THREE.BoxGeometry(0.24, 0.07, 0.22), hairColor);
+    beardJaw.translate(0, 1.65, 0.04);
+    bodyGeoms.push(beardJaw);
+
+    const beardChin = applyVertexColor(new THREE.BoxGeometry(0.07, 0.04, 0.05), hairColor);
+    beardChin.translate(0, 1.63, 0.17);
+    bodyGeoms.push(beardChin);
+
+    // Styled Pompadour & Side Fade
+    const hairTop = applyVertexColor(new THREE.SphereGeometry(0.195, 14, 14, 0, Math.PI * 2, 0, Math.PI * 0.58), hairColor);
     hairTop.rotateX(-0.15);
-    hairTop.translate(0, 1.80, 0);
+    hairTop.translate(0, 1.81, 0.02);
     bodyGeoms.push(hairTop);
+
+    const hairQuiff = applyVertexColor(new THREE.BoxGeometry(0.19, 0.08, 0.12), hairColor);
+    hairQuiff.translate(0, 1.89, 0.07);
+    bodyGeoms.push(hairQuiff);
+
+    const hairFade = applyVertexColor(new THREE.BoxGeometry(0.38, 0.14, 0.26), hairColor);
+    hairFade.translate(0, 1.76, -0.02);
+    bodyGeoms.push(hairFade);
 
     group.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(bodyGeoms, false), devMat));
 
-    // Arms
+    // 2. Left Arm (Flannel sleeve, forearm, smartwatch, hand)
     const armL = new THREE.Group();
     armL.position.set(-0.30, 1.50, 0);
-    const sleeveL = applyVertexColor(new THREE.CylinderGeometry(0.075, 0.07, 0.24, 10), shirtColor);
-    sleeveL.translate(0, -0.12, 0);
-    const forearmL = applyVertexColor(new THREE.CylinderGeometry(0.06, 0.052, 0.32, 10), skinColor);
-    forearmL.translate(0, -0.38, 0);
-    const handL = applyVertexColor(new THREE.SphereGeometry(0.054, 8, 8), skinColor);
-    handL.translate(0, -0.56, 0);
-    const mergedArmL = BufferGeometryUtils.mergeGeometries([sleeveL, forearmL, handL], false);
+    const sleeveL = applyVertexColor(new THREE.CylinderGeometry(0.078, 0.072, 0.26, 10), flannelPrimary);
+    sleeveL.translate(0, -0.13, 0);
+    const cuffL = applyVertexColor(new THREE.CylinderGeometry(0.082, 0.082, 0.04, 10), flannelPlaidDark);
+    cuffL.translate(0, -0.25, 0);
+    const forearmL = applyVertexColor(new THREE.CylinderGeometry(0.062, 0.054, 0.28, 10), skinColor);
+    forearmL.translate(0, -0.39, 0);
+    const watchBandL = applyVertexColor(new THREE.CylinderGeometry(0.066, 0.066, 0.05, 10), watchCasing);
+    watchBandL.translate(0, -0.49, 0);
+    const watchDialL = applyVertexColor(new THREE.BoxGeometry(0.055, 0.055, 0.03), watchFace);
+    watchDialL.translate(-0.04, -0.49, 0);
+    const handL = applyVertexColor(new THREE.SphereGeometry(0.056, 8, 8), skinColor);
+    handL.translate(0, -0.58, 0);
+    const thumbL = applyVertexColor(new THREE.BoxGeometry(0.025, 0.045, 0.025), skinColor);
+    thumbL.translate(0.04, -0.56, 0.03);
+    const mergedArmL = BufferGeometryUtils.mergeGeometries([sleeveL, cuffL, forearmL, watchBandL, watchDialL, handL, thumbL], false);
     armL.add(new THREE.Mesh(mergedArmL, devMat));
     group.add(armL);
 
+    // 3. Right Arm (Flannel sleeve, forearm, black wristband, hand)
     const armR = new THREE.Group();
     armR.position.set(0.30, 1.50, 0);
-    const sleeveR = applyVertexColor(new THREE.CylinderGeometry(0.075, 0.07, 0.24, 10), shirtColor);
-    sleeveR.translate(0, -0.12, 0);
-    const forearmR = applyVertexColor(new THREE.CylinderGeometry(0.06, 0.052, 0.32, 10), skinColor);
-    forearmR.translate(0, -0.38, 0);
-    const handR = applyVertexColor(new THREE.SphereGeometry(0.054, 8, 8), skinColor);
-    handR.translate(0, -0.56, 0);
-    const mergedArmR = BufferGeometryUtils.mergeGeometries([sleeveR, forearmR, handR], false);
+    const sleeveR = applyVertexColor(new THREE.CylinderGeometry(0.078, 0.072, 0.26, 10), flannelPrimary);
+    sleeveR.translate(0, -0.13, 0);
+    const cuffR = applyVertexColor(new THREE.CylinderGeometry(0.082, 0.082, 0.04, 10), flannelPlaidDark);
+    cuffR.translate(0, -0.25, 0);
+    const forearmR = applyVertexColor(new THREE.CylinderGeometry(0.062, 0.054, 0.28, 10), skinColor);
+    forearmR.translate(0, -0.39, 0);
+    const wristbandR = applyVertexColor(new THREE.CylinderGeometry(0.065, 0.065, 0.04, 10), wristband);
+    wristbandR.translate(0, -0.49, 0);
+    const handR = applyVertexColor(new THREE.SphereGeometry(0.056, 8, 8), skinColor);
+    handR.translate(0, -0.58, 0);
+    const thumbR = applyVertexColor(new THREE.BoxGeometry(0.025, 0.045, 0.025), skinColor);
+    thumbR.translate(-0.04, -0.56, 0.03);
+    const mergedArmR = BufferGeometryUtils.mergeGeometries([sleeveR, cuffR, forearmR, wristbandR, handR, thumbR], false);
     armR.add(new THREE.Mesh(mergedArmR, devMat));
     group.add(armR);
 
-    // Legs
+    // 4. Left Leg (Khaki chinos, navy sneakers with white sole & side slash)
     const legL = new THREE.Group();
     legL.position.set(-0.13, 0.90, 0);
-    const pantsL = applyVertexColor(new THREE.BoxGeometry(0.18, 0.76, 0.20), pantsColor);
-    pantsL.translate(0, -0.38, 0);
-    const shoeL = applyVertexColor(new THREE.BoxGeometry(0.16, 0.10, 0.26), shoeColor);
+    const pantsL = applyVertexColor(new THREE.BoxGeometry(0.18, 0.74, 0.20), pantsKhaki);
+    pantsL.translate(0, -0.37, 0);
+    const cuffLegL = applyVertexColor(new THREE.BoxGeometry(0.19, 0.05, 0.21), pantsKhaki);
+    cuffLegL.translate(0, -0.71, 0);
+    const shoeL = applyVertexColor(new THREE.BoxGeometry(0.16, 0.09, 0.26), sneakersNavy);
     shoeL.translate(0, -0.76, 0.03);
-    const soleL = applyVertexColor(new THREE.BoxGeometry(0.165, 0.03, 0.27), soleColor);
+    const slashL = applyVertexColor(new THREE.BoxGeometry(0.17, 0.03, 0.14), sneakersAccent);
+    slashL.translate(0, -0.76, 0.03);
+    const soleL = applyVertexColor(new THREE.BoxGeometry(0.165, 0.035, 0.28), sneakersSole);
     soleL.translate(0, -0.81, 0.03);
-    legL.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries([pantsL, shoeL, soleL], false), devMat));
+    legL.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries([pantsL, cuffLegL, shoeL, slashL, soleL], false), devMat));
     group.add(legL);
 
+    // 5. Right Leg (Khaki chinos, navy sneakers with white sole & side slash)
     const legR = new THREE.Group();
     legR.position.set(0.13, 0.90, 0);
-    const pantsR = applyVertexColor(new THREE.BoxGeometry(0.18, 0.76, 0.20), pantsColor);
-    pantsR.translate(0, -0.38, 0);
-    const shoeR = applyVertexColor(new THREE.BoxGeometry(0.16, 0.10, 0.26), shoeColor);
+    const pantsR = applyVertexColor(new THREE.BoxGeometry(0.18, 0.74, 0.20), pantsKhaki);
+    pantsR.translate(0, -0.37, 0);
+    const cuffLegR = applyVertexColor(new THREE.BoxGeometry(0.19, 0.05, 0.21), pantsKhaki);
+    cuffLegR.translate(0, -0.71, 0);
+    const shoeR = applyVertexColor(new THREE.BoxGeometry(0.16, 0.09, 0.26), sneakersNavy);
     shoeR.translate(0, -0.76, 0.03);
-    const soleR = applyVertexColor(new THREE.BoxGeometry(0.165, 0.03, 0.27), soleColor);
+    const slashR = applyVertexColor(new THREE.BoxGeometry(0.17, 0.03, 0.14), sneakersAccent);
+    slashR.translate(0, -0.76, 0.03);
+    const soleR = applyVertexColor(new THREE.BoxGeometry(0.165, 0.035, 0.28), sneakersSole);
     soleR.translate(0, -0.81, 0.03);
-    legR.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries([pantsR, shoeR, soleR], false), devMat));
+    legR.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries([pantsR, cuffLegR, shoeR, slashR, soleR], false), devMat));
     group.add(legR);
 
     return { group, armL, armR, legL, legR };

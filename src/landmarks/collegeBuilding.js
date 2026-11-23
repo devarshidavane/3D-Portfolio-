@@ -32,14 +32,48 @@ export function buildCollegeDistrict(scene) {
     const modernFacadeTex = createModernFacadeTexture();
     modernFacadeTex.repeat.set(5, 3);
 
-    // 1. Grand 4-Story Engineering Campus Building Facade
+    // 1. Grand 4-Story Engineering Campus Building Facade (White Plaster with Architectural Brown Accents)
+    // Matches refs/college/college_main_block_facade.jpg
     const mainBuilding = new THREE.Mesh(
-        new THREE.BoxGeometry(42, 20, 16),
+        new THREE.BoxGeometry(44, 20, 16),
         new THREE.MeshStandardMaterial({ map: modernFacadeTex, roughness: 0.65 })
     );
     mainBuilding.position.set(0, 10, -6);
     mainBuilding.receiveShadow = true;
     college.add(mainBuilding);
+
+    // Architectural Warm Brown Trim & Horizontal Bands (DMCE Airoli signature aesthetic)
+    const brownTrimGeoms = [];
+    [5.0, 10.0, 15.0, 19.8].forEach(by => {
+        const hBand = new THREE.BoxGeometry(44.4, 0.6, 16.4);
+        hBand.translate(0, by, -6);
+        brownTrimGeoms.push(hBand);
+    });
+    // Vertical facade accent columns flanking the entrance
+    [-7.2, 7.2].forEach(vx => {
+        const vCol = new THREE.BoxGeometry(0.8, 19.5, 16.6);
+        vCol.translate(vx, 10, -6);
+        brownTrimGeoms.push(vCol);
+    });
+    const brownTrimMesh = new THREE.Mesh(
+        BufferGeometryUtils.mergeGeometries(brownTrimGeoms),
+        new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.7 })
+    );
+    college.add(brownTrimMesh);
+
+    // Grand Central Entrance Concrete Steps (refs/college/college_main_block_facade.jpg)
+    const stepsGeoms = [];
+    for (let st = 0; st < 6; st++) {
+        const step = new THREE.BoxGeometry(16 - st * 0.4, 0.4, 2.0);
+        step.translate(0, 0.2 + st * 0.35, 2.0 - st * 1.2);
+        stepsGeoms.push(step);
+    }
+    const stepsMesh = new THREE.Mesh(
+        BufferGeometryUtils.mergeGeometries(stepsGeoms),
+        new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.85 })
+    );
+    stepsMesh.receiveShadow = true;
+    college.add(stepsMesh);
 
     // 2. Central Glass Atrium & Grand Portico
     const atrium = new THREE.Mesh(
@@ -57,21 +91,61 @@ export function buildCollegeDistrict(scene) {
     arch.position.set(0, 6, -5);
     college.add(arch);
 
-    // 3. Computer Engineering & IT Labs Wing (East Wing)
+    // 3. Computer Engineering & IT Labs Wing (East Wing - refs/college/college_campus_annex.jpg)
+    const itWingGeoms = [];
+    const itBlock = new THREE.BoxGeometry(22, 16, 20);
+    itBlock.translate(34, 8, -2);
+    itWingGeoms.push(itBlock);
+    // Server room roof HVAC units
+    [-4, 4].forEach(hx => {
+        const hvac = new THREE.BoxGeometry(3.5, 2.0, 4.0);
+        hvac.translate(34 + hx, 17, -2);
+        itWingGeoms.push(hvac);
+    });
     const itWing = new THREE.Mesh(
-        new THREE.BoxGeometry(22, 16, 20),
+        BufferGeometryUtils.mergeGeometries(itWingGeoms),
         new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.7 })
     );
-    itWing.position.set(34, 8, -2);
     college.add(itWing);
 
-    // 4. Mechanical & Civil Engineering Workshop Shed (West Wing)
+    // 4. Mechanical & Civil Engineering Workshop Shed (West Wing - high clearance)
+    const wsGeoms = [];
+    const workshopBlock = new THREE.BoxGeometry(20, 10, 22);
+    workshopBlock.translate(-34, 5, -2);
+    wsGeoms.push(workshopBlock);
+    // Industrial roof monitors / clerestory ventilators
+    for (let rx = -41; rx <= -27; rx += 5) {
+        const vent = new THREE.BoxGeometry(2.5, 2.0, 18);
+        vent.translate(rx, 11, -2);
+        wsGeoms.push(vent);
+    }
     const workshop = new THREE.Mesh(
-        new THREE.BoxGeometry(20, 10, 22),
+        BufferGeometryUtils.mergeGeometries(wsGeoms),
         new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.8 })
     );
-    workshop.position.set(-34, 5, -2);
     college.add(workshop);
+
+    // Sector 3 Airoli Campus Perimeter Boundary & Entrance Gate (refs/college/college_entrance_gate_approach.jpg)
+    const gateGeoms = [];
+    // Boundary wall
+    const wallL = new THREE.BoxGeometry(28, 2.4, 0.8);
+    wallL.translate(-26, 1.2, 34);
+    const wallR = new THREE.BoxGeometry(28, 2.4, 0.8);
+    wallR.translate(26, 1.2, 34);
+    gateGeoms.push(wallL, wallR);
+    // Gate pillars with light lanterns
+    [-12, 12].forEach(px => {
+        const pillar = new THREE.BoxGeometry(2.2, 4.8, 2.2);
+        pillar.translate(px, 2.4, 34);
+        const lantern = new THREE.BoxGeometry(0.8, 0.8, 0.8);
+        lantern.translate(px, 5.2, 34);
+        gateGeoms.push(pillar, lantern);
+    });
+    const gateMesh = new THREE.Mesh(
+        BufferGeometryUtils.mergeGeometries(gateGeoms),
+        new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.8 })
+    );
+    college.add(gateMesh);
 
     // 5. Authentic Bilingual Grand Signboard
     const signCanvas = document.createElement('canvas');

@@ -59,26 +59,53 @@ export function buildAmbientCitizens(scene) {
     }
 
     // 1. Citizens sitting on Marine Promenade Sea Wall (facing Arabian Sea)
+    // Saree Aunty, Influencer, Bhau, Commuters enjoying sea breeze
     [-60, -42, -18, 16, 38, 55].forEach((px, i) => {
         const skins = [0x8d5524, 0xc68642, 0xe0ac69, 0xf1c27d];
-        const shirts = [0xffffff, 0xef4444, 0x3b82f6, 0x10b981, 0xf59e0b];
-        addSeatedCitizen(px, 0.6, -21.4, Math.PI, skins[i % skins.length], shirts[i % shirts.length], 0x1e293b, 0x0f172a);
+        const shirts = [0xdb2777, 0xc084fc, 0xeab308, 0x10b981, 0x1e3a8a]; // Magenta saree, lavender hoodie, gold silk, green kurta, navy blazer
+        const pants = [0xdb2777, 0xf1f5f9, 0x1e3a8a, 0xf8fafc, 0x334155];
+        addSeatedCitizen(px, 0.6, -21.4, Math.PI, skins[i % skins.length], shirts[i % shirts.length], pants[i % pants.length], 0x0f172a);
     });
 
-    // 2. Citizens chatting at Chai Stalls
-    [[-19, 0, -2.5, 0.8], [-21, 0, -2.5, -0.6], [19, 0, -2.5, 0.5], [21, 0, -2.5, -0.7]].forEach(p => {
-        addStandingCitizen(p[0], p[1], p[2], p[3], 0xc68642, 0xf8fafc, 0x334155, 0x0f172a);
+    // 2. Chai Tapri Vendors & Citizens chatting at Chai Addas
+    [[-19, 0, -2.5, 0.8], [19, 0, -2.5, 0.5]].forEach(p => {
+        // Chaiwala in sky blue shirt with rust apron
+        addStandingCitizen(p[0], p[1], p[2], p[3], 0xc68642, 0x38bdf8, 0x334155, 0x0f172a);
+        const apron = applyVertexColor(new THREE.BoxGeometry(0.43, 0.35, 0.25), 0xb45309);
+        apron.rotateY(p[3]);
+        apron.translate(p[0], p[1] + 1.0, p[2]);
+        ambientGeoms.push(apron);
+    });
+    [[-21, 0, -2.5, -0.6], [21, 0, -2.5, -0.7]].forEach(p => {
+        // Local Bhau / patron
+        addStandingCitizen(p[0], p[1], p[2], p[3], 0xe0ac69, 0xeab308, 0x1e3a8a, 0x020617);
     });
 
-    // 3. Commuters waiting at BEST Bus Stops
-    [[-10.2, 0, 24.5, 0], [-9.8, 0, 25.5, 0], [9.8, 0, 24.5, Math.PI], [10.2, 0, 25.5, Math.PI]].forEach(p => {
-        addStandingCitizen(p[0], p[1], p[2], p[3], 0xe0ac69, 0x0284c7, 0x1e293b, 0x1e1b4b);
+    // 3. Commuters & Police Havildar waiting at BEST Bus Stops
+    [[-10.2, 0, 24.5, 0], [9.8, 0, 24.5, Math.PI]].forEach(p => {
+        // Office commuter with laptop sling
+        addStandingCitizen(p[0], p[1], p[2], p[3], 0xe0ac69, 0xbae6fd, 0x1e293b, 0x1e1b4b);
+    });
+    [[-9.8, 0, 25.5, 0], [10.2, 0, 25.5, Math.PI]].forEach(p => {
+        // Mumbai Police Havildar on duty
+        addStandingCitizen(p[0], p[1], p[2], p[3], 0x8d5524, 0xc28846, 0xb4793b, 0x020617);
+        const cap = applyVertexColor(new THREE.CylinderGeometry(0.20, 0.20, 0.08, 8), 0x1e3a8a);
+        cap.translate(p[0], p[1] + 1.77, p[2]);
+        ambientGeoms.push(cap);
     });
 
-    // 4. Commuters on Railway Platforms
+    // 4. Old-School Dabbawalas & Commuters on Railway Platforms
     [-24, 180, 400].forEach(sx => {
-        addStandingCitizen(sx - 4.2, 0.35, 12, 0, 0x8d5524, 0xf97316, 0x0f172a, 0x020617);
-        addStandingCitizen(sx - 4.5, 0.35, 20, Math.PI, 0xf5cba7, 0x10b981, 0xf8fafc, 0x3b2518);
+        // Dabbawala in all-white kurta with Gandhi Topi & tiffin stack
+        addStandingCitizen(sx - 4.2, 0.35, 12, 0, 0x8d5524, 0xf8fafc, 0xf8fafc, 0x020617);
+        const topi = applyVertexColor(new THREE.BoxGeometry(0.14, 0.09, 0.24), 0xffffff);
+        topi.translate(sx - 4.2, 0.35 + 1.79, 12);
+        const dabba = applyVertexColor(new THREE.CylinderGeometry(0.09, 0.09, 0.32, 8), 0xcbd5e1);
+        dabba.translate(sx - 4.2 + 0.32, 0.35 + 0.76, 12);
+        ambientGeoms.push(topi, dabba);
+
+        // Tech-Tinkerer commuter with olive vest
+        addStandingCitizen(sx - 4.5, 0.35, 20, Math.PI, 0xf5cba7, 0x4d7c0f, 0x334155, 0x3b2518);
     });
 
     if (ambientGeoms.length > 0) {
